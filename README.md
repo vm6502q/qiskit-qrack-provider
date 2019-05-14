@@ -7,4 +7,4 @@ The underlying Qrack simulator is a high-performance, GPU-accelarated, noiseless
 - QasmSimulator
 - StatevectorSimulator
 
-This provider is based on and adapted from work by the IBM Qiskit Team and QCGPU's creator, Adam Kelley. Attribution is noted in content files, where appropriate. Original contributions and adaptations were made by Daniel Strano of the Qrack/VM6502Q Team.
+This provider is based on and adapted from work by the IBM Qiskit Team and QCGPU's creator, Adam Kelly. Attribution is noted in content files, where appropriate. Original contributions and adaptations were made by Daniel Strano of the Qrack/VM6502Q Team.
