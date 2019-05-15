@@ -1,4 +1,4 @@
-# This code is based on and adapted from https://github.com/Qiskit/qiskit-aer/blob/master/qiskit/providers/aer/backends/statevector_simulator.py
+# This code is based on and adapted from https://github.com/Qiskit/qiskit-qcgpu-provider/blob/master/qiskit_qcgpu_provider/statevector_simulator.py
 #
 # Adapted by Daniel Strano
 #
