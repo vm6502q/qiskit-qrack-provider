@@ -38,14 +38,13 @@ logger = logging.getLogger(__name__)
 class QasmSimulator(BaseBackend):
     """Contains an OpenCL based backend"""
 
-    MAX_QUBITS_MEMORY = 30  # Should do something smarter here,
-    # but needs to be implemented on the Qrack side.
-    # Will also depend on choosing the optimal backend.
+    MAX_QUBIT_MEMORY = int(
+        log2(local_hardware_info()['memory'] * (1024**3) / 16))
 
     DEFAULT_CONFIGURATION = {
         'backend_name': 'qasm_simulator',
         'backend_version': __version__,
-        'n_qubits': MAX_QUBITS_MEMORY,
+        'n_qubits': MAX_QUBIT_MEMORY,
         'url': 'https://github.com/vm6502q/qiskit-aer',
         'simulator': True,
         'local': True,

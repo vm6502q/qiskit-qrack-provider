@@ -139,7 +139,7 @@ public:
     }
 
     virtual std::vector<double> probabilities() {
-        bitLenInt probCount = qReg->GetMaxQPower();
+        bitCapInt probCount = qReg->GetMaxQPower();
         std::vector<double> probs(probCount);
         double totProb = 0;
         for (bitCapInt i = 0; i < probCount; i++) {

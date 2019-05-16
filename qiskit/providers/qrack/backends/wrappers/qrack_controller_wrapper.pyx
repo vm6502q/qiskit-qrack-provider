@@ -16,13 +16,10 @@ import numpy as np
 from cpython cimport array
 from libcpp.vector cimport vector
 
-ctypedef unsigned long long uint_t
-ctypedef unsigned int uint8_t
-
 cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
     cdef cppclass QrackController:
         QrackController() except +
-        void initialize_qreg(uint_t) except +
+        void initialize_qreg(unsigned char) except +
         #initialize_qreg(uint64_t, const vector[complex]) except +
         void u(unsigned char target, double* params)
         void u2(unsigned char target, double* params)
