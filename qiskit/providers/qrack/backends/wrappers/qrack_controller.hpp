@@ -50,19 +50,11 @@ public:
 //-------------------------------------------------------------------------
 
     virtual void u(unsigned char target, double* params) {
-        const Qrack::complex uGate[4] = {
-            Qrack::complex(cos(params[0] / 2), ZERO_R1), ((Qrack::real1)sin(params[0] / 2)) * Qrack::complex(-cos(params[2]), -sin(params[2])),
-            ((Qrack::real1)sin(params[0] / 2)) * Qrack::complex(cos(params[1]), sin(params[1])), ((Qrack::real1)cos(params[0] / 2)) * Qrack::complex(cos(params[1] + params[2]), sin(params[1] + params[2]))
-        };
-        qReg->ApplySingleBit(uGate, true, target);
+        qReg->U((bitLenInt)target, params[0], params[1], params[2]);
     }
 
     virtual void u2(unsigned char target, double* params) {
-        const Qrack::complex u2Gate[4] = {
-            Qrack::complex(ONE_R1, ZERO_R1), Qrack::complex(-cos(params[1]), -sin(params[1])),
-            Qrack::complex(cos(params[0]), sin(params[0])), Qrack::complex(cos(params[0] + params[1]), sin(params[0] + params[1]))
-        };
-        qReg->ApplySingleBit(u2Gate, true, (bitLenInt)target);
+        qReg->U2((bitLenInt)target, params[0], params[1]);
     }
 
     virtual void u1(unsigned char target, double* params) {
