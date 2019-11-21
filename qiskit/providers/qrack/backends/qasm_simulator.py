@@ -53,6 +53,7 @@ class QasmSimulator(BaseBackend):
         'memory': True,
         'max_shots': 65536,
         'description': 'An OpenCL based qasm simulator',
+        'coupling_map': None,
         'basis_gates': ['u1', 'u2', 'u3', 'cx', 'cz', 'id', 'x', 'y', 'z',
                         'h', 's', 'sdg', 't', 'tdg', 'ccx', 'swap', 'reset'],
         'gates': [{'name': 'u1', 'parameters': ['lambda'], 'qasm_def': 'gate u1(lambda) q { U(0,0,lambda) q; }'},
