@@ -3,8 +3,7 @@
 # Adapted from https://github.com/Qiskit/qiskit-aer/blob/master/CMakeLists.txt
 
 cmake_minimum_required(VERSION 3.6)
-file(STRINGS "qiskit/providers/qrack/VERSION.txt" VERSION_NUM)
-project(qiskit-qrack-provider VERSION ${VERSION_NUM} LANGUAGES CXX C)
+project(qiskit-qrack-provider VERSION 0.2.0 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/cmake)
@@ -19,9 +18,6 @@ option(STATIC_LINKING "Specify if we want statically link the executable (for
 include(CTest)
 include(compiler_utils)
 include(Linter)
-
-# Get version information
-get_version(${VERSION_NUM})
 
 # TODO: We may want to change the prefix path for all the environments
 if(WIN32)

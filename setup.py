@@ -17,12 +17,6 @@ requirements = [
     "numpy>=1.13"
 ]
 
-VERSION_PATH = os.path.join(os.path.dirname(__file__),
-                            "qiskit", "providers", "qrack", "VERSION.txt")
-with open(VERSION_PATH, "r") as version_file:
-    VERSION = version_file.read().strip()
-
-
 def find_qiskit_packages():
     location = 'qiskit/providers'
     prefix = 'qiskit.providers'
@@ -36,7 +30,7 @@ def find_qiskit_packages():
 
 setup(
     name='qiskit-qrack-provider',
-    version=VERSION,
+    version="0.2.0",
     packages=find_qiskit_packages() if not dummy_install else [],
     cmake_source_dir='.',
     description="Qiskit Qrack Provider - Qrack High-Performance GPU simulation for Qiskit",
