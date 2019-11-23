@@ -3,7 +3,7 @@
 # Adapted from https://github.com/Qiskit/qiskit-aer/blob/master/CMakeLists.txt
 
 cmake_minimum_required(VERSION 3.6)
-project(qiskit-qrack-provider VERSION 0.20 LANGUAGES CXX C)
+project(qiskit-qrack-provider VERSION 0.2.0 LANGUAGES CXX C)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 list(APPEND CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/cmake)
