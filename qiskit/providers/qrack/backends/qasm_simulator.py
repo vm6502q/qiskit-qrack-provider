@@ -128,7 +128,7 @@ class QasmSimulator(BaseBackend):
             'status': 'COMPLETED',
             'success': True,
             'time_taken': (end - start),
-            'header': qobj.header.as_dict()
+            'header': qobj.header.to_dict()
         }
 
         return Result.from_dict(result)
@@ -165,7 +165,7 @@ class QasmSimulator(BaseBackend):
         if not self._sample_measure:
             raise QrackSimulatorError('Measurements are only supported at the end')
 
-        experiment = experiment.as_dict()
+        experiment = experiment.to_dict()
 
         samples = []
 

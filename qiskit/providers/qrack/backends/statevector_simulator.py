@@ -145,7 +145,7 @@ class StatevectorSimulator(BaseBackend):
             'status': 'COMPLETED',
             'success': True,
             'time_taken': (end - start),
-            'header': qobj.header.as_dict()
+            'header': qobj.header.to_dict()
         }
 
         return Result.from_dict(result) # This can be sped up
@@ -163,7 +163,7 @@ class StatevectorSimulator(BaseBackend):
         """
         self._number_of_qubits = experiment.header.n_qubits
         self._statevector = 0
-        experiment = experiment.as_dict()
+        experiment = experiment.to_dict()
 
         start = time.time()
 
