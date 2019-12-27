@@ -24,7 +24,7 @@ import os
 from math import log2
 from qiskit.util import local_hardware_info
 from qiskit.providers.models import BackendConfiguration
-from .qrack_controller_wrapper import PyQrackController, qrack_controller_factory
+from .qrack_controller_wrapper import qrack_controller_factory
 from ..qrackerror import QrackError
 from ..version import __version__
 
