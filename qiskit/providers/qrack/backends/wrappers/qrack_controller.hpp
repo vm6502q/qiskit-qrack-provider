@@ -77,6 +77,14 @@ public:
         qReg->ApplyControlledSingleBit((bitLenInt*)bits, ctrlCount, bits[ctrlCount], pauliZ);
     }
 
+    virtual void ch(unsigned char* bits, unsigned char ctrlCount) {
+        const Qrack::complex hadamard[4] = {
+            Qrack::complex(M_SQRT1_2, ZERO_R1), Qrack::complex(M_SQRT1_2, ZERO_R1),
+            Qrack::complex(M_SQRT1_2, ZERO_R1), Qrack::complex(-M_SQRT1_2, ZERO_R1)
+        };
+        qReg->ApplyControlledSingleBit((bitLenInt*)bits, ctrlCount, bits[ctrlCount], hadamard);
+    }
+
     virtual void h(unsigned char target) {
         qReg->H((bitLenInt)target);
     }

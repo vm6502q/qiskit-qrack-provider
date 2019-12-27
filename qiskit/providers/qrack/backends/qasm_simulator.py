@@ -54,7 +54,7 @@ class QasmSimulator(BaseBackend):
         'max_shots': 65536,
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
-        'basis_gates': ['u1', 'u2', 'u3', 'cx', 'cz', 'id', 'x', 'y', 'z',
+        'basis_gates': ['u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z',
                         'h', 's', 'sdg', 't', 'tdg', 'rx', 'ry', 'rz', 'ccx', 'swap', 'reset'],
         'gates': [{'name': 'u1', 'parameters': ['lambda'], 'qasm_def': 'gate u1(lambda) q { u3(0,0,lambda) q; }'},
                   {'name': 'u2', 'parameters': ['phi', 'lambda'], 'qasm_def': 'gate u2(phi,lambda) q { u3(pi/2,phi,lambda) q; }'},
@@ -73,7 +73,7 @@ class QasmSimulator(BaseBackend):
                   {'name': 'rx', 'parameters': ['theta', 'a'], 'qasm_def': 'gate rx(theta) a { u3(theta, -pi/2, pi/2) a; }'},
                   {'name': 'ry', 'parameters': ['theta', 'a'], 'qasm_def': 'gate ry(theta) a { u3(theta, 0, 0) a; }'},
                   {'name': 'rz', 'parameters': ['phi', 'a'], 'qasm_def': 'gate rz(phi) a { u1(phi) a; }'}
-                  #TODO: ccx, swap, reset
+                  #TODO: ch, ccx, swap, reset
                  ]}
 
     def __init__(self, configuration=None, provider=None):
@@ -199,6 +199,8 @@ class QasmSimulator(BaseBackend):
                 sim.cx(operation['qubits'], 2)
             elif name == 'cz':
                 sim.cz(operation['qubits'], 1)
+            elif name == 'ch':
+                sim.ch(operation['qubits'], 1)
             elif name == 'h':
                 sim.h(operation['qubits'][0])
             elif name == 'x':
