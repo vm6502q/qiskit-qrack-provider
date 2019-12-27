@@ -110,15 +110,15 @@ public:
     }
 
     virtual void rx(unsigned char target, double* params) {
-        qReg->RX(params[0] * 2, (bitLenInt)target);
+        qReg->RX(params[0], (bitLenInt)target);
     }
 
     virtual void ry(unsigned char target, double* params) {
-        qReg->RY(params[0] * 2, (bitLenInt)target);
+        qReg->RY(params[0], (bitLenInt)target);
     }
 
     virtual void rz(unsigned char target, double* params) {
-        qReg->RZ(params[0] * 2, (bitLenInt)target);
+        qReg->RZ(params[0], (bitLenInt)target);
     }
 
     virtual void swap(unsigned char target1, unsigned char target2) {
