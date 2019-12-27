@@ -63,16 +63,16 @@ public:
 
     virtual void cx(unsigned char* bits, unsigned char ctrlCount) {
         const Qrack::complex pauliX[4] = {
-            Qrack::complex(ZERO_R1, ZERO_R1), Qrack::complex(ONE_R1, ZERO_R1),
-            Qrack::complex(ONE_R1, ZERO_R1), Qrack::complex(ZERO_R1, ZERO_R1)
+            Qrack::ZERO_CMPLX, Qrack::ONE_CMPLX,
+            Qrack::ONE_CMPLX, Qrack::ZERO_CMPLX
         };
         qReg->ApplyControlledSingleBit((bitLenInt*)bits, ctrlCount, bits[ctrlCount], pauliX);
     }
 
     virtual void cz(unsigned char* bits, unsigned char ctrlCount) {
         const Qrack::complex pauliZ[4] = {
-            Qrack::complex(ONE_R1, ZERO_R1), Qrack::complex(ZERO_R1, ZERO_R1),
-            Qrack::complex(ZERO_R1, ZERO_R1), Qrack::complex(-ONE_R1, ZERO_R1)
+            Qrack::ONE_CMPLX, Qrack::ZERO_CMPLX,
+            Qrack::ZERO_CMPLX, -Qrack::ONE_CMPLX
         };
         qReg->ApplyControlledSingleBit((bitLenInt*)bits, ctrlCount, bits[ctrlCount], pauliZ);
     }

@@ -20,7 +20,6 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
     cdef cppclass QrackController:
         QrackController() except +
         void initialize_qreg(unsigned char) except +
-        #initialize_qreg(uint64_t, const vector[complex]) except +
         void u(unsigned char target, double* params)
         void u2(unsigned char target, double* params)
         void u1(unsigned char target, double* params)
