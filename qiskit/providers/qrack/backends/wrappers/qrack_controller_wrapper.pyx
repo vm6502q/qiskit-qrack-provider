@@ -33,6 +33,9 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void sdg(unsigned char target)
         void t(unsigned char target)
         void tdg(unsigned char target)
+        void rx(unsigned char target, double* params)
+        void ry(unsigned char target, double* params)
+        void rz(unsigned char target, double* params)
         void swap(unsigned char target1, unsigned char target2)
         void reset(unsigned char target)
         vector[double complex] amplitudes()
@@ -97,6 +100,18 @@ cdef class PyQrackController:
 
     def tdg(self, target):
         self.c_class.tdg(target)
+
+    def rx(self, target, params):
+        cdef array.array params_array = array.array('d', params)
+        self.c_class.rx(target, params_array.data.as_doubles)
+
+    def ry(self, target, params):
+        cdef array.array params_array = array.array('d', params)
+        self.c_class.ry(target, params_array.data.as_doubles)
+
+    def rz(self, target, params):
+        cdef array.array params_array = array.array('d', params)
+        self.c_class.rz(target, params_array.data.as_doubles)
 
     def swap(self, target1, target2):
         self.c_class.swap(target1, target2)

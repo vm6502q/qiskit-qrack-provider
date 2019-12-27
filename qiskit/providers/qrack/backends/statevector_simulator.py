@@ -73,21 +73,24 @@ class StatevectorSimulator(BaseBackend):
         'description': 'A Qrack-based, GPU-accelerated, C++ statevector simulator for qobj files',
         'coupling_map': None,
         'basis_gates': ['u1', 'u2', 'u3', 'cx', 'cz', 'id', 'x', 'y', 'z',
-                        'h', 's', 'sdg', 't', 'tdg', 'ccx', 'swap', 'reset'],
-        'gates': [{'name': 'u1', 'parameters': ['lambda'], 'qasm_def': 'gate u1(lambda) q { U(0,0,lambda) q; }'},
-                  {'name': 'u2', 'parameters': ['phi', 'lambda'], 'qasm_def': 'gate u2(phi,lambda) q { U(pi/2,phi,lambda) q; }'},
-                  {'name': 'u3', 'parameters': ['theta', 'phi', 'lambda'], 'qasm_def': 'gate u3(theta,phi,lambda) q { U(theta,phi,lambda) q; }'},
-                  {'name': 'cx', 'parameters': ['c', 't'], 'qasm_def': 'gate cx c,t { CX c,t; }'},
-                  {'name': 'cz', 'parameters': ['c', 't'], 'qasm_def': 'gate cz c,t { CZ c,t; }'},
-                  {'name': 'id', 'parameters': ['a'], 'qasm_def': 'gate id a { U(0,0,0) a; }'},
+                        'h', 's', 'sdg', 't', 'tdg', 'rx', 'ry', 'rz', 'ccx', 'swap', 'reset'],
+        'gates': [{'name': 'u1', 'parameters': ['lambda'], 'qasm_def': 'gate u1(lambda) q { u3(0,0,lambda) q; }'},
+                  {'name': 'u2', 'parameters': ['phi', 'lambda'], 'qasm_def': 'gate u2(phi,lambda) q { u3(pi/2,phi,lambda) q; }'},
+                  {'name': 'u3', 'parameters': ['theta', 'phi', 'lambda'], 'qasm_def': 'gate u3(theta,phi,lambda) q { u3(theta,phi,lambda) q; }'},
+                  {'name': 'cx', 'parameters': ['c', 't'], 'qasm_def': 'gate cx c,t { cx c,t; }'},
+                  {'name': 'cz', 'parameters': ['c', 't'], 'qasm_def': 'gate cz c,t { cz c,t; }'},
+                  {'name': 'id', 'parameters': ['a'], 'qasm_def': 'gate id a { u3(0,0,0) a; }'},
                   {'name': 'x', 'parameters': ['a'], 'qasm_def': 'gate x a { u3(pi,0,pi) a; }'},
                   {'name': 'y', 'parameters': ['a'], 'qasm_def': 'gate y a { u3(pi,pi/2,pi/2) a; }'},
-                  {'name': 'z', 'parameters': ['z'], 'qasm_def': 'gate z a { u1(pi) a; }'},
+                  {'name': 'z', 'parameters': ['a'], 'qasm_def': 'gate z a { u1(pi) a; }'},
                   {'name': 'h', 'parameters': ['a'], 'qasm_def': 'gate h a { u2(0,pi) a; }'},
                   {'name': 's', 'parameters': ['a'], 'qasm_def': 'gate s a { u1(pi/2) a; }'},
                   {'name': 'sdg', 'parameters': ['a'], 'qasm_def': 'gate s a { u1(-pi/2) a; }'},
                   {'name': 't', 'parameters': ['a'], 'qasm_def': 'gate t a { u1(pi/4) a; }'},
-                  {'name': 'tdg', 'parameters': ['a'], 'qasm_def': 'gate t a { u1(-pi/4) a; }'}
+                  {'name': 'tdg', 'parameters': ['a'], 'qasm_def': 'gate t a { u1(-pi/4) a; }'},
+                  {'name': 'rx', 'parameters': ['theta', 'a'], 'qasm_def': 'gate rx(theta) a { u3(theta, -pi/2, pi/2) a; }'},
+                  {'name': 'ry', 'parameters': ['theta', 'a'], 'qasm_def': 'gate ry(theta) a { u3(theta, 0, 0) a; }'},
+                  {'name': 'rz', 'parameters': ['phi', 'a'], 'qasm_def': 'gate rz(phi) a { u1(phi) a; }'}
                   #TODO: ccx, swap, reset
                  ],
         # Location where we put external libraries that will be loaded at runtime
@@ -208,6 +211,12 @@ class StatevectorSimulator(BaseBackend):
                 sim.t(operation['qubits'][0])
             elif name == 'tdg':
                 sim.tdg(operation['qubits'][0])
+            elif name == 'rx':
+                sim.rx(operation['qubits'][0], operation['params'])
+            elif name == 'ry':
+                sim.ry(operation['qubits'][0], operation['params'])
+            elif name == 'rz':
+                sim.rz(operation['qubits'][0], operation['params'])
             elif name == 'swap':
                 sim.swap(operation['qubits'][0], operation['qubits'][1])
             elif name == 'reset':
