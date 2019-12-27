@@ -97,7 +97,7 @@ cdef class PyQrackController:
         self.c_class.t(target)
 
     def tdg(self, target):
-        self.c_class.t(target)
+        self.c_class.tdg(target)
 
     def swap(self, target1, target2):
         self.c_class.swap(target1, target2)

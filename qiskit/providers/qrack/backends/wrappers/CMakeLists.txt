@@ -34,12 +34,15 @@ endif()
 add_cython_target(qrack_controller_wrapper qrack_controller_wrapper.pyx CXX)
 add_library(qrack_controller_wrapper MODULE ${qrack_controller_wrapper})
 set_target_properties(qrack_controller_wrapper PROPERTIES
-	LINKER_LANGUAGE CXX
+    LINKER_LANGUAGE CXX
     CXX_STANDARD 14)
 if(APPLE)
     set_target_properties(qrack_controller_wrapper PROPERTIES
         LINK_FLAGS ${AER_LINKER_FLAGS})
 endif()
+# We only need to pass the linter once, as the codebase is the same for
+# all controllers
+add_linter(qrack_controller_wrapper)
 target_include_directories(qrack_controller_wrapper
     PRIVATE ${QRACK_SIMULATOR_CPP_SRC_DIR}
     PRIVATE ${PYTHON_INCLUDE_DIRS})
