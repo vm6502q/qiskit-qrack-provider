@@ -33,6 +33,10 @@ protected:
         return std::complex<double>(c);
     }
 
+    static std::complex<float> cast_cdouble(std::complex<double> c) {
+        return std::complex<float>(c);
+    }
+
     static double cast_float(float c) {
         return (double)c;
     }
@@ -156,6 +160,43 @@ public:
 
     virtual void cswap(unsigned char* bits, unsigned char ctrlCount) {
         qReg->CSwap((bitLenInt*)bits, ctrlCount, bits[ctrlCount], bits[ctrlCount + 1U]);
+    }
+
+    virtual void initialize(unsigned char* bits, unsigned char bitCount, double* params) {
+        bitLenInt origBitCount = qReg->GetQubitCount();
+        bitCapInt partPower = Qrack::pow2(bitCount);
+        Qrack::complex* amps = new Qrack::complex[partPower];
+        for (bitCapInt j = 0; j < partPower; j++) {
+            amps[j] = Qrack::complex(Qrack::real1(params[2 * j]), Qrack::real1(params[2 * j + 1]));
+        }
+
+        bitLenInt i;
+        if (bitCount == origBitCount) {
+            qReg->SetQuantumState(amps);
+            for (i = 0; i < bitCount; i++) {
+                qReg->Swap(i, bits[i]);
+            }
+        } else {
+            for (i = 0; i < bitCount; i++) {
+                qReg->M(bits[i]);
+            }
+
+            Qrack::QInterfacePtr qRegTemp = Qrack::CreateQuantumInterface(Qrack::QINTERFACE_QUNIT, Qrack::QINTERFACE_QFUSION, Qrack::QINTERFACE_OPTIMAL, bitCount, 0);
+            qRegTemp->SetQuantumState(amps);
+            qReg->Compose(qRegTemp);
+
+            for (i = 0; i < bitCount; i++) {
+                qReg->Swap(origBitCount + i, bits[i]);
+            }
+
+            qReg->Dispose(origBitCount, bitCount);
+        }
+
+        for (i = 0; i < bitCount; i++) {
+            qReg->TrySeparate(bits[i]);
+        }
+
+        delete[] amps;
     }
 
     virtual void reset(unsigned char target) {

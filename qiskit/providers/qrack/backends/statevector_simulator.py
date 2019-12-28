@@ -72,8 +72,8 @@ class StatevectorSimulator(BaseBackend):
         'coupling_map': None,
         'basis_gates': [
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
-            'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'cu1', 'cu2', 'cu3', 'cswap',
-            'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap'
+            'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
+            'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap'
         ],
         'gates': [{
             'name': 'u1',
@@ -206,6 +206,13 @@ class StatevectorSimulator(BaseBackend):
             'conditional': True,
             'description': 'Three-qubit Fredkin (controlled-SWAP) gate',
             'qasm_def': 'TODO'
+        }, {
+            'name': 'initialize',
+            'parameters': ['vector'],
+            'conditional': False,
+            'description': 'N-qubit state initialize. '
+                           'Resets qubits then sets statevector to the parameter vector.',
+            'qasm_def': 'initialize(vector) q1, q2,...'
         }, {
             'name': 'cu1',
             'parameters': ['lam'],
@@ -394,6 +401,8 @@ class StatevectorSimulator(BaseBackend):
                 sim.swap(operation['qubits'][0], operation['qubits'][1])
             elif name == 'ccx':
                 sim.cx(operation['qubits'], 2)
+            elif name == 'initialize':
+                sim.initialize(operation['qubits'], len(operation['qubits']), operation['params'])
             elif name == 'cu1':
                 sim.cu1(operation['qubits'], 1, operation['params'])
             elif name == 'cu2':
