@@ -283,11 +283,12 @@ class StatevectorSimulator(BaseBackend):
         self._results = {}
         self._chop_threshold = None # chop to 10^-8
 
-    def run(self, qobj):
+    def run(self, qobj, backend_options={}):
         """
         Run qobj asynchronously.
         Args:
             qobj (Qobj): payload of the experiment
+            backend_options: (ignored)
         Returns:
             QCGPUJob: derived from BaseJob
         """
@@ -348,7 +349,7 @@ class StatevectorSimulator(BaseBackend):
             sim = qrack_controller_factory()
             sim.initialize_qreg(self._number_of_qubits)
         except OverflowError:
-            raise QrackSimulatorError('too many qubits')
+            raise QrackError('too many qubits')
 
         for operation in experiment['instructions']:
             name = operation['name']

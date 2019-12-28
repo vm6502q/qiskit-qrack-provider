@@ -266,10 +266,11 @@ class QasmSimulator(BaseBackend):
         self._chop_threshold = 15  # chop to 10^-15
 
     #@profile
-    def run(self, qobj):
+    def run(self, qobj, backend_options={}):
         """Run qobj asynchronously.
         Args:
             qobj (Qobj): payload of the experiment
+            backend_options: (ignored)
         Returns:
             QrackJob: derived from BaseJob
         """
@@ -319,7 +320,7 @@ class QasmSimulator(BaseBackend):
             dict: A dictionary of results.
             dict: A result dictionary
         Raises:
-            QrackSimulatorError: If the number of qubits is too large, or another
+            QrackError: If the number of qubits is too large, or another
                 error occurs during execution.
         """
         self._number_of_qubits = experiment.header.n_qubits
@@ -340,7 +341,7 @@ class QasmSimulator(BaseBackend):
         self._can_sample(experiment)
 
         if not self._sample_measure:
-            raise QrackSimulatorError('Measurements are only supported at the end')
+            raise QrackError('Measurements are only supported at the end')
 
         experiment = experiment.to_dict()
 
@@ -352,7 +353,7 @@ class QasmSimulator(BaseBackend):
             sim = qrack_controller_factory()
             sim.initialize_qreg(self._number_of_qubits)
         except OverflowError:
-            raise QrackSimulatorError('too many qubits')
+            raise QrackError('too many qubits')
 
         for operation in experiment['instructions']:
             name = operation['name']
