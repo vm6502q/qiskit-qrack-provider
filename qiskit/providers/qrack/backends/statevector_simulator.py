@@ -74,7 +74,7 @@ class StatevectorSimulator(BaseBackend):
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'cu1', 'cu2', 'cu3', 'cswap',
             'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap'
-        ]
+        ],
         'gates': [{
             'name': 'u1',
             'parameters': ['lam'],
