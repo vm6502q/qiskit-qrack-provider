@@ -43,6 +43,7 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void swap(unsigned char target1, unsigned char target2)
         void cswap(unsigned char* bits, unsigned char ctrlCount)
         void initialize(unsigned char* bits, unsigned char bitCount, double* params)
+        void multiplexer(unsigned char* bits, unsigned char ctrlCount, double* params)
         void reset(unsigned char target)
         vector[double complex] amplitudes()
         vector[double] probabilities()
@@ -149,6 +150,11 @@ cdef class PyQrackController:
         cdef array.array bits_array = array.array('i', bits)
         cdef array.array params_array = array.array('d', [item for sublist in params for item in sublist])
         self.c_class.initialize(bits_array.data.as_uchars, bitCount, params_array.data.as_doubles)
+
+    def multiplexer(self, bits, ctrlCount, params):
+        cdef array.array bits_array = array.array('i', bits)
+        cdef array.array params_array = array.array('d', [item for sublist in params for item in sublist])
+        self.c_class.multiplexer(bits_array.data.as_uchars, ctrlCount, params_array.data.as_doubles)
 
     def reset(self, target):
         self.c_class.reset(target)

@@ -162,13 +162,17 @@ public:
         qReg->CSwap((bitLenInt*)bits, ctrlCount, bits[ctrlCount], bits[ctrlCount + 1U]);
     }
 
+    virtual void _darray_to_creal1_array(double *params, bitCapInt ampCount, Qrack::complex* amps) {
+        for (bitCapInt j = 0; j < ampCount; j++) {
+            amps[j] = Qrack::complex(Qrack::real1(params[2 * j]), Qrack::real1(params[2 * j + 1]));
+        }
+    }
+
     virtual void initialize(unsigned char* bits, unsigned char bitCount, double* params) {
         bitLenInt origBitCount = qReg->GetQubitCount();
         bitCapInt partPower = Qrack::pow2(bitCount);
         Qrack::complex* amps = new Qrack::complex[partPower];
-        for (bitCapInt j = 0; j < partPower; j++) {
-            amps[j] = Qrack::complex(Qrack::real1(params[2 * j]), Qrack::real1(params[2 * j + 1]));
-        }
+        _darray_to_creal1_array(params, partPower, amps);
 
         bitLenInt i;
 
@@ -203,6 +207,16 @@ public:
         }
 
         delete[] amps;
+    }
+
+    virtual void multiplexer(unsigned char* bits, unsigned char ctrlCount, double* params) {
+        bitCapInt partPower = Qrack::pow2(ctrlCount);
+        Qrack::complex* mtrxs = new Qrack::complex[partPower];
+        _darray_to_creal1_array(params, partPower, mtrxs);
+
+        qReg->UniformlyControlledSingleBit((bitLenInt*)bits, ctrlCount, (bitLenInt)bits[ctrlCount], mtrxs);
+
+        delete[] mtrxs;
     }
 
     virtual void reset(unsigned char target) {

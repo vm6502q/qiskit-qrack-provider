@@ -73,7 +73,8 @@ class StatevectorSimulator(BaseBackend):
         'basis_gates': [
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
-            'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap'
+            'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
+            'multiplexer'
         ],
         'gates': [{
             'name': 'u1',
@@ -273,6 +274,14 @@ class StatevectorSimulator(BaseBackend):
             'conditional': True,
             'description': 'N-qubit multi-controlled-SWAP gate',
             'qasm_def': 'TODO'
+        }, {
+            'name': 'multiplexer',
+            'parameters': ['mat1', 'mat2', '...'],
+            'conditional': True,
+            'description': 'N-qubit multi-plexer gate. '
+                           'The input parameters are the gates for each value.'
+                           'WARNING: Qrack currently only supports single-qubit-target multiplexer gates',
+            'qasm_def': 'TODO'
         }],
         # Location where we put external libraries that will be loaded at runtime
         # by the simulator extension
@@ -401,8 +410,6 @@ class StatevectorSimulator(BaseBackend):
                 sim.swap(operation['qubits'][0], operation['qubits'][1])
             elif name == 'ccx':
                 sim.cx(operation['qubits'], 2)
-            elif name == 'initialize':
-                sim.initialize(operation['qubits'], len(operation['qubits']), operation['params'])
             elif name == 'cu1':
                 sim.cu1(operation['qubits'], 1, operation['params'])
             elif name == 'cu2':
@@ -417,6 +424,8 @@ class StatevectorSimulator(BaseBackend):
                 sim.cy(operation['qubits'], len(operation['qubits']) - 1)
             elif name == 'mcz':
                 sim.cz(operation['qubits'], len(operation['qubits']) - 1)
+            elif name == 'initialize':
+                sim.initialize(operation['qubits'], len(operation['qubits']), operation['params'])
             elif name == 'cu1':
                 sim.cu1(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
             elif name == 'cu2':
@@ -425,6 +434,10 @@ class StatevectorSimulator(BaseBackend):
                 sim.cu(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
             elif name == 'mcswap':
                 sim.cswap(operation['qubits'], len(operation['qubits']) - 2)
+            elif name == 'multiplexer':
+                if len(operation['params'][0]) != 4:
+                    raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
+                sim.multiplexer(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
             elif name == 'reset':
                 sim.reset(operation['qubits'][0])
             elif name == 'barrier':
