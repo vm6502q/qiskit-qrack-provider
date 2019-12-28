@@ -171,11 +171,17 @@ public:
         }
 
         bitLenInt i;
-        if (bitCount == origBitCount) {
-            qReg->SetQuantumState(amps);
-            for (i = 0; i < bitCount; i++) {
-                qReg->Swap(i, bits[i]);
+
+        bool isNatural = true;
+        for (i = 0; i < bitCount; i++) {
+            if (i != bits[i]) {
+                isNatural = false;
+                break;
             }
+        }
+
+        if (isNatural && (bitCount == origBitCount)) {
+            qReg->SetQuantumState(amps);
         } else {
             for (i = 0; i < bitCount; i++) {
                 qReg->M(bits[i]);
