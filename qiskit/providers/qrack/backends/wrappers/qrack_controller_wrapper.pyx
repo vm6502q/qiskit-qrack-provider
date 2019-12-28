@@ -23,6 +23,9 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void u(unsigned char target, double* params)
         void u2(unsigned char target, double* params)
         void u1(unsigned char target, double* params)
+        void cu(unsigned char* bits, unsigned char ctrlCount, double* params)
+        void cu2(unsigned char* bits, unsigned char ctrlCount, double* params)
+        void cu1(unsigned char* bits, unsigned char ctrlCount, double* params)
         void cx(unsigned char* bits, unsigned char ctrlCount)
         void cz(unsigned char* bits, unsigned char ctrlCount)
         void ch(unsigned char* bits, unsigned char ctrlCount)
@@ -38,6 +41,7 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void ry(unsigned char target, double* params)
         void rz(unsigned char target, double* params)
         void swap(unsigned char target1, unsigned char target2)
+        void cswap(unsigned char* bits, unsigned char ctrlCount)
         void reset(unsigned char target)
         vector[double complex] amplitudes()
         vector[double] probabilities()
@@ -69,6 +73,21 @@ cdef class PyQrackController:
     def u1(self, target, params):
         cdef array.array params_array = array.array('d', params)
         self.c_class.u1(target, params_array.data.as_doubles)
+
+    def cu(self, bits, ctrlCount, params):
+        cdef array.array bits_array = array.array('i', bits)
+        cdef array.array params_array = array.array('d', params)
+        self.c_class.cu(bits_array.data.as_uchars, ctrlCount, params_array.data.as_doubles)
+
+    def cu2(self, bits, ctrlCount, params):
+        cdef array.array bits_array = array.array('i', bits)
+        cdef array.array params_array = array.array('d', params)
+        self.c_class.cu2(bits_array.data.as_uchars, ctrlCount, params_array.data.as_doubles)
+
+    def cu1(self, bits, ctrlCount, params):
+        cdef array.array bits_array = array.array('i', bits)
+        cdef array.array params_array = array.array('d', params)
+        self.c_class.cu1(bits_array.data.as_uchars, ctrlCount, params_array.data.as_doubles)
 
     def cx(self, bits, ctrlCount):
         cdef array.array bits_array = array.array('i', bits)
@@ -120,6 +139,10 @@ cdef class PyQrackController:
 
     def swap(self, target1, target2):
         self.c_class.swap(target1, target2)
+
+    def cswap(self, bits, ctrlCount):
+        cdef array.array bits_array = array.array('i', bits)
+        self.c_class.cswap(bits_array.data.as_uchars, ctrlCount)
 
     def reset(self, target):
         self.c_class.reset(target)

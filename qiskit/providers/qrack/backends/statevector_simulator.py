@@ -57,12 +57,10 @@ class StatevectorSimulator(BaseBackend):
             set to half the system memory size (Default: 0).
     """
 
-    MAX_QUBIT_MEMORY = int(log2(local_hardware_info()['memory'] * (1024 ** 3) / 16))
-
     DEFAULT_CONFIGURATION = {
         'backend_name': 'statevector_simulator',
         'backend_version': __version__,
-        'n_qubits': MAX_QUBIT_MEMORY,
+        'n_qubits': 64,
         'url': 'https://github.com/vm6502q/qiskit-aer',
         'simulator': True,
         'local': True,
@@ -72,27 +70,203 @@ class StatevectorSimulator(BaseBackend):
         'max_shots': 1,
         'description': 'A Qrack-based, GPU-accelerated, C++ statevector simulator for qobj files',
         'coupling_map': None,
-        'basis_gates': ['u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z',
-                        'h', 's', 'sdg', 't', 'tdg', 'rx', 'ry', 'rz', 'ccx', 'swap', 'reset'],
-        'gates': [{'name': 'u1', 'parameters': ['lambda'], 'qasm_def': 'gate u1(lambda) q { u3(0,0,lambda) q; }'},
-                  {'name': 'u2', 'parameters': ['phi', 'lambda'], 'qasm_def': 'gate u2(phi,lambda) q { u3(pi/2,phi,lambda) q; }'},
-                  {'name': 'u3', 'parameters': ['theta', 'phi', 'lambda'], 'qasm_def': 'gate u3(theta,phi,lambda) q { u3(theta,phi,lambda) q; }'},
-                  {'name': 'cx', 'parameters': ['c', 't'], 'qasm_def': 'gate cx c,t { cx c,t; }'},
-                  {'name': 'cz', 'parameters': ['c', 't'], 'qasm_def': 'gate cz c,t { cz c,t; }'},
-                  {'name': 'id', 'parameters': ['a'], 'qasm_def': 'gate id a { u3(0,0,0) a; }'},
-                  {'name': 'x', 'parameters': ['a'], 'qasm_def': 'gate x a { u3(pi,0,pi) a; }'},
-                  {'name': 'y', 'parameters': ['a'], 'qasm_def': 'gate y a { u3(pi,pi/2,pi/2) a; }'},
-                  {'name': 'z', 'parameters': ['a'], 'qasm_def': 'gate z a { u1(pi) a; }'},
-                  {'name': 'h', 'parameters': ['a'], 'qasm_def': 'gate h a { u2(0,pi) a; }'},
-                  {'name': 's', 'parameters': ['a'], 'qasm_def': 'gate s a { u1(pi/2) a; }'},
-                  {'name': 'sdg', 'parameters': ['a'], 'qasm_def': 'gate s a { u1(-pi/2) a; }'},
-                  {'name': 't', 'parameters': ['a'], 'qasm_def': 'gate t a { u1(pi/4) a; }'},
-                  {'name': 'tdg', 'parameters': ['a'], 'qasm_def': 'gate t a { u1(-pi/4) a; }'},
-                  {'name': 'rx', 'parameters': ['theta', 'a'], 'qasm_def': 'gate rx(theta) a { u3(theta, -pi/2, pi/2) a; }'},
-                  {'name': 'ry', 'parameters': ['theta', 'a'], 'qasm_def': 'gate ry(theta) a { u3(theta, 0, 0) a; }'},
-                  {'name': 'rz', 'parameters': ['phi', 'a'], 'qasm_def': 'gate rz(phi) a { u1(phi) a; }'}
-                  #TODO: ch, ccx, swap, reset
-                 ],
+        'basis_gates': [
+            'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
+            'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'cu1', 'cu2', 'cu3', 'cswap',
+            'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap'
+        ]
+        'gates': [{
+            'name': 'u1',
+            'parameters': ['lam'],
+            'conditional': True,
+            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
+            'qasm_def': 'gate u1(lam) q { U(0,0,lam) q; }'
+        }, {
+            'name': 'u2',
+            'parameters': ['phi', 'lam'],
+            'conditional': True,
+            'description':
+            'Single-qubit gate [[1, -exp(1j*lam)], [exp(1j*phi), exp(1j*(phi+lam))]]/sqrt(2)',
+            'qasm_def': 'gate u2(phi,lam) q { U(pi/2,phi,lam) q; }'
+        }, {
+            'name':
+            'u3',
+            'parameters': ['theta', 'phi', 'lam'],
+            'conditional':
+            True,
+            'description':
+            'Single-qubit gate with three rotation angles',
+            'qasm_def':
+            'gate u3(theta,phi,lam) q { U(theta,phi,lam) q; }'
+        }, {
+            'name': 'cx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit Controlled-NOT gate',
+            'qasm_def': 'gate cx c,t { CX c,t; }'
+        }, {
+            'name': 'cz',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit Controlled-Z gate',
+            'qasm_def': 'gate cz a,b { h b; cx a,b; h b; }'
+        }, {
+            'name': 'ch',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit Controlled-H gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'id',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit identity gate',
+            'qasm_def': 'gate id a { U(0,0,0) a; }'
+        }, {
+            'name': 'x',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-X gate',
+            'qasm_def': 'gate x a { U(pi,0,pi) a; }'
+        }, {
+            'name': 'y',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-Y gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'z',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-Z gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'h',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Hadamard gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'rx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-X axis rotation gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'ry',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-Y axis rotation gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'rz',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-Z axis rotation gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 's',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit phase gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'sdg',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit adjoint phase gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 't',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit T gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'tdg',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit adjoint T gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'swap',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit SWAP gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'ccx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Three-qubit Toffoli gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'cswap',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Three-qubit Fredkin (controlled-SWAP) gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'cu1',
+            'parameters': ['lam'],
+            'conditional': True,
+            'description': 'Two-qubit Controlled-u1 gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'cu2',
+            'parameters': ['phi', 'lam'],
+            'conditional': True,
+            'description': 'Two-qubit Controlled-u2 gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'cu3',
+            'parameters': ['theta', 'phi', 'lam'],
+            'conditional': True,
+            'description': 'Two-qubit Controlled-u3 gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'mcx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'N-qubit multi-controlled-X gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'mcy',
+            'parameters': [],
+            'conditional': True,
+            'description': 'N-qubit multi-controlled-Y gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'mcz',
+            'parameters': [],
+            'conditional': True,
+            'description': 'N-qubit multi-controlled-Z gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'mcu1',
+            'parameters': ['lam'],
+            'conditional': True,
+            'description': 'N-qubit multi-controlled-u1 gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'mcu2',
+            'parameters': ['phi', 'lam'],
+            'conditional': True,
+            'description': 'N-qubit multi-controlled-u2 gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'mcu3',
+            'parameters': ['theta', 'phi', 'lam'],
+            'conditional': True,
+            'description': 'N-qubit multi-controlled-u3 gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'mcswap',
+            'parameters': [],
+            'conditional': True,
+            'description': 'N-qubit multi-controlled-SWAP gate',
+            'qasm_def': 'TODO'
+        }],
         # Location where we put external libraries that will be loaded at runtime
         # by the simulator extension
         'library_dir': os.path.dirname(__file__)
@@ -179,32 +353,34 @@ class StatevectorSimulator(BaseBackend):
         for operation in experiment['instructions']:
             name = operation['name']
 
-            if name == 'id':
-                logger.info('Identity gates are ignored.')
-            elif name == 'barrier':
-                logger.info('Barrier gates are ignored.')
-            elif name == 'u3':
-                sim.u(operation['qubits'][0], operation['params'])
+            if name == 'u1':
+                sim.u1(operation['qubits'][0], operation['params'])
             elif name == 'u2':
                 sim.u2(operation['qubits'][0], operation['params'])
-            elif name == 'u1':
-                sim.u1(operation['qubits'][0], operation['params'])
+            elif name == 'u3':
+                sim.u(operation['qubits'][0], operation['params'])
             elif name == 'cx':
                 sim.cx(operation['qubits'], 1)
-            elif name == 'ccx':
-                sim.cx(operation['qubits'], 2)
             elif name == 'cz':
                 sim.cz(operation['qubits'], 1)
             elif name == 'ch':
                 sim.ch(operation['qubits'], 1)
-            elif name == 'h':
-                sim.h(operation['qubits'][0])
+            elif name == 'id':
+                logger.info('Identity gates are ignored.')
             elif name == 'x':
                 sim.x(operation['qubits'][0])
             elif name == 'y':
                 sim.y(operation['qubits'][0])
             elif name == 'z':
                 sim.z(operation['qubits'][0])
+            elif name == 'h':
+                sim.h(operation['qubits'][0])
+            elif name == 'rx':
+                sim.rx(operation['qubits'][0], operation['params'])
+            elif name == 'ry':
+                sim.ry(operation['qubits'][0], operation['params'])
+            elif name == 'rz':
+                sim.rz(operation['qubits'][0], operation['params'])
             elif name == 's':
                 sim.s(operation['qubits'][0])
             elif name == 'sdg':
@@ -213,16 +389,38 @@ class StatevectorSimulator(BaseBackend):
                 sim.t(operation['qubits'][0])
             elif name == 'tdg':
                 sim.tdg(operation['qubits'][0])
-            elif name == 'rx':
-                sim.rx(operation['qubits'][0], operation['params'])
-            elif name == 'ry':
-                sim.ry(operation['qubits'][0], operation['params'])
-            elif name == 'rz':
-                sim.rz(operation['qubits'][0], operation['params'])
             elif name == 'swap':
                 sim.swap(operation['qubits'][0], operation['qubits'][1])
+            elif name == 'ccx':
+                sim.cx(operation['qubits'], 2)
+            elif name == 'cu1':
+                sim.cu1(operation['qubits'], 1, operation['params'])
+            elif name == 'cu2':
+                sim.cu2(operation['qubits'], 1, operation['params'])
+            elif name == 'cu3':
+                sim.cu(operation['qubits'], 1, operation['params'])
+            elif name == 'cswap':
+                sim.cswap(operation['qubits'], 1)
+            elif name == 'mcx':
+                sim.cx(operation['qubits'], len(operation['qubits']) - 1)
+            elif name == 'mcy':
+                sim.cy(operation['qubits'], len(operation['qubits']) - 1)
+            elif name == 'mcz':
+                sim.cz(operation['qubits'], len(operation['qubits']) - 1)
+            elif name == 'cu1':
+                sim.cu1(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
+            elif name == 'cu2':
+                sim.cu2(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
+            elif name == 'cu3':
+                sim.cu(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
+            elif name == 'mcswap':
+                sim.cswap(operation['qubits'], len(operation['qubits']) - 2)
             elif name == 'reset':
                 sim.reset(operation['qubits'][0])
+            elif name == 'measure':
+                samples.append((operation['qubits'][0], operation['memory'][0]))
+            elif name == 'barrier':
+                logger.info('Barrier gates are ignored.')
 
         end = time.time()
 

@@ -61,6 +61,27 @@ public:
         qReg->RT(params[0] * 2, (bitLenInt)target);
     }
 
+    virtual void _cu(unsigned char* bits, unsigned char ctrlCount, Qrack::real1 theta, Qrack::real1 phi, Qrack::real1 lambda) {
+        Qrack::real1 cos0 = cos(theta / 2);
+        Qrack::real1 sin0 = sin(theta / 2);
+        Qrack::complex uGate[4] = { Qrack::complex(cos0, ZERO_R1), sin0 * Qrack::complex(-cos(lambda), -sin(lambda)),
+                                    sin0 * Qrack::complex(cos(phi), sin(phi)), cos0 * Qrack::complex(cos(phi + lambda), sin(phi + lambda)) };
+
+        qReg->ApplyControlledSingleBit((bitLenInt*)bits, ctrlCount, bits[ctrlCount], uGate);
+    }
+
+    virtual void cu(unsigned char* bits, unsigned char ctrlCount, double* params) {
+        _cu(bits, ctrlCount, params[0], params[1], params[2]);
+    }
+
+    virtual void cu2(unsigned char* bits, unsigned char ctrlCount, double* params) {
+        _cu(bits, ctrlCount, (Qrack::real1)(M_PI / 2), params[0], params[1]);
+    }
+
+    virtual void cu1(unsigned char* bits, unsigned char ctrlCount, double* params) {
+        _cu(bits, ctrlCount, ZERO_R1, ZERO_R1, params[0]);
+    }
+
     virtual void cx(unsigned char* bits, unsigned char ctrlCount) {
         const Qrack::complex pauliX[4] = {
             Qrack::ZERO_CMPLX, Qrack::ONE_CMPLX,
@@ -131,6 +152,10 @@ public:
 
     virtual void swap(unsigned char target1, unsigned char target2) {
         qReg->Swap((bitLenInt)target1, (bitLenInt)target2);
+    }
+
+    virtual void cswap(unsigned char* bits, unsigned char ctrlCount) {
+        qReg->CSwap((bitLenInt*)bits, ctrlCount, bits[ctrlCount], bits[ctrlCount + 1U]);
     }
 
     virtual void reset(unsigned char target) {
