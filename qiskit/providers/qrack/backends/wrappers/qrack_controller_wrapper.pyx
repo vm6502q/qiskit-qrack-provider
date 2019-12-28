@@ -12,6 +12,7 @@
 Cython wrapper for QrackController.
 """
 
+from collections.abc import Iterable
 import numpy as np
 from cpython cimport array
 from libcpp.vector cimport vector
@@ -146,14 +147,26 @@ cdef class PyQrackController:
         cdef array.array bits_array = array.array('i', bits)
         self.c_class.cswap(bits_array.data.as_uchars, ctrlCount)
 
+    def _complex_cast(self, x):
+        if isinstance(x, Iterable):
+            return x
+        else:
+            return [x, 0.0]
+
     def initialize(self, bits, bitCount, params):
         cdef array.array bits_array = array.array('i', bits)
-        cdef array.array params_array = array.array('d', [item for sublist in params for item in sublist])
+        cdef array.array params_array = array.array('d', [item for sublist in params for item in self._complex_cast(sublist)])
         self.c_class.initialize(bits_array.data.as_uchars, bitCount, params_array.data.as_doubles)
 
     def multiplexer(self, bits, ctrlCount, params):
         cdef array.array bits_array = array.array('i', bits)
-        cdef array.array params_array = array.array('d', [item for sublist in params for item in sublist])
+
+        items = [item for sublist in params for item in sublist] #matrices
+
+        if len(items[0]) != 4: #skip row flatten if already flat array
+            items = [item for sublist in items for item in sublist] #rows
+
+        cdef array.array params_array = array.array('d', [item for sublist in items for item in self._complex_cast(sublist)])
         self.c_class.multiplexer(bits_array.data.as_uchars, ctrlCount, params_array.data.as_doubles)
 
     def reset(self, target):
