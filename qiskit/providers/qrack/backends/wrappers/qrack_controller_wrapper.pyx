@@ -45,7 +45,7 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void reset(unsigned char target)
         vector[double complex] amplitudes()
         vector[double] probabilities()
-        int measure_all()
+        unsigned long long measure_all()
 
 
 cdef class PyQrackController:

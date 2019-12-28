@@ -191,7 +191,7 @@ public:
         return probs;
     }
 
-    virtual int measure_all() {
+    virtual unsigned long long measure_all() {
         return qReg->MReg(0, qReg->GetQubitCount());
     }
 };

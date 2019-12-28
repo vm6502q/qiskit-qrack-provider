@@ -418,10 +418,10 @@ class StatevectorSimulator(BaseBackend):
                 sim.cswap(operation['qubits'], len(operation['qubits']) - 2)
             elif name == 'reset':
                 sim.reset(operation['qubits'][0])
-            elif name == 'measure':
-                samples.append((operation['qubits'][0], operation['memory'][0]))
             elif name == 'barrier':
                 logger.info('Barrier gates are ignored.')
+            else:
+                raise QrackError('Unrecognized instruction')
 
         end = time.time()
 

@@ -426,6 +426,8 @@ class QasmSimulator(BaseBackend):
                 samples.append((operation['qubits'][0], operation['memory'][0]))
             elif name == 'barrier':
                 logger.info('Barrier gates are ignored.')
+            else:
+                raise QrackError('Unrecognized instruction')
 
         if self._number_of_cbits > 0:
             memory = self._add_sample_measure(samples, sim, self._shots)
