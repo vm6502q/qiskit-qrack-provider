@@ -376,7 +376,7 @@ class QasmSimulator(BaseBackend):
             name = operation['name']
 
             if len(samples) > 0 and self._number_of_cbits > 0:
-                if self.shots != 1:
+                if self._shots != 1:
                     raise QrackError('Only 1 shot measurement is supported, unless at end of circuit')
                 memory = self._add_sample_measure(samples, sim, self._shots)
                 samples = []
