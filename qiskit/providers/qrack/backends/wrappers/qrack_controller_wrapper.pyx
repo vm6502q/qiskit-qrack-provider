@@ -162,11 +162,9 @@ cdef class PyQrackController:
         cdef array.array bits_array = array.array('i', bits)
 
         items = [item for sublist in params for item in sublist] #matrices
-
-        if len(items[0]) != 4: #skip row flatten if already flat array
-            items = [item for sublist in items for item in sublist] #rows
-
+        items = [item for sublist in items for item in sublist] #rows
         cdef array.array params_array = array.array('d', [item for sublist in items for item in self._complex_cast(sublist)])
+
         self.c_class.multiplexer(bits_array.data.as_uchars, ctrlCount, params_array.data.as_doubles)
 
     def reset(self, target):
