@@ -25,12 +25,18 @@ namespace Simulator {
 // QrackController class
 //=========================================================================
 
+#define MAKE_ENGINE(num_qubits, perm) Qrack::CreateQuantumInterface(Qrack::QINTERFACE_QUNIT, Qrack::QINTERFACE_QFUSION, Qrack::QINTERFACE_OPTIMAL, num_qubits, perm)
+
 class QrackController {
 protected:
     Qrack::QInterfacePtr qReg;
 
     static std::complex<double> cast_cfloat(std::complex<float> c) {
         return std::complex<double>(c);
+    }
+
+    static std::complex<float> cast_cdouble(std::complex<double> c) {
+        return std::complex<float>(c);
     }
 
     static double cast_float(float c) {
@@ -42,23 +48,29 @@ public:
     virtual ~QrackController() = default;
 
     virtual void initialize_qreg(unsigned char num_qubits) {
-        qReg = Qrack::CreateQuantumInterface(Qrack::QINTERFACE_QUNIT, Qrack::QINTERFACE_QFUSION, Qrack::QINTERFACE_OPTIMAL, num_qubits, 0);
+        qReg = MAKE_ENGINE(num_qubits, 0);
     }
 
 //-------------------------------------------------------------------------
 // Operations
 //-------------------------------------------------------------------------
 
-    virtual void u(unsigned char target, double* params) {
-        qReg->U((bitLenInt)target, params[0], params[1], params[2]);
+    virtual void u(unsigned char* bits, unsigned char bitCount, double* params) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->U((bitLenInt)bits[i], params[0], params[1], params[2]);
+        }
     }
 
-    virtual void u2(unsigned char target, double* params) {
-        qReg->U2((bitLenInt)target, params[0], params[1]);
+    virtual void u2(unsigned char* bits, unsigned char bitCount, double* params) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->U2((bitLenInt)bits[i], params[0], params[1]);
+        }
     }
 
-    virtual void u1(unsigned char target, double* params) {
-        qReg->RT(params[0] * 2, (bitLenInt)target);
+    virtual void u1(unsigned char* bits, unsigned char bitCount, double* params) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->RT(params[0] * 2, (bitLenInt)bits[i]);
+        }
     }
 
     virtual void _cu(unsigned char* bits, unsigned char ctrlCount, Qrack::real1 theta, Qrack::real1 phi, Qrack::real1 lambda) {
@@ -83,19 +95,11 @@ public:
     }
 
     virtual void cx(unsigned char* bits, unsigned char ctrlCount) {
-        const Qrack::complex pauliX[4] = {
-            Qrack::ZERO_CMPLX, Qrack::ONE_CMPLX,
-            Qrack::ONE_CMPLX, Qrack::ZERO_CMPLX
-        };
-        qReg->ApplyControlledSingleBit((bitLenInt*)bits, ctrlCount, bits[ctrlCount], pauliX);
+        qReg->ApplyControlledSingleInvert((bitLenInt*)bits, ctrlCount, bits[ctrlCount], Qrack::ONE_CMPLX, Qrack::ONE_CMPLX);
     }
 
     virtual void cz(unsigned char* bits, unsigned char ctrlCount) {
-        const Qrack::complex pauliZ[4] = {
-            Qrack::ONE_CMPLX, Qrack::ZERO_CMPLX,
-            Qrack::ZERO_CMPLX, -Qrack::ONE_CMPLX
-        };
-        qReg->ApplyControlledSingleBit((bitLenInt*)bits, ctrlCount, bits[ctrlCount], pauliZ);
+        qReg->ApplyControlledSinglePhase((bitLenInt*)bits, ctrlCount, bits[ctrlCount], Qrack::ONE_CMPLX, -Qrack::ONE_CMPLX);
     }
 
     virtual void ch(unsigned char* bits, unsigned char ctrlCount) {
@@ -106,48 +110,70 @@ public:
         qReg->ApplyControlledSingleBit((bitLenInt*)bits, ctrlCount, bits[ctrlCount], hadamard);
     }
 
-    virtual void h(unsigned char target) {
-        qReg->H((bitLenInt)target);
+    virtual void h(unsigned char* bits, unsigned char bitCount) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->H((bitLenInt)bits[i]);
+        }
     }
 
-    virtual void x(unsigned char target) {
-        qReg->X((bitLenInt)target);
+    virtual void x(unsigned char* bits, unsigned char bitCount) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->X((bitLenInt)bits[i]);
+        }
     }
 
-    virtual void y(unsigned char target) {
-        qReg->Y((bitLenInt)target);
+    virtual void y(unsigned char* bits, unsigned char bitCount) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->Y((bitLenInt)bits[i]);
+        }
     }
 
-    virtual void z(unsigned char target) {
-        qReg->Z((bitLenInt)target);
+    virtual void z(unsigned char* bits, unsigned char bitCount) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->Z((bitLenInt)bits[i]);
+        }
     }
 
-    virtual void s(unsigned char target) {
-        qReg->S((bitLenInt)target);
+    virtual void s(unsigned char* bits, unsigned char bitCount) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->S((bitLenInt)bits[i]);
+        }
     }
 
-    virtual void sdg(unsigned char target) {
-        qReg->IS((bitLenInt)target);
+    virtual void sdg(unsigned char* bits, unsigned char bitCount) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->IS((bitLenInt)bits[i]);
+        }
     }
 
-    virtual void t(unsigned char target) {
-        qReg->T((bitLenInt)target);
+    virtual void t(unsigned char* bits, unsigned char bitCount) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->T((bitLenInt)bits[i]);
+        }
     }
 
-    virtual void tdg(unsigned char target) {
-        qReg->IT((bitLenInt)target);
+    virtual void tdg(unsigned char* bits, unsigned char bitCount) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->IT((bitLenInt)bits[i]);
+        }
     }
 
-    virtual void rx(unsigned char target, double* params) {
-        qReg->RX(params[0], (bitLenInt)target);
+    virtual void rx(unsigned char* bits, unsigned char bitCount, double* params) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->RX(params[0], (bitLenInt)bits[i]);
+        }
     }
 
-    virtual void ry(unsigned char target, double* params) {
-        qReg->RY(params[0], (bitLenInt)target);
+    virtual void ry(unsigned char* bits, unsigned char bitCount, double* params) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->RY(params[0], (bitLenInt)bits[i]);
+        }
     }
 
-    virtual void rz(unsigned char target, double* params) {
-        qReg->RZ(params[0], (bitLenInt)target);
+    virtual void rz(unsigned char* bits, unsigned char bitCount, double* params) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->RZ(params[0], (bitLenInt)bits[i]);
+        }
     }
 
     virtual void swap(unsigned char target1, unsigned char target2) {
@@ -156,6 +182,65 @@ public:
 
     virtual void cswap(unsigned char* bits, unsigned char ctrlCount) {
         qReg->CSwap((bitLenInt*)bits, ctrlCount, bits[ctrlCount], bits[ctrlCount + 1U]);
+    }
+
+    virtual void _darray_to_creal1_array(double *params, bitCapInt ampCount, Qrack::complex* amps) {
+        for (bitCapInt j = 0; j < ampCount; j++) {
+            amps[j] = Qrack::complex(Qrack::real1(params[2 * j]), Qrack::real1(params[2 * j + 1]));
+        }
+    }
+
+    virtual void initialize(unsigned char* bits, unsigned char bitCount, double* params) {
+        bitLenInt origBitCount = qReg->GetQubitCount();
+        bitCapInt partPower = Qrack::pow2(bitCount);
+        Qrack::complex* amps = new Qrack::complex[partPower];
+        _darray_to_creal1_array(params, partPower, amps);
+
+        bitLenInt i;
+
+        bool isNatural = (bitCount == origBitCount);
+        if (isNatural) {
+            for (i = 0; i < bitCount; i++) {
+                if (i != bits[i]) {
+                    isNatural = false;
+                    break;
+                }
+            }
+        }
+
+        if (isNatural) {
+            qReg->SetQuantumState(amps);
+        } else {
+            for (i = 0; i < bitCount; i++) {
+                qReg->M(bits[i]);
+            }
+
+            Qrack::QInterfacePtr qRegTemp = MAKE_ENGINE(bitCount, 0);
+            qRegTemp->SetQuantumState(amps);
+            qReg->Compose(qRegTemp);
+
+            for (i = 0; i < bitCount; i++) {
+                qReg->Swap(origBitCount + i, bits[i]);
+            }
+
+            qReg->Dispose(origBitCount, bitCount);
+        }
+
+        for (i = 0; i < bitCount; i++) {
+            qReg->TrySeparate(bits[i]);
+        }
+
+        delete[] amps;
+    }
+
+    virtual void multiplexer(unsigned char* bits, unsigned char ctrlCount, double* params) {
+        bitCapInt partPower = Qrack::pow2(ctrlCount);
+        Qrack::complex* mtrxs = new Qrack::complex[partPower];
+        _darray_to_creal1_array(params, partPower, mtrxs);
+
+        qReg->UniformlyControlledSingleBit((bitLenInt*)bits, ctrlCount, (bitLenInt)bits[ctrlCount], mtrxs);
+
+        delete[] mtrxs;
     }
 
     virtual void reset(unsigned char target) {
@@ -191,8 +276,16 @@ public:
         return probs;
     }
 
-    virtual int measure_all() {
-        return qReg->MReg(0, qReg->GetQubitCount());
+    virtual unsigned long long measure(unsigned char* bits, unsigned char bitCount) {
+        bitCapInt result = 0;
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            result |= (qReg->M((bitLenInt)bits[i]) ? Qrack::pow2(i) : 0);
+        }
+        return (unsigned long long)result;
+    }
+
+    virtual unsigned long long measure_all() {
+        return (unsigned long long)qReg->MReg(0, qReg->GetQubitCount());
     }
 };
 

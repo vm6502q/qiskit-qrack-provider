@@ -72,8 +72,9 @@ class StatevectorSimulator(BaseBackend):
         'coupling_map': None,
         'basis_gates': [
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
-            'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'cu1', 'cu2', 'cu3', 'cswap',
-            'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap'
+            'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
+            'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
+            'multiplexer'
         ],
         'gates': [{
             'name': 'u1',
@@ -207,6 +208,13 @@ class StatevectorSimulator(BaseBackend):
             'description': 'Three-qubit Fredkin (controlled-SWAP) gate',
             'qasm_def': 'TODO'
         }, {
+            'name': 'initialize',
+            'parameters': ['vector'],
+            'conditional': False,
+            'description': 'N-qubit state initialize. '
+                           'Resets qubits then sets statevector to the parameter vector.',
+            'qasm_def': 'initialize(vector) q1, q2,...'
+        }, {
             'name': 'cu1',
             'parameters': ['lam'],
             'conditional': True,
@@ -265,6 +273,14 @@ class StatevectorSimulator(BaseBackend):
             'parameters': [],
             'conditional': True,
             'description': 'N-qubit multi-controlled-SWAP gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'multiplexer',
+            'parameters': ['mat1', 'mat2', '...'],
+            'conditional': True,
+            'description': 'N-qubit multi-plexer gate. '
+                           'The input parameters are the gates for each value.'
+                           'WARNING: Qrack currently only supports single-qubit-target multiplexer gates',
             'qasm_def': 'TODO'
         }],
         # Location where we put external libraries that will be loaded at runtime
@@ -355,73 +371,80 @@ class StatevectorSimulator(BaseBackend):
             name = operation['name']
 
             if name == 'u1':
-                sim.u1(operation['qubits'][0], operation['params'])
+                sim.u1(operation['qubits'], operation['params'])
             elif name == 'u2':
-                sim.u2(operation['qubits'][0], operation['params'])
+                sim.u2(operation['qubits'], operation['params'])
             elif name == 'u3':
-                sim.u(operation['qubits'][0], operation['params'])
+                sim.u(operation['qubits'], operation['params'])
             elif name == 'cx':
-                sim.cx(operation['qubits'], 1)
+                sim.cx(operation['qubits'])
             elif name == 'cz':
-                sim.cz(operation['qubits'], 1)
+                sim.cz(operation['qubits'])
             elif name == 'ch':
-                sim.ch(operation['qubits'], 1)
+                sim.ch(operation['qubits'])
             elif name == 'id':
                 logger.info('Identity gates are ignored.')
             elif name == 'x':
-                sim.x(operation['qubits'][0])
+                sim.x(operation['qubits'])
             elif name == 'y':
-                sim.y(operation['qubits'][0])
+                sim.y(operation['qubits'])
             elif name == 'z':
-                sim.z(operation['qubits'][0])
+                sim.z(operation['qubits'])
             elif name == 'h':
-                sim.h(operation['qubits'][0])
+                sim.h(operation['qubits'])
             elif name == 'rx':
-                sim.rx(operation['qubits'][0], operation['params'])
+                sim.rx(operation['qubits'], operation['params'])
             elif name == 'ry':
-                sim.ry(operation['qubits'][0], operation['params'])
+                sim.ry(operation['qubits'], operation['params'])
             elif name == 'rz':
-                sim.rz(operation['qubits'][0], operation['params'])
+                sim.rz(operation['qubits'], operation['params'])
             elif name == 's':
-                sim.s(operation['qubits'][0])
+                sim.s(operation['qubits'])
             elif name == 'sdg':
-                sim.sdg(operation['qubits'][0])
+                sim.sdg(operation['qubits'])
             elif name == 't':
-                sim.t(operation['qubits'][0])
+                sim.t(operation['qubits'])
             elif name == 'tdg':
-                sim.tdg(operation['qubits'][0])
+                sim.tdg(operation['qubits'])
             elif name == 'swap':
                 sim.swap(operation['qubits'][0], operation['qubits'][1])
             elif name == 'ccx':
-                sim.cx(operation['qubits'], 2)
+                sim.cx(operation['qubits'])
             elif name == 'cu1':
-                sim.cu1(operation['qubits'], 1, operation['params'])
+                sim.cu1(operation['qubits'], operation['params'])
             elif name == 'cu2':
-                sim.cu2(operation['qubits'], 1, operation['params'])
+                sim.cu2(operation['qubits'], operation['params'])
             elif name == 'cu3':
-                sim.cu(operation['qubits'], 1, operation['params'])
+                sim.cu(operation['qubits'], operation['params'])
             elif name == 'cswap':
-                sim.cswap(operation['qubits'], 1)
+                sim.cswap(operation['qubits'])
             elif name == 'mcx':
-                sim.cx(operation['qubits'], len(operation['qubits']) - 1)
+                sim.cx(operation['qubits'])
             elif name == 'mcy':
-                sim.cy(operation['qubits'], len(operation['qubits']) - 1)
+                sim.cy(operation['qubits'])
             elif name == 'mcz':
-                sim.cz(operation['qubits'], len(operation['qubits']) - 1)
+                sim.cz(operation['qubits'])
+            elif name == 'initialize':
+                print("initialize")
+                sim.initialize(operation['qubits'], operation['params'])
             elif name == 'cu1':
-                sim.cu1(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
+                sim.cu1(operation['qubits'], operation['params'])
             elif name == 'cu2':
-                sim.cu2(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
+                sim.cu2(operation['qubits'], operation['params'])
             elif name == 'cu3':
-                sim.cu(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
+                sim.cu(operation['qubits'], operation['params'])
             elif name == 'mcswap':
-                sim.cswap(operation['qubits'], len(operation['qubits']) - 2)
+                sim.cswap(operation['qubits'])
+            elif name == 'multiplexer':
+                if len(operation['params'][0]) != 2: #matrix row count, equal to 2^n for n target qubits
+                    raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
+                sim.multiplexer(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
             elif name == 'reset':
                 sim.reset(operation['qubits'][0])
-            elif name == 'measure':
-                samples.append((operation['qubits'][0], operation['memory'][0]))
             elif name == 'barrier':
                 logger.info('Barrier gates are ignored.')
+            else:
+                raise QrackError('Unrecognized instruction')
 
         end = time.time()
 
