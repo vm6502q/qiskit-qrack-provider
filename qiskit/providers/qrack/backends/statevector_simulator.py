@@ -372,6 +372,12 @@ class StatevectorSimulator(BaseBackend):
         for operation in experiment['instructions']:
             name = operation['name']
 
+            if len(samples) > 0 and self._number_of_cbits > 0:
+                if self.shots != 1:
+                    raise QrackError('Only 1 shot measurement is supported, unless at end of circuit')
+                memory = self._add_sample_measure(samples, sim, self._shots)
+                samples = []
+
             if name == 'u1':
                 sim.u1(operation['qubits'], operation['params'])
             elif name == 'u2':
@@ -450,9 +456,9 @@ class StatevectorSimulator(BaseBackend):
             else:
                 raise QrackError('Unrecognized instruction,\'' + name + '\'')
 
-            if len(samples) > 0 and self._number_of_cbits > 0:
-                memory = self._add_sample_measure(samples, sim, self._shots)
-                samples = []
+        if len(samples) > 0 and self._number_of_cbits > 0:
+            memory = self._add_sample_measure(samples, sim, self._shots)
+            samples = []
 
         end = time.time()
 
@@ -504,9 +510,6 @@ class StatevectorSimulator(BaseBackend):
             return memory
 
         probabilities = np.reshape(sim.probabilities(), self._number_of_qubits * [2])
-
-        # "Collapse" appropriate bits
-        sim.measure(measured_qubits)
 
         # Axis for numpy.sum to compute probabilities
         axis = list(range(self._number_of_qubits))
