@@ -359,6 +359,8 @@ class StatevectorSimulator(BaseBackend):
         self._statevector = 0
         experiment = experiment.to_dict()
 
+        samples = []
+
         start = time.time()
 
         try:
@@ -441,10 +443,16 @@ class StatevectorSimulator(BaseBackend):
                 sim.multiplexer(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
             elif name == 'reset':
                 sim.reset(operation['qubits'][0])
+            elif name == 'measure':
+                samples.append((operation['qubits'][0], operation['memory'][0]))
             elif name == 'barrier':
                 logger.info('Barrier gates are ignored.')
             else:
-                raise QrackError('Unrecognized instruction')
+                raise QrackError('Unrecognized instruction,\'' + name + '\'')
+
+            if len(samples) > 0 and self._number_of_cbits > 0:
+                memory = self._add_sample_measure(samples, sim, self._shots)
+                samples = []
 
         end = time.time()
 
@@ -460,8 +468,71 @@ class StatevectorSimulator(BaseBackend):
             'status': 'DONE',
             'success': True,
             'time_taken': (end - start),
-            'header': experiment['header']
+            'header': experiment['header'],
+            'metadata': 'NotImplemented'
         }
+
+    #@profile
+    def _add_sample_measure(self, measure_params, sim, num_samples):
+        """Generate memory samples from current statevector.
+        Taken almost straight from the terra source code.
+        Args:
+            measure_params (list): List of (qubit, clbit) values for
+                                   measure instructions to sample.
+            num_samples (int): The number of memory samples to generate.
+        Returns:
+            list: A list of memory values in hex format.
+        """
+        memory = []
+
+        # Get unique qubits that are actually measured
+        measured_qubits = list(set([qubit for qubit, clbit in measure_params]))
+        num_measured = len(measured_qubits)
+
+        # If we only want one sample, it's faster for the backend to do it,
+        # without passing back the probabilities.
+        if num_samples == 1:
+            sample = sim.measure(measured_qubits);
+            classical_state = self._classical_state
+            for qubit, cbit in measure_params:
+                qubit_outcome = (sample & 1)
+                sample = sample >> 1
+                bit = 1 << cbit
+                classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
+            value = bin(classical_state)[2:]
+            memory.append(hex(int(value, 2)))
+            return memory
+
+        probabilities = np.reshape(sim.probabilities(), self._number_of_qubits * [2])
+
+        # "Collapse" appropriate bits
+        sim.measure(measured_qubits)
+
+        # Axis for numpy.sum to compute probabilities
+        axis = list(range(self._number_of_qubits))
+
+        for qubit in reversed(measured_qubits):
+            # Remove from largest qubit to smallest so list position is correct
+            # with respect to position from end of the list
+            axis.remove(self._number_of_qubits - 1 - qubit)
+
+
+        probabilities = np.reshape(np.sum(probabilities,
+                                          axis=tuple(axis)),
+                                   2 ** num_measured)
+        # Generate samples on measured qubits
+        samples = self._local_random.choice(range(2 ** num_measured),
+                                            num_samples, p=probabilities)
+        # Convert to bit-strings
+        for sample in samples:
+            classical_state = self._classical_state
+            for qubit, cbit in measure_params:
+                qubit_outcome = int((sample & (1 << qubit)) >> qubit)
+                bit = 1 << cbit
+                classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
+            value = bin(classical_state)[2:]
+            memory.append(hex(int(value, 2)))
+        return memory
 
     def _validate(self, qobj, backend_options=None, noise_model=None):
         """Semantic validations of the qobj which cannot be done via schemas.

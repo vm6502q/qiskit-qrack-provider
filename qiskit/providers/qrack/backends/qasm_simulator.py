@@ -362,6 +362,7 @@ class QasmSimulator(BaseBackend):
         experiment = experiment.to_dict()
 
         samples = []
+        memory = []
 
         start = time.time()
 
@@ -449,12 +450,11 @@ class QasmSimulator(BaseBackend):
             elif name == 'barrier':
                 logger.info('Barrier gates are ignored.')
             else:
-                raise QrackError('Unrecognized instruction')
+                raise QrackError('Unrecognized instruction,\'' + name + '\'')
 
-        if self._number_of_cbits > 0:
-            memory = self._add_sample_measure(samples, sim, self._shots)
-        else:
-            memory = []
+            if len(samples) > 0 and self._number_of_cbits > 0:
+                memory = self._add_sample_measure(samples, sim, self._shots)
+                samples = []
 
         end = time.time()
 
@@ -474,7 +474,8 @@ class QasmSimulator(BaseBackend):
             'status': 'DONE',
             'success': True,
             'time_taken': (end - start),
-            'header': experiment['header']
+            'header': experiment['header'],
+            'metadata': 'NotImplemented'
         }
 
     #@profile
@@ -510,6 +511,8 @@ class QasmSimulator(BaseBackend):
 
         probabilities = np.reshape(sim.probabilities(), self._number_of_qubits * [2])
 
+        # "Collapse" appropriate bits
+        sim.measure(measured_qubits)
 
         # Axis for numpy.sum to compute probabilities
         axis = list(range(self._number_of_qubits))
@@ -518,8 +521,8 @@ class QasmSimulator(BaseBackend):
             # Remove from largest qubit to smallest so list position is correct
             # with respect to position from end of the list
             axis.remove(self._number_of_qubits - 1 - qubit)
-        
-        
+
+
         probabilities = np.reshape(np.sum(probabilities,
                                           axis=tuple(axis)),
                                    2 ** num_measured)
@@ -554,7 +557,7 @@ class QasmSimulator(BaseBackend):
                     self._sample_measure = False
                     return
 
-                if measure_flags.get(instruction.qubits[0], False):
+                if hasattr(instruction, 'qubits') and measure_flags.get(instruction.qubits[0], False):
                     if instruction.name not in ["measure", "barrier", "id", "u0"]:
                         for qubit in instruction.qubits:
                             measure_flags[qubit] = False
