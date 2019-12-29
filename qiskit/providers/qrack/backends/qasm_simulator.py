@@ -372,8 +372,8 @@ class QasmSimulator(BaseBackend):
         except OverflowError:
             raise QrackError('too many qubits')
 
-        did_measure = False
         if self._shots != 1:
+            did_measure = False
             for operation in experiment['instructions']:
                 if operation['name'] == 'measure':
                     did_measure = True
@@ -460,9 +460,13 @@ class QasmSimulator(BaseBackend):
             else:
                 raise QrackError('Unrecognized instruction,\'' + name + '\'')
 
-            if len(samples) > 0 and self._number_of_cbits > 0:
+            if self._shots == 1 and len(samples) > 0 and self._number_of_cbits > 0:
                 memory = self._add_sample_measure(samples, sim, self._shots)
                 samples = []
+
+        if self._shots != 1 and len(samples) > 0 and self._number_of_cbits > 0:
+            memory = self._add_sample_measure(samples, sim, self._shots)
+            samples = []
 
         end = time.time()
 
