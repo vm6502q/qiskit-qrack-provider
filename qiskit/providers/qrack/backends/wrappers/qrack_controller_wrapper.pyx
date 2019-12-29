@@ -48,6 +48,7 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void reset(unsigned char target)
         vector[double complex] amplitudes()
         vector[double] probabilities()
+        unsigned long long measure(unsigned char* bits, unsigned char bitCount)
         unsigned long long measure_all()
 
 
@@ -175,6 +176,10 @@ cdef class PyQrackController:
 
     def probabilities(self):
         return np.array(self.c_class.probabilities())
+
+    def measure(self, bits):
+        cdef array.array bits_array = array.array('i', bits)
+        return self.c_class.measure(bits_array.data.as_uchars, len(bits))
 
     def measure_all(self):
         return self.c_class.measure_all()

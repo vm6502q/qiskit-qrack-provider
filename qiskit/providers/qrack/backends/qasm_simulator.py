@@ -489,13 +489,19 @@ class QasmSimulator(BaseBackend):
             list: A list of memory values in hex format.
         """
         memory = []
+
+        # Get unique qubits that are actually measured
+        measured_qubits = list(set([qubit for qubit, clbit in measure_params]))
+        num_measured = len(measured_qubits)
+
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            sample = sim.measure_all()
+            sample = sim.measure(measured_qubits);
             classical_state = self._classical_state
             for qubit, cbit in measure_params:
-                qubit_outcome = int((sample & (1 << qubit)) >> qubit)
+                qubit_outcome = (sample & 1)
+                sample = sample >> 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
             value = bin(classical_state)[2:]
@@ -503,10 +509,6 @@ class QasmSimulator(BaseBackend):
             return memory
 
         probabilities = np.reshape(sim.probabilities(), self._number_of_qubits * [2])
-
-        # Get unique qubits that are actually measured
-        measured_qubits = list(set([qubit for qubit, clbit in measure_params]))
-        num_measured = len(measured_qubits)
 
 
         # Axis for numpy.sum to compute probabilities

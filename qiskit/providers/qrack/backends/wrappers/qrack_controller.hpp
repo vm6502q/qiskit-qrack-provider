@@ -252,8 +252,16 @@ public:
         return probs;
     }
 
+    virtual unsigned long long measure(unsigned char* bits, unsigned char bitCount) {
+        bitCapInt result = 0;
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            result |= (qReg->M((bitLenInt)bits[i]) ? Qrack::pow2(i) : 0);
+        }
+        return (unsigned long long)result;
+    }
+
     virtual unsigned long long measure_all() {
-        return qReg->MReg(0, qReg->GetQubitCount());
+        return (unsigned long long)qReg->MReg(0, qReg->GetQubitCount());
     }
 };
 
