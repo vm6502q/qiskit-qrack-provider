@@ -54,6 +54,7 @@ class QasmSimulator(BaseBackend):
         'schmidt_decompose': True,
         'gate_fusion': True,
         'opencl': True,
+        'opencl_device_id': -1,
         'basis_gates': [
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
@@ -371,7 +372,7 @@ class QasmSimulator(BaseBackend):
 
         try:
             sim = qrack_controller_factory()
-            sim.initialize_qreg(self._configuration.opencl, self._configuration.gate_fusion, self._configuration.schmidt_decompose, self._number_of_qubits)
+            sim.initialize_qreg(self._configuration.opencl, self._configuration.gate_fusion, self._configuration.schmidt_decompose, self._number_of_qubits, self._configuration.opencl_device_id)
         except OverflowError:
             raise QrackError('too many qubits')
 
