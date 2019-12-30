@@ -34,17 +34,19 @@ protected:
     Qrack::QInterfaceEngine qIType2;
     Qrack::QInterfaceEngine qIType3;
 
-    static std::complex<double> cast_cfloat(std::complex<float> c) {
+    static inline std::complex<double> cast_cfloat(std::complex<float> c) {
         return std::complex<double>(c);
     }
 
-    static std::complex<float> cast_cdouble(std::complex<double> c) {
+    static inline std::complex<float> cast_cdouble(std::complex<double> c) {
         return std::complex<float>(c);
     }
 
-    static double cast_float(float c) {
+    static inline double cast_float(float c) {
         return (double)c;
     }
+
+    static inline double normHelper(Qrack::complex c) { return norm(c); }
 
 public:
     QrackController() = default;
@@ -255,7 +257,7 @@ public:
     }
 
     virtual std::vector<std::complex<double>> amplitudes() {
-        std::vector<std::complex<Qrack::real1>> amps(qReg->GetMaxQPower());
+        std::vector<Qrack::complex> amps(qReg->GetMaxQPower());
         qReg->GetQuantumState(&(amps[0]));
 
 #if ENABLE_COMPLEX8
@@ -268,19 +270,12 @@ public:
     }
 
     virtual std::vector<double> probabilities() {
-        bitCapInt probCount = qReg->GetMaxQPower();
-        std::vector<double> probs(probCount);
-        double totProb = 0;
-        for (bitCapInt i = 0; i < probCount; i++) {
-            probs[i] = (double)qReg->ProbAll(i);
-            totProb += probs[i];
-        }
+        std::vector<Qrack::complex> amps(qReg->GetMaxQPower());
+        qReg->GetQuantumState(&(amps[0]));
 
-        for (bitCapInt i = 0; i < probCount; i++) {
-            probs[i] /= totProb;
-        }
-
-        return probs;
+        std::vector<double> probsDouble(amps.size());
+        std::transform(amps.begin(), amps.end(), probsDouble.begin(), normHelper);
+        return probsDouble;
     }
 
     virtual unsigned long long measure(unsigned char* bits, unsigned char bitCount) {
