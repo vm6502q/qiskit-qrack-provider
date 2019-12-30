@@ -70,6 +70,10 @@ class StatevectorSimulator(BaseBackend):
         'max_shots': 1,
         'description': 'A Qrack-based, GPU-accelerated, C++ statevector simulator for qobj files',
         'coupling_map': None,
+        'schmidt_decompose': True,
+        'gate_fusion': True,
+        'opencl': True,
+        'opencl_device_id': -1,
         'basis_gates': [
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
@@ -359,11 +363,13 @@ class StatevectorSimulator(BaseBackend):
         self._statevector = 0
         experiment = experiment.to_dict()
 
+        samples = []
+
         start = time.time()
 
         try:
             sim = qrack_controller_factory()
-            sim.initialize_qreg(self._number_of_qubits)
+            sim.initialize_qreg(self._configuration.opencl, self._configuration.gate_fusion, self._configuration.schmidt_decompose, self._number_of_qubits, self._configuration.opencl_device_id)
         except OverflowError:
             raise QrackError('too many qubits')
 
@@ -441,10 +447,16 @@ class StatevectorSimulator(BaseBackend):
                 sim.multiplexer(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
             elif name == 'reset':
                 sim.reset(operation['qubits'][0])
+            elif name == 'measure':
+                samples.append((operation['qubits'][0], operation['memory'][0]))
             elif name == 'barrier':
                 logger.info('Barrier gates are ignored.')
             else:
-                raise QrackError('Unrecognized instruction')
+                raise QrackError('Unrecognized instruction,\'' + name + '\'')
+
+            if len(samples) > 0 and self._number_of_cbits > 0:
+                memory = self._add_sample_measure(samples, sim, 1)
+                samples = []
 
         end = time.time()
 
@@ -460,8 +472,55 @@ class StatevectorSimulator(BaseBackend):
             'status': 'DONE',
             'success': True,
             'time_taken': (end - start),
-            'header': experiment['header']
+            'header': experiment['header'],
+            'metadata': 'NotImplemented'
         }
+
+    #@profile
+    def _add_sample_measure(self, measure_params, sim, num_samples):
+        """Generate memory samples from current statevector.
+        Taken almost straight from the terra source code.
+        Args:
+            measure_params (list): List of (qubit, clbit) values for
+                                   measure instructions to sample.
+            num_samples (int): The number of memory samples to generate.
+        Returns:
+            list: A list of memory values in hex format.
+        """
+        memory = []
+
+        # Get unique qubits that are actually measured
+        measured_qubits = [qubit for qubit, clbit in measure_params]
+
+        # If we only want one sample, it's faster for the backend to do it,
+        # without passing back the probabilities.
+        if num_samples == 1:
+            sample = sim.measure(measured_qubits);
+            classical_state = self._classical_state
+            for qubit, cbit in measure_params:
+                qubit_outcome = (sample & 1)
+                sample = sample >> 1
+                bit = 1 << cbit
+                classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
+            value = bin(classical_state)[2:]
+            memory.append(hex(int(value, 2)))
+            return memory
+
+        # Sample and convert to bit-strings
+        measure_results = sim.measure_shots(measured_qubits, num_samples)
+        classical_state = self._classical_state
+        for key, value in measure_results.items():
+            sample = key
+            classical_state = self._classical_state
+            for qubit, cbit in measure_params:
+                qubit_outcome = (sample & 1)
+                sample = sample >> 1
+                bit = 1 << cbit
+                classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
+            outKey = bin(classical_state)[2:]
+            memory += value * [hex(int(outKey, 2))]
+
+        return memory
 
     def _validate(self, qobj, backend_options=None, noise_model=None):
         """Semantic validations of the qobj which cannot be done via schemas.

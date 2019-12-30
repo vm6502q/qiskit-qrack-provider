@@ -25,29 +25,41 @@ namespace Simulator {
 // QrackController class
 //=========================================================================
 
-#define MAKE_ENGINE(num_qubits, perm) Qrack::CreateQuantumInterface(Qrack::QINTERFACE_QUNIT, Qrack::QINTERFACE_QFUSION, Qrack::QINTERFACE_OPTIMAL, num_qubits, perm)
+#define MAKE_ENGINE(num_qubits, perm) Qrack::CreateQuantumInterface(qIType1, qIType2, qIType3, num_qubits, perm, nullptr, Qrack::complex(-999.0, -999.0), false, false, false, deviceId, true)
 
 class QrackController {
 protected:
     Qrack::QInterfacePtr qReg;
+    Qrack::QInterfaceEngine qIType1;
+    Qrack::QInterfaceEngine qIType2;
+    Qrack::QInterfaceEngine qIType3;
+    int deviceId;
 
-    static std::complex<double> cast_cfloat(std::complex<float> c) {
+    static inline std::complex<double> cast_cfloat(std::complex<float> c) {
         return std::complex<double>(c);
     }
 
-    static std::complex<float> cast_cdouble(std::complex<double> c) {
+    static inline std::complex<float> cast_cdouble(std::complex<double> c) {
         return std::complex<float>(c);
     }
 
-    static double cast_float(float c) {
+    static inline double cast_float(float c) {
         return (double)c;
     }
+
+    static inline double normHelper(Qrack::complex c) { return norm(c); }
 
 public:
     QrackController() = default;
     virtual ~QrackController() = default;
 
-    virtual void initialize_qreg(unsigned char num_qubits) {
+    virtual void initialize_qreg(bool use_opencl, bool use_gate_fusion, bool use_qunit, unsigned char num_qubits, int device_id) {
+        deviceId = device_id;
+
+        qIType3 = use_opencl ? Qrack::QINTERFACE_OPTIMAL : Qrack::QINTERFACE_CPU;
+        qIType1 = use_qunit ? Qrack::QINTERFACE_QUNIT : (use_gate_fusion ? Qrack::QINTERFACE_QFUSION : qIType3);
+        qIType2 = (use_qunit && use_gate_fusion) ? Qrack::QINTERFACE_QFUSION : qIType3;
+
         qReg = MAKE_ENGINE(num_qubits, 0);
     }
 
@@ -248,7 +260,7 @@ public:
     }
 
     virtual std::vector<std::complex<double>> amplitudes() {
-        std::vector<std::complex<Qrack::real1>> amps(qReg->GetMaxQPower());
+        std::vector<Qrack::complex> amps(qReg->GetMaxQPower());
         qReg->GetQuantumState(&(amps[0]));
 
 #if ENABLE_COMPLEX8
@@ -261,31 +273,50 @@ public:
     }
 
     virtual std::vector<double> probabilities() {
-        bitCapInt probCount = qReg->GetMaxQPower();
-        std::vector<double> probs(probCount);
-        double totProb = 0;
-        for (bitCapInt i = 0; i < probCount; i++) {
-            probs[i] = (double)qReg->ProbAll(i);
-            totProb += probs[i];
-        }
+        std::vector<Qrack::complex> amps(qReg->GetMaxQPower());
+        qReg->GetQuantumState(&(amps[0]));
 
-        for (bitCapInt i = 0; i < probCount; i++) {
-            probs[i] /= totProb;
-        }
-
-        return probs;
+        std::vector<double> probsDouble(amps.size());
+        std::transform(amps.begin(), amps.end(), probsDouble.begin(), normHelper);
+        return probsDouble;
     }
 
-    virtual unsigned long long measure(unsigned char* bits, unsigned char bitCount) {
+    virtual unsigned long int measure(unsigned char* bits, unsigned char bitCount) {
         bitCapInt result = 0;
         for (bitLenInt i = 0; i < bitCount; i++) {
             result |= (qReg->M((bitLenInt)bits[i]) ? Qrack::pow2(i) : 0);
         }
-        return (unsigned long long)result;
+        return (unsigned long int)result;
     }
 
     virtual unsigned long long measure_all() {
-        return (unsigned long long)qReg->MReg(0, qReg->GetQubitCount());
+        return (unsigned long int)qReg->MReg(0, qReg->GetQubitCount());
+    }
+
+    virtual std::map<unsigned long int, int> measure_shots(unsigned char* bits, unsigned char bitCount, unsigned int shots) {
+        bitCapInt* qPowers = new bitCapInt[bitCount];
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qPowers[i] = Qrack::pow2(bits[i]);
+        }
+
+        std::map<bitCapInt, int> result = qReg->MultiShotMeasureMask(qPowers, bitCount, shots);
+
+        delete[] qPowers;
+
+#if ENABLE_PURE32 || ENABLE_UINT128
+        std::map<unsigned long int, int> resultULL;
+
+        std::map<bitCapInt, int>::iterator it = result.begin();
+        while (it != result.end())
+	{
+            resultULL[(unsigned long int)it->first] = it->second;
+            it++;
+        }
+
+        return resultULL;
+#else
+        return result;
+#endif
     }
 };
 

@@ -51,6 +51,10 @@ class QasmSimulator(BaseBackend):
         'max_shots': 65536,
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
+        'schmidt_decompose': True,
+        'gate_fusion': True,
+        'opencl': True,
+        'opencl_device_id': -1,
         'basis_gates': [
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
@@ -362,14 +366,23 @@ class QasmSimulator(BaseBackend):
         experiment = experiment.to_dict()
 
         samples = []
+        memory = []
 
         start = time.time()
 
         try:
             sim = qrack_controller_factory()
-            sim.initialize_qreg(self._number_of_qubits)
+            sim.initialize_qreg(self._configuration.opencl, self._configuration.gate_fusion, self._configuration.schmidt_decompose, self._number_of_qubits, self._configuration.opencl_device_id)
         except OverflowError:
             raise QrackError('too many qubits')
+
+        if self._shots != 1:
+            did_measure = False
+            for operation in experiment['instructions']:
+                if operation['name'] == 'measure':
+                    did_measure = True
+                elif did_measure:
+                    raise QrackError('Only 1 shot measurement is supported, unless at end of circuit')
 
         for operation in experiment['instructions']:
             name = operation['name']
@@ -449,12 +462,15 @@ class QasmSimulator(BaseBackend):
             elif name == 'barrier':
                 logger.info('Barrier gates are ignored.')
             else:
-                raise QrackError('Unrecognized instruction')
+                raise QrackError('Unrecognized instruction,\'' + name + '\'')
 
-        if self._number_of_cbits > 0:
+            if self._shots == 1 and len(samples) > 0 and self._number_of_cbits > 0:
+                memory = self._add_sample_measure(samples, sim, self._shots)
+                samples = []
+
+        if self._shots != 1 and len(samples) > 0 and self._number_of_cbits > 0:
             memory = self._add_sample_measure(samples, sim, self._shots)
-        else:
-            memory = []
+            samples = []
 
         end = time.time()
 
@@ -474,7 +490,8 @@ class QasmSimulator(BaseBackend):
             'status': 'DONE',
             'success': True,
             'time_taken': (end - start),
-            'header': experiment['header']
+            'header': experiment['header'],
+            'metadata': 'NotImplemented'
         }
 
     #@profile
@@ -491,8 +508,7 @@ class QasmSimulator(BaseBackend):
         memory = []
 
         # Get unique qubits that are actually measured
-        measured_qubits = list(set([qubit for qubit, clbit in measure_params]))
-        num_measured = len(measured_qubits)
+        measured_qubits = [qubit for qubit, clbit in measure_params]
 
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
@@ -508,33 +524,20 @@ class QasmSimulator(BaseBackend):
             memory.append(hex(int(value, 2)))
             return memory
 
-        probabilities = np.reshape(sim.probabilities(), self._number_of_qubits * [2])
-
-
-        # Axis for numpy.sum to compute probabilities
-        axis = list(range(self._number_of_qubits))
-
-        for qubit in reversed(measured_qubits):
-            # Remove from largest qubit to smallest so list position is correct
-            # with respect to position from end of the list
-            axis.remove(self._number_of_qubits - 1 - qubit)
-        
-        
-        probabilities = np.reshape(np.sum(probabilities,
-                                          axis=tuple(axis)),
-                                   2 ** num_measured)
-        # Generate samples on measured qubits
-        samples = self._local_random.choice(range(2 ** num_measured),
-                                            num_samples, p=probabilities)
-        # Convert to bit-strings
-        for sample in samples:
+        # Sample and convert to bit-strings
+        measure_results = sim.measure_shots(measured_qubits, num_samples)
+        classical_state = self._classical_state
+        for key, value in measure_results.items():
+            sample = key
             classical_state = self._classical_state
             for qubit, cbit in measure_params:
-                qubit_outcome = int((sample & (1 << qubit)) >> qubit)
+                qubit_outcome = (sample & 1)
+                sample = sample >> 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            value = bin(classical_state)[2:]
-            memory.append(hex(int(value, 2)))
+            outKey = bin(classical_state)[2:]
+            memory += value * [hex(int(outKey, 2))]
+
         return memory
 
     #@profile
@@ -554,7 +557,7 @@ class QasmSimulator(BaseBackend):
                     self._sample_measure = False
                     return
 
-                if measure_flags.get(instruction.qubits[0], False):
+                if hasattr(instruction, 'qubits') and measure_flags.get(instruction.qubits[0], False):
                     if instruction.name not in ["measure", "barrier", "id", "u0"]:
                         for qubit in instruction.qubits:
                             measure_flags[qubit] = False

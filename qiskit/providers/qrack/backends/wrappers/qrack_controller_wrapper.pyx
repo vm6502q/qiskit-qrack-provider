@@ -15,12 +15,14 @@ Cython wrapper for QrackController.
 from collections.abc import Iterable
 import numpy as np
 from cpython cimport array
+from libcpp cimport bool
+from libcpp.map cimport map
 from libcpp.vector cimport vector
 
 cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
     cdef cppclass QrackController:
         QrackController() except +
-        void initialize_qreg(unsigned char) except +
+        void initialize_qreg(bool use_opencl, bool use_gate_fusion, bool use_qunit, unsigned char num_qubits, int opencl_device_id) except +
         void u(unsigned char* bits, unsigned char bitCount, double* params)
         void u2(unsigned char* bits, unsigned char bitCount, double* params)
         void u1(unsigned char* bits, unsigned char bitCount, double* params)
@@ -48,8 +50,9 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void reset(unsigned char target)
         vector[double complex] amplitudes()
         vector[double] probabilities()
-        unsigned long long measure(unsigned char* bits, unsigned char bitCount)
-        unsigned long long measure_all()
+        unsigned long int measure(unsigned char* bits, unsigned char bitCount)
+        unsigned long int measure_all()
+        map[unsigned long int, int] measure_shots(unsigned char* bits, unsigned char bitCount, unsigned int shots)
 
 cdef class PyQrackController:
     cdef QrackController *c_class
@@ -62,8 +65,8 @@ cdef class PyQrackController:
         if self.c_class is not NULL:
             del self.c_class
 
-    def initialize_qreg(self, num_qubits):
-        self.c_class.initialize_qreg(num_qubits)
+    def initialize_qreg(self, use_opencl, use_gate_fusion, use_qunit, num_qubits, opencl_device_id):
+        self.c_class.initialize_qreg(use_opencl, use_gate_fusion, use_qunit, num_qubits, opencl_device_id)
 
     def u(self, bits, params):
         bitCount = len(bits)
@@ -218,6 +221,16 @@ cdef class PyQrackController:
 
     def measure_all(self):
         return self.c_class.measure_all()
+
+    def measure_shots(self, bits, shots):
+        cdef array.array bits_array = array.array('B', bits)
+        cppResult = self.c_class.measure_shots(bits_array.data.as_uchars, len(bits), shots)
+
+        result = {}
+        for key, value in cppResult:
+            result[key] = value
+
+        return result
 
 
 def qrack_controller_factory():
