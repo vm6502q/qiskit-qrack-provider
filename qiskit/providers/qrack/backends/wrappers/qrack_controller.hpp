@@ -25,11 +25,14 @@ namespace Simulator {
 // QrackController class
 //=========================================================================
 
-#define MAKE_ENGINE(num_qubits, perm) Qrack::CreateQuantumInterface(Qrack::QINTERFACE_QUNIT, Qrack::QINTERFACE_QFUSION, Qrack::QINTERFACE_OPTIMAL, num_qubits, perm)
+#define MAKE_ENGINE(num_qubits, perm) Qrack::CreateQuantumInterface(qIType1, qIType2, qIType3, num_qubits, perm)
 
 class QrackController {
 protected:
     Qrack::QInterfacePtr qReg;
+    Qrack::QInterfaceEngine qIType1;
+    Qrack::QInterfaceEngine qIType2;
+    Qrack::QInterfaceEngine qIType3;
 
     static std::complex<double> cast_cfloat(std::complex<float> c) {
         return std::complex<double>(c);
@@ -47,7 +50,11 @@ public:
     QrackController() = default;
     virtual ~QrackController() = default;
 
-    virtual void initialize_qreg(unsigned char num_qubits) {
+    virtual void initialize_qreg(bool use_opencl, bool use_gate_fusion, bool use_qunit, unsigned char num_qubits) {
+        qIType3 = use_opencl ? Qrack::QINTERFACE_OPTIMAL : Qrack::QINTERFACE_CPU;
+        qIType1 = use_qunit ? Qrack::QINTERFACE_QUNIT : (use_gate_fusion ? Qrack::QINTERFACE_QFUSION : qIType3);
+        qIType2 = (use_qunit && use_gate_fusion) ? Qrack::QINTERFACE_QFUSION : qIType3;
+
         qReg = MAKE_ENGINE(num_qubits, 0);
     }
 
