@@ -281,16 +281,42 @@ public:
         return probsDouble;
     }
 
-    virtual unsigned long long measure(unsigned char* bits, unsigned char bitCount) {
+    virtual unsigned long int measure(unsigned char* bits, unsigned char bitCount) {
         bitCapInt result = 0;
         for (bitLenInt i = 0; i < bitCount; i++) {
             result |= (qReg->M((bitLenInt)bits[i]) ? Qrack::pow2(i) : 0);
         }
-        return (unsigned long long)result;
+        return (unsigned long int)result;
     }
 
     virtual unsigned long long measure_all() {
-        return (unsigned long long)qReg->MReg(0, qReg->GetQubitCount());
+        return (unsigned long int)qReg->MReg(0, qReg->GetQubitCount());
+    }
+
+    virtual std::map<unsigned long int, int> measure_shots(unsigned char* bits, unsigned char bitCount, unsigned int shots) {
+        bitCapInt* qPowers = new bitCapInt[bitCount];
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qPowers[i] = Qrack::pow2(bits[i]);
+        }
+
+        std::map<bitCapInt, int> result = qReg->MultiShotMeasureMask(qPowers, bitCount, shots);
+
+        delete[] qPowers;
+
+#if ENABLE_PURE32 || ENABLE_UINT128
+        std::map<unsigned long int, int> resultULL;
+
+        std::map<bitCapInt, int>::iterator it = result.begin();
+        while (it != result.end())
+	{
+            resultULL[(unsigned long int)it->first] = it->second;
+            it++;
+        }
+
+        return resultULL;
+#else
+        return result;
+#endif
     }
 };
 

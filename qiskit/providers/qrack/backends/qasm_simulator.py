@@ -508,8 +508,7 @@ class QasmSimulator(BaseBackend):
         memory = []
 
         # Get unique qubits that are actually measured
-        measured_qubits = list(set([qubit for qubit, clbit in measure_params]))
-        num_measured = len(measured_qubits)
+        measured_qubits = [qubit for qubit, clbit in measure_params]
 
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
@@ -525,32 +524,20 @@ class QasmSimulator(BaseBackend):
             memory.append(hex(int(value, 2)))
             return memory
 
-        probabilities = np.reshape(sim.probabilities(), self._number_of_qubits * [2])
-
-        # Axis for numpy.sum to compute probabilities
-        axis = list(range(self._number_of_qubits))
-
-        for qubit in reversed(measured_qubits):
-            # Remove from largest qubit to smallest so list position is correct
-            # with respect to position from end of the list
-            axis.remove(self._number_of_qubits - 1 - qubit)
-
-
-        probabilities = np.reshape(np.sum(probabilities,
-                                          axis=tuple(axis)),
-                                   2 ** num_measured)
-        # Generate samples on measured qubits
-        samples = self._local_random.choice(range(2 ** num_measured),
-                                            num_samples, p=probabilities)
-        # Convert to bit-strings
-        for sample in samples:
+        # Sample and convert to bit-strings
+        measure_results = sim.measure_shots(measured_qubits, num_samples)
+        classical_state = self._classical_state
+        for key, value in measure_results.items():
+            sample = key
             classical_state = self._classical_state
             for qubit, cbit in measure_params:
-                qubit_outcome = int((sample & (1 << qubit)) >> qubit)
+                qubit_outcome = (sample & 1)
+                sample = sample >> 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            value = bin(classical_state)[2:]
-            memory.append(hex(int(value, 2)))
+            outKey = bin(classical_state)[2:]
+            memory += value * [hex(int(outKey, 2))]
+
         return memory
 
     #@profile

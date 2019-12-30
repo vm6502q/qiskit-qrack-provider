@@ -16,6 +16,7 @@ from collections.abc import Iterable
 import numpy as np
 from cpython cimport array
 from libcpp cimport bool
+from libcpp.map cimport map
 from libcpp.vector cimport vector
 
 cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
@@ -49,8 +50,9 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void reset(unsigned char target)
         vector[double complex] amplitudes()
         vector[double] probabilities()
-        unsigned long long measure(unsigned char* bits, unsigned char bitCount)
-        unsigned long long measure_all()
+        unsigned long int measure(unsigned char* bits, unsigned char bitCount)
+        unsigned long int measure_all()
+        map[unsigned long int, int] measure_shots(unsigned char* bits, unsigned char bitCount, unsigned int shots)
 
 cdef class PyQrackController:
     cdef QrackController *c_class
@@ -219,6 +221,16 @@ cdef class PyQrackController:
 
     def measure_all(self):
         return self.c_class.measure_all()
+
+    def measure_shots(self, bits, shots):
+        cdef array.array bits_array = array.array('B', bits)
+        cppResult = self.c_class.measure_shots(bits_array.data.as_uchars, len(bits), shots)
+
+        result = {}
+        for key, value in cppResult:
+            result[key] = value
+
+        return result
 
 
 def qrack_controller_factory():
