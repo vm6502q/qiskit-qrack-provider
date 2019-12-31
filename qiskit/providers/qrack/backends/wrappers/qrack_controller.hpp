@@ -25,7 +25,7 @@ namespace Simulator {
 // QrackController class
 //=========================================================================
 
-#define MAKE_ENGINE(num_qubits, perm) Qrack::CreateQuantumInterface(qIType1, qIType2, qIType3, num_qubits, perm, nullptr, Qrack::complex(-999.0, -999.0), false, false, false, deviceId, true)
+#define MAKE_ENGINE(num_qubits, perm) Qrack::CreateQuantumInterface(qIType1, qIType2, qIType3, num_qubits, perm, nullptr, Qrack::complex(-999.0, -999.0), false, false, false, deviceId, true, amplitudeFloor)
 
 class QrackController {
 protected:
@@ -34,6 +34,7 @@ protected:
     Qrack::QInterfaceEngine qIType2;
     Qrack::QInterfaceEngine qIType3;
     int deviceId;
+    Qrack::real1 amplitudeFloor;
 
     static inline std::complex<double> cast_cfloat(std::complex<float> c) {
         return std::complex<double>(c);
@@ -53,8 +54,9 @@ public:
     QrackController() = default;
     virtual ~QrackController() = default;
 
-    virtual void initialize_qreg(bool use_opencl, bool use_gate_fusion, bool use_qunit, unsigned char num_qubits, int device_id) {
+    virtual void initialize_qreg(bool use_opencl, bool use_gate_fusion, bool use_qunit, unsigned char num_qubits, int device_id, Qrack::real1 zero_threshold) {
         deviceId = device_id;
+        amplitudeFloor = zero_threshold;
 
         qIType3 = use_opencl ? Qrack::QINTERFACE_OPTIMAL : Qrack::QINTERFACE_CPU;
         qIType1 = use_qunit ? Qrack::QINTERFACE_QUNIT : (use_gate_fusion ? Qrack::QINTERFACE_QFUSION : qIType3);
