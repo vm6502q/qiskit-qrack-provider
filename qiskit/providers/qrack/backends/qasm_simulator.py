@@ -44,8 +44,12 @@ class QasmSimulator(BaseBackend):
     ``backend_options`` kwarg for :meth:`QasmSimulator.run` or
     ``qiskit.execute``:
 
+    * ``"normalize"`` (bool): Keep track of the total global probability
+      normalization, and correct toward exactly 1. (Turns on
+      "zero_threshold".)
+
     * ``"zero_threshold"`` (double): Sets the threshold for truncating
-      small values to zero in the result data (Default: 1e-10).
+      small values to zero in the result data (Default: Qrack default).
 
     * ``"schmidt_decompose"`` (bool): If true, enable "QUnit" layer of
       Qrack, including Schmidt decomposition optimizations
@@ -78,6 +82,7 @@ class QasmSimulator(BaseBackend):
         'max_shots': 65536,
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
+        'normalize': False,
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
         'gate_fusion': True,
@@ -406,6 +411,7 @@ class QasmSimulator(BaseBackend):
                                 self._configuration.schmidt_decompose,
                                 self._number_of_qubits,
                                 self._configuration.opencl_device_id,
+                                self._configuration.normalize,
                                 self._configuration.zero_threshold)
         except OverflowError:
             raise QrackError('too many qubits')
