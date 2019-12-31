@@ -365,7 +365,8 @@ class QasmSimulator(BaseBackend):
 
         experiment = experiment.to_dict()
 
-        samples = []
+        sample_qubits = []
+        sample_clbits = []
         memory = []
 
         start = time.time()
@@ -458,19 +459,20 @@ class QasmSimulator(BaseBackend):
             elif name == 'reset':
                 sim.reset(operation['qubits'][0])
             elif name == 'measure':
-                samples.append((operation['qubits'][0], operation['memory'][0]))
+                sample_qubits.append(operation['qubits'])
+                sample_clbits.append(operation['memory'])
             elif name == 'barrier':
                 logger.info('Barrier gates are ignored.')
             else:
                 raise QrackError('Unrecognized instruction,\'' + name + '\'')
 
-            if self._shots == 1 and len(samples) > 0 and self._number_of_cbits > 0:
-                memory = self._add_sample_measure(samples, sim, self._shots)
-                samples = []
+            if self._shots == 1 and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+                memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
+                sample_qubits = []
+                sample_clbits = []
 
-        if self._shots != 1 and len(samples) > 0 and self._number_of_cbits > 0:
-            memory = self._add_sample_measure(samples, sim, self._shots)
-            samples = []
+        if self._shots != 1 and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+            memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
 
         end = time.time()
 
@@ -495,7 +497,7 @@ class QasmSimulator(BaseBackend):
         }
 
     #@profile
-    def _add_sample_measure(self, measure_params, sim, num_samples):
+    def _add_sample_measure(self, sample_qubits, sample_clbits, sim, num_samples):
         """Generate memory samples from current statevector.
         Taken almost straight from the terra source code.
         Args:
@@ -508,14 +510,17 @@ class QasmSimulator(BaseBackend):
         memory = []
 
         # Get unique qubits that are actually measured
-        measured_qubits = [qubit for qubit, clbit in measure_params]
+        measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
+        measure_clbit = [clbit for sublist in sample_clbits for clbit in sublist]
 
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
             sample = sim.measure(measured_qubits);
             classical_state = self._classical_state
-            for qubit, cbit in measure_params:
+            for index in range(len(measure_qubit)):
+                qubit = measure_qubit[index]
+                cbit = measure_clbit[index]
                 qubit_outcome = (sample & 1)
                 sample = sample >> 1
                 bit = 1 << cbit
@@ -525,12 +530,14 @@ class QasmSimulator(BaseBackend):
             return memory
 
         # Sample and convert to bit-strings
-        measure_results = sim.measure_shots(measured_qubits, num_samples)
+        measure_results = sim.measure_shots(measure_qubit, num_samples)
         classical_state = self._classical_state
         for key, value in measure_results.items():
             sample = key
             classical_state = self._classical_state
-            for qubit, cbit in measure_params:
+            for index in range(len(measure_qubit)):
+                qubit = measure_qubit[index]
+                cbit = measure_clbit[index]
                 qubit_outcome = (sample & 1)
                 sample = sample >> 1
                 bit = 1 << cbit
