@@ -309,6 +309,8 @@ public:
             result |= (qReg->MReg(start, len) << (bitCapInt)shift);
         }
 
+        delete[] sortedBits;
+
         return (unsigned long int)result;
     }
 
