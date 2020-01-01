@@ -507,12 +507,12 @@ class QasmSimulator(BaseBackend):
             else:
                 raise QrackError('Unrecognized instruction,\'' + name + '\'')
 
-            if self._shots == 1 and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+            if self._shots == 1 and name != 'measure' and len(sample_qubits) > 0 and self._number_of_cbits > 0:
                 memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
                 sample_qubits = []
                 sample_clbits = []
 
-        if self._shots != 1 and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+        if (self._shots != 1 or name == 'measure') and len(sample_qubits) > 0 and self._number_of_cbits > 0:
             memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
 
         end = time.time()

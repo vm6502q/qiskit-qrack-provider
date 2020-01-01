@@ -287,9 +287,28 @@ public:
 
     virtual unsigned long int measure(unsigned char* bits, unsigned char bitCount) {
         bitCapInt result = 0;
-        for (bitLenInt i = 0; i < bitCount; i++) {
-            result |= (qReg->M((bitLenInt)bits[i]) ? Qrack::pow2(i) : 0);
+        bitLenInt i;
+        bitLenInt start, len;
+        bitLenInt shift;
+
+        bitLenInt* sortedBits = new bitLenInt[bitCount];
+        std::copy(bits, bits + bitCount, sortedBits);
+        std::sort(sortedBits, sortedBits + bitCount);
+
+        i = 0;
+        while (i < bitCount) {
+            shift = i;
+            start = sortedBits[i];
+            len = 1U;
+            i++;
+            while (sortedBits[i] == (start + len)) {
+                len++;
+                i++;
+            }
+            
+            result |= (qReg->MReg(start, len) << (bitCapInt)shift);
         }
+
         return (unsigned long int)result;
     }
 

@@ -481,10 +481,15 @@ class StatevectorSimulator(BaseBackend):
             else:
                 raise QrackError('Unrecognized instruction,\'' + name + '\'')
 
-            if len(sample_qubits) > 0:
+            if name != 'measure' and len(sample_qubits) > 0:
                 memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, 1)
                 sample_qubits = []
                 sample_clbits = []
+
+        if len(sample_qubits) > 0:
+            memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, 1)
+            sample_qubits = []
+            sample_clbits = []
 
         end = time.time()
 
