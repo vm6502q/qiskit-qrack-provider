@@ -45,18 +45,20 @@ class QasmSimulator(BaseBackend):
     ``qiskit.execute``:
 
     * ``"normalize"`` (bool): Keep track of the total global probability
-      normalization, and correct toward exactly 1. (Turns on
-      "zero_threshold".)
+      normalization, and correct toward exactly 1. (Also turns on
+      "zero_threshold". With "zero_threshold">0 "schmidt_decompose"=True,
+      this can actually improve execution time, for opportune circuits.)
 
     * ``"zero_threshold"`` (double): Sets the threshold for truncating
-      small values to zero in the result data (Default: Qrack default).
+      small values to zero in the simulation, gate-to-gate. (Only used
+      if "normalize" is enabled. Default value: Qrack default)
 
     * ``"schmidt_decompose"`` (bool): If true, enable "QUnit" layer of
-      Qrack, including Schmidt decomposition optimizations
+      Qrack, including Schmidt decomposition optimizations.
 
     * ``"gate_fusion"`` (bool): If true, enable "QFusion" layer of
       Qrack, which attempts compose subsequent gates (at polynomial
-      cost) before applying them (at exponential cost)
+      cost) before applying them (at exponential cost).
 
     * ``"opencl"`` (bool): If true, use the OpenCL engine of Qrack
       ("QEngineOCL") as the base "Schroedinger method" simulator.
@@ -82,7 +84,7 @@ class QasmSimulator(BaseBackend):
         'max_shots': 65536,
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
-        'normalize': False,
+        'normalize': True,
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
         'gate_fusion': True,
