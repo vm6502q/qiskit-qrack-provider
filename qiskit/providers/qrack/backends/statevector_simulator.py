@@ -39,22 +39,39 @@ logger = logging.getLogger(__name__)
 
 
 class StatevectorSimulator(BaseBackend):
-    """Qrack statevector simulator
+    """Contains an OpenCL based backend
 
-    Backend options:
+    **Backend options**
 
-        The following backend options may be used with in the
-        `backend_options` kwarg diction for `StatevectorSimulator.run` or
-        `qiskit.execute`
+    The following backend options may be used with in the
+    ``backend_options`` kwarg for :meth:`StatevectorSimulator.run` or
+    ``qiskit.execute``:
 
-        * "zero_threshold" (double): Sets the threshold for truncating
-            small values to zero in the result data (Default: 1e-8 for float Qrack and ~1e-18 for double Qrack).
+    * ``"normalize"`` (bool): Keep track of the total global probability
+      normalization, and correct toward exactly 1. (Also turns on
+      "zero_threshold". With "zero_threshold">0 "schmidt_decompose"=True,
+      this can actually improve execution time, for opportune circuits.)
 
-        * "max_memory_mb" (int): Sets the maximum size of memory
-            to store a state vector. If a state vector needs more, an error
-            is thrown. In general, a state vector of n-qubits uses 2^n complex
-            values (16 Bytes). If set to 0, the maximum will be automatically
-            set to half the system memory size (Default: 0).
+    * ``"zero_threshold"`` (double): Sets the threshold for truncating
+      small values to zero in the simulation, gate-to-gate. (Only used
+      if "normalize" is enabled. Default value: Qrack default)
+
+    * ``"schmidt_decompose"`` (bool): If true, enable "QUnit" layer of
+      Qrack, including Schmidt decomposition optimizations.
+
+    * ``"gate_fusion"`` (bool): If true, enable "QFusion" layer of
+      Qrack, which attempts compose subsequent gates (at polynomial
+      cost) before applying them (at exponential cost).
+
+    * ``"opencl"`` (bool): If true, use the OpenCL engine of Qrack
+      ("QEngineOCL") as the base "Schroedinger method" simulator.
+      If OpenCL is not available, simulation will fall back to CPU.
+
+    * ``"opencl_device_id"`` (int): (If OpenCL is enabled,) choose
+      the OpenCl device to simulate on, (indexed by order of device
+      discovery on OpenCL load/compilation). "-1" indicates to use
+      the Qrack default device, (the last discovered, which tends to
+      be a non-CPU accelerator, on common personal hardware systems.)
     """
 
     DEFAULT_CONFIGURATION = {
@@ -70,6 +87,8 @@ class StatevectorSimulator(BaseBackend):
         'max_shots': 1,
         'description': 'A Qrack-based, GPU-accelerated, C++ statevector simulator for qobj files',
         'coupling_map': None,
+        'normalize': True,
+        'zero_threshold': -999.0,
         'schmidt_decompose': True,
         'gate_fusion': True,
         'opencl': True,
@@ -370,7 +389,13 @@ class StatevectorSimulator(BaseBackend):
 
         try:
             sim = qrack_controller_factory()
-            sim.initialize_qreg(self._configuration.opencl, self._configuration.gate_fusion, self._configuration.schmidt_decompose, self._number_of_qubits, self._configuration.opencl_device_id)
+            sim.initialize_qreg(self._configuration.opencl,
+                                self._configuration.gate_fusion,
+                                self._configuration.schmidt_decompose,
+                                self._number_of_qubits,
+                                self._configuration.opencl_device_id,
+                                self._configuration.normalize,
+                                self._configuration.zero_threshold)
         except OverflowError:
             raise QrackError('too many qubits')
 
@@ -456,10 +481,15 @@ class StatevectorSimulator(BaseBackend):
             else:
                 raise QrackError('Unrecognized instruction,\'' + name + '\'')
 
-            if len(sample_qubits) > 0:
+            if name != 'measure' and len(sample_qubits) > 0:
                 memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, 1)
                 sample_qubits = []
                 sample_clbits = []
+
+        if len(sample_qubits) > 0:
+            memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, 1)
+            sample_qubits = []
+            sample_clbits = []
 
         end = time.time()
 
