@@ -202,7 +202,8 @@ cdef class PyQrackController:
 
         items = [item for sublist in params for item in sublist] #matrices
         items = [item for sublist in items for item in sublist] #rows
-        cdef array.array params_array = array.array('d', [item for sublist in items for item in self._complex_cast(sublist)])
+        items = [item for sublist in items for item in sublist] #components
+        cdef array.array params_array = array.array('d', items)
 
         self.c_class.multiplexer(bits_array.data.as_uchars, ctrlCount, params_array.data.as_doubles)
 

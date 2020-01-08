@@ -78,7 +78,8 @@ class StatevectorSimulator(BaseBackend):
         'backend_name': 'statevector_simulator',
         'backend_version': __version__,
         'n_qubits': 64,
-        'url': 'https://github.com/vm6502q/qiskit-aer',
+        'conditional': True,
+        'url': 'https://github.com/vm6502q/qiskit-qrack-provider',
         'simulator': True,
         'local': True,
         'conditional': True,
@@ -380,7 +381,8 @@ class StatevectorSimulator(BaseBackend):
         """
         self._number_of_qubits = experiment.header.n_qubits
         self._statevector = 0
-        experiment = experiment.to_dict()
+        self._classical_memory = 0
+        self._classical_register = 0
 
         sample_qubits = []
         sample_clbits = []
@@ -399,87 +401,136 @@ class StatevectorSimulator(BaseBackend):
         except OverflowError:
             raise QrackError('too many qubits')
 
-        for operation in experiment['instructions']:
-            name = operation['name']
+        for operation in experiment.instructions:
+            name = operation.name
+
+            conditional = getattr(operation, 'conditional', None)
+            if isinstance(conditional, int):
+                conditional_bit_set = (self._classical_register >> conditional) & 1
+                if not conditional_bit_set:
+                    continue
+            elif conditional is not None:
+                mask = int(operation.conditional.mask, 16)
+                if mask > 0:
+                    value = self._classical_memory & mask
+                    while (mask & 0x1) == 0:
+                        mask >>= 1
+                        value >>= 1
+                    if value != int(operation.conditional.val, 16):
+                        continue
 
             if name == 'u1':
-                sim.u1(operation['qubits'], operation['params'])
+                sim.u1(operation.qubits, operation.params)
             elif name == 'u2':
-                sim.u2(operation['qubits'], operation['params'])
+                sim.u2(operation.qubits, operation.params)
             elif name == 'u3':
-                sim.u(operation['qubits'], operation['params'])
+                sim.u(operation.qubits, operation.params)
             elif name == 'cx':
-                sim.cx(operation['qubits'])
+                sim.cx(operation.qubits)
             elif name == 'cz':
-                sim.cz(operation['qubits'])
+                sim.cz(operation.qubits)
             elif name == 'ch':
-                sim.ch(operation['qubits'])
+                sim.ch(operation.qubits)
             elif name == 'id':
                 logger.info('Identity gates are ignored.')
             elif name == 'x':
-                sim.x(operation['qubits'])
+                sim.x(operation.qubits)
             elif name == 'y':
-                sim.y(operation['qubits'])
+                sim.y(operation.qubits)
             elif name == 'z':
-                sim.z(operation['qubits'])
+                sim.z(operation.qubits)
             elif name == 'h':
-                sim.h(operation['qubits'])
+                sim.h(operation.qubits)
             elif name == 'rx':
-                sim.rx(operation['qubits'], operation['params'])
+                sim.rx(operation.qubits, operation.params)
             elif name == 'ry':
-                sim.ry(operation['qubits'], operation['params'])
+                sim.ry(operation.qubits, operation.params)
             elif name == 'rz':
-                sim.rz(operation['qubits'], operation['params'])
+                sim.rz(operation.qubits, operation.params)
             elif name == 's':
-                sim.s(operation['qubits'])
+                sim.s(operation.qubits)
             elif name == 'sdg':
-                sim.sdg(operation['qubits'])
+                sim.sdg(operation.qubits)
             elif name == 't':
-                sim.t(operation['qubits'])
+                sim.t(operation.qubits)
             elif name == 'tdg':
-                sim.tdg(operation['qubits'])
+                sim.tdg(operation.qubits)
             elif name == 'swap':
-                sim.swap(operation['qubits'][0], operation['qubits'][1])
+                sim.swap(operation.qubits[0], operation.qubits[1])
             elif name == 'ccx':
-                sim.cx(operation['qubits'])
+                sim.cx(operation.qubits)
             elif name == 'cu1':
-                sim.cu1(operation['qubits'], operation['params'])
+                sim.cu1(operation.qubits, operation.params)
             elif name == 'cu2':
-                sim.cu2(operation['qubits'], operation['params'])
+                sim.cu2(operation.qubits, operation.params)
             elif name == 'cu3':
-                sim.cu(operation['qubits'], operation['params'])
+                sim.cu(operation.qubits, operation.params)
             elif name == 'cswap':
-                sim.cswap(operation['qubits'])
+                sim.cswap(operation.qubits)
             elif name == 'mcx':
-                sim.cx(operation['qubits'])
+                sim.cx(operation.qubits)
             elif name == 'mcy':
-                sim.cy(operation['qubits'])
+                sim.cy(operation.qubits)
             elif name == 'mcz':
-                sim.cz(operation['qubits'])
+                sim.cz(operation.qubits)
             elif name == 'initialize':
                 print("initialize")
-                sim.initialize(operation['qubits'], operation['params'])
+                sim.initialize(operation.qubits, operation.params)
             elif name == 'cu1':
-                sim.cu1(operation['qubits'], operation['params'])
+                sim.cu1(operation.qubits, operation.params)
             elif name == 'cu2':
-                sim.cu2(operation['qubits'], operation['params'])
+                sim.cu2(operation.qubits, operation.params)
             elif name == 'cu3':
-                sim.cu(operation['qubits'], operation['params'])
+                sim.cu(operation.qubits, operation.params)
             elif name == 'mcswap':
-                sim.cswap(operation['qubits'])
+                sim.cswap(operation.qubits)
             elif name == 'multiplexer':
-                if len(operation['params'][0]) != 2: #matrix row count, equal to 2^n for n target qubits
+                if len(operation.params[0]) != 2: #matrix row count, equal to 2^n for n target qubits
                     raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
-                sim.multiplexer(operation['qubits'], len(operation['qubits']) - 1, operation['params'])
+                sim.multiplexer(operation.qubits, len(operation.qubits) - 1, operation.params)
             elif name == 'reset':
-                sim.reset(operation['qubits'][0])
+                sim.reset(operation.qubits[0])
             elif name == 'measure':
-                sample_qubits.append(operation['qubits'])
-                sample_clbits.append(operation['memory'])
+                sample_qubits.append(operation.qubits)
+                sample_clbits.append(operation.memory)
             elif name == 'barrier':
                 logger.info('Barrier gates are ignored.')
+            elif name == 'bfunc':
+                mask = int(operation.mask, 16)
+                relation = operation.relation
+                val = int(operation.val, 16)
+
+                cregbit = operation.register
+                cmembit = operation.memory if hasattr(operation, 'memory') else None
+
+                compared = (self._classical_register & mask) - val
+                if relation == '==':
+                    outcome = (compared == 0)
+                elif relation == '!=':
+                    outcome = (compared != 0)
+                elif relation == '<':
+                    outcome = (compared < 0)
+                elif relation == '<=':
+                    outcome = (compared <= 0)
+                elif relation == '>':
+                    outcome = (compared > 0)
+                elif relation == '>=':
+                    outcome = (compared >= 0)
+                else:
+                    raise QrackError('Invalid boolean function relation.')
+
+                # Store outcome in register and optionally memory slot
+                regbit = 1 << cregbit
+                self._classical_register = \
+                    (self._classical_register & (~regbit)) | (int(outcome) << cregbit)
+                if cmembit is not None:
+                    membit = 1 << cmembit
+                    self._classical_memory = \
+                        (self._classical_memory & (~membit)) | (int(outcome) << cmembit)
             else:
-                raise QrackError('Unrecognized instruction,\'' + name + '\'')
+                backend = self.name()
+                err_msg = '{0} encountered unrecognized operation "{1}"'
+                raise QrackError(err_msg.format(backend, name))
 
             if name != 'measure' and len(sample_qubits) > 0:
                 memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, 1)
@@ -499,13 +550,13 @@ class StatevectorSimulator(BaseBackend):
             self._statevector = sim.amplitudes()
         self._statevector = np.stack((self._statevector.real, self._statevector.imag), axis=-1)
         return {
-            'name': experiment['header']['name'],
+            'name': experiment.header.name,
             'shots': 1,
             'data': {'statevector': self._statevector},
             'status': 'DONE',
             'success': True,
             'time_taken': (end - start),
-            'header': experiment['header'],
+            'header': experiment.header.to_dict(),
             'metadata': 'NotImplemented'
         }
 
