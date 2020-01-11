@@ -186,8 +186,8 @@ cdef class PyQrackController:
         self.c_class.cswap(bits_array.data.as_uchars, ctrlCount)
 
     def _complex_cast(self, x):
-        if isinstance(x, Iterable):
-            return x
+        if isinstance(x, complex):
+            return [x.real, x.imag]
         else:
             return [x, 0.0]
 
@@ -202,7 +202,7 @@ cdef class PyQrackController:
 
         items = [item for sublist in params for item in sublist] #matrices
         items = [item for sublist in items for item in sublist] #rows
-        items = [item for sublist in items for item in sublist] #components
+        items = [item for sublist in items for item in self._complex_cast(sublist)] #components
         cdef array.array params_array = array.array('d', items)
 
         self.c_class.multiplexer(bits_array.data.as_uchars, ctrlCount, params_array.data.as_doubles)
