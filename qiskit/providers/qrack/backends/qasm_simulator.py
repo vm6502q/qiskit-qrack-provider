@@ -465,6 +465,8 @@ class QasmSimulator(BaseBackend):
                     sim.ch(operation.qubits)
                 elif name == 'id':
                     logger.info('Identity gates are ignored.')
+                    # Skip measurement logic
+                    continue
                 elif name == 'x':
                     sim.x(operation.qubits)
                 elif name == 'y':
@@ -526,6 +528,8 @@ class QasmSimulator(BaseBackend):
                     sample_clbits.append(operation.memory)
                 elif name == 'barrier':
                     logger.info('Barrier gates are ignored.')
+                    # Skip measurement logic
+                    continue
                 elif name == 'bfunc':
                     mask = int(operation.mask, 16)
                     relation = operation.relation
