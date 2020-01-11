@@ -286,32 +286,7 @@ public:
     }
 
     virtual unsigned long int measure(unsigned char* bits, unsigned char bitCount) {
-        bitCapInt result = 0;
-        bitLenInt i;
-        bitLenInt start, len;
-        bitLenInt shift;
-
-        bitLenInt* sortedBits = new bitLenInt[bitCount];
-        std::copy(bits, bits + bitCount, sortedBits);
-        std::sort(sortedBits, sortedBits + bitCount);
-
-        i = 0;
-        while (i < bitCount) {
-            shift = i;
-            start = sortedBits[i];
-            len = 1U;
-            i++;
-            while (sortedBits[i] == (start + len)) {
-                len++;
-                i++;
-            }
-            
-            result |= (qReg->MReg(start, len) << (bitCapInt)shift);
-        }
-
-        delete[] sortedBits;
-
-        return (unsigned long int)result;
+        return (unsigned long int)qReg->M(bits, bitCount);
     }
 
     virtual unsigned long long measure_all() {

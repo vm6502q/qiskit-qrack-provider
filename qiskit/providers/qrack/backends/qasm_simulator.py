@@ -575,7 +575,7 @@ class QasmSimulator(BaseBackend):
                     sample_clbits = []
 
             if (shotsPerLoop != 1 or name == 'measure') and len(sample_qubits) > 0 and self._number_of_cbits > 0:
-                memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
+                memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
 
         end = time.time()
 
@@ -619,17 +619,16 @@ class QasmSimulator(BaseBackend):
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            sample = sim.measure(measured_qubits);
+            sample = sim.measure(measure_qubit);
             classical_state = self._classical_memory
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
-                qubit_outcome = (sample & 1)
-                sample = sample >> 1
+                qubit_outcome = (sample & (1 << qubit)) >> qubit
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            value = bin(classical_state)[2:]
-            memory.append(hex(int(value, 2)))
+            outKey = bin(classical_state)[2:]
+            memory += [hex(int(outKey, 2))]
             return memory
 
         # Sample and convert to bit-strings
