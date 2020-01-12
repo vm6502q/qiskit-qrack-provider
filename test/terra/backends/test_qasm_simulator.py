@@ -80,20 +80,20 @@ class TestQasmSimulator(common.QiskitAerTestCase,
                         QasmAlgorithmTestsWaltzBasis,
                         QasmAlgorithmTestsMinimalBasis,
                         QasmUnitaryGateTests,
-                        QasmReadoutNoiseTests,
-                        QasmPauliNoiseTests,
+                        #QasmReadoutNoiseTests,
+                        #QasmPauliNoiseTests,
                         QasmThreadManagementTests,
                         QasmFusionTests,
                         QasmDelayMeasureTests,
-                        QasmResetNoiseTests,
-                        QasmKrausNoiseTests,
-                        QasmBasicsTests,
-                        QasmSnapshotStatevectorTests,
-                        QasmSnapshotDensityMatrixTests,
-                        QasmSnapshotProbabilitiesTests,
-                        QasmSnapshotExpValPauliTests,
-                        QasmSnapshotExpValMatrixTests,
-                        QasmSnapshotStabilizerTests):
+                        #QasmResetNoiseTests,
+                        #QasmKrausNoiseTests,
+                        QasmBasicsTests):
+                        #QasmSnapshotStatevectorTests,
+                        #QasmSnapshotDensityMatrixTests,
+                        #QasmSnapshotProbabilitiesTests,
+                        #QasmSnapshotExpValPauliTests,
+                        #QasmSnapshotExpValMatrixTests,
+                        #QasmSnapshotStabilizerTests):
     """QasmSimulator automatic method tests."""
 
     BACKEND_OPTS = {

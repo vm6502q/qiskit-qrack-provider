@@ -363,7 +363,8 @@ class StatevectorSimulator(BaseBackend):
             'status': 'COMPLETED',
             'success': True,
             'time_taken': (end - start),
-            'header': qobj.header.to_dict()
+            'header': qobj.header.to_dict(),
+            'metadata': 'NotImplemented'
         }
 
         return Result.from_dict(result) # This can be sped up
@@ -561,7 +562,6 @@ class StatevectorSimulator(BaseBackend):
             'success': True,
             'time_taken': (end - start),
             'header': experiment.header.to_dict(),
-            'metadata': 'NotImplemented'
         }
 
     #@profile
@@ -584,18 +584,18 @@ class StatevectorSimulator(BaseBackend):
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            sample = sim.measure(measured_qubits);
-            classical_state = self._classical_state
+            sample = sim.measure(measure_qubit);
+            classical_state = self._classical_memory
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
-                qubit_outcome = (sample & 1)
-                sample = sample >> 1
+                qubit_outcome = (sample & (1 << qubit)) >> qubit
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            value = bin(classical_state)[2:]
-            memory.append(hex(int(value, 2)))
+            outKey = bin(classical_state)[2:]
+            memory += [hex(int(outKey, 2))]
             return memory
+
 
         # Sample and convert to bit-strings
         measure_results = sim.measure_shots(measure_qubit, num_samples)

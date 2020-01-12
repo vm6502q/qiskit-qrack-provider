@@ -362,7 +362,8 @@ class QasmSimulator(BaseBackend):
             'status': 'COMPLETED',
             'success': True,
             'time_taken': (end - start),
-            'header': qobj.header.to_dict()
+            'header': qobj.header.to_dict(),
+            'metadata': 'NotImplemented'
         }
 
         return Result.from_dict(result)
@@ -596,7 +597,6 @@ class QasmSimulator(BaseBackend):
             'success': True,
             'time_taken': (end - start),
             'header': experiment.header.to_dict(),
-            'metadata': 'NotImplemented'
         }
 
     #@profile
