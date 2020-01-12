@@ -306,6 +306,12 @@ class StatevectorSimulator(BaseBackend):
                            'The input parameters are the gates for each value.'
                            'WARNING: Qrack currently only supports single-qubit-target multiplexer gates',
             'qasm_def': 'TODO'
+        }, {
+            'name': 'reset',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Reset qubit to 0 state',
+            'qasm_def': 'TODO'
         }],
         # Location where we put external libraries that will be loaded at runtime
         # by the simulator extension
@@ -426,6 +432,11 @@ class StatevectorSimulator(BaseBackend):
                 sim.u2(operation.qubits, operation.params)
             elif name == 'u3':
                 sim.u(operation.qubits, operation.params)
+            elif name == 'unitary':
+                if (len(operation.qubits) != len(operation.params)) or (len(operation.params) != 2):
+                    raise QrackError('Invalid unitary instruction. Qrack only supports single qubit targets for "unitary."')
+                for qbi in range(len(operation.qubits)):
+                    sim.unitary1qb([operation.qubits[qbi]], operation.params[qbi])
             elif name == 'cx':
                 sim.cx(operation.qubits)
             elif name == 'cz':

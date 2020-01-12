@@ -26,6 +26,7 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void u(unsigned char* bits, unsigned char bitCount, double* params)
         void u2(unsigned char* bits, unsigned char bitCount, double* params)
         void u1(unsigned char* bits, unsigned char bitCount, double* params)
+        void unitary1qb(unsigned char* bits, unsigned char bitCount, double* params)
         void cu(unsigned char* bits, unsigned char ctrlCount, double* params)
         void cu2(unsigned char* bits, unsigned char ctrlCount, double* params)
         void cu1(unsigned char* bits, unsigned char ctrlCount, double* params)
@@ -65,6 +66,12 @@ cdef class PyQrackController:
         if self.c_class is not NULL:
             del self.c_class
 
+    def _complex_cast(self, x):
+        if isinstance(x, complex):
+            return [x.real, x.imag]
+        else:
+            return [x, 0.0]
+
     def initialize_qreg(self, use_opencl, use_gate_fusion, use_qunit, num_qubits, opencl_device_id, doNormalize, zero_threshold):
         self.c_class.initialize_qreg(use_opencl, use_gate_fusion, use_qunit, num_qubits, opencl_device_id, doNormalize, zero_threshold)
 
@@ -85,6 +92,16 @@ cdef class PyQrackController:
         cdef array.array bits_array = array.array('B', bits)
         cdef array.array params_array = array.array('d', params)
         self.c_class.u1(bits_array.data.as_uchars, bitCount, params_array.data.as_doubles)
+
+    def unitary1qb(self, bits, params):
+        bitCount = len(bits)
+        cdef array.array bits_array = array.array('B', bits)
+
+        items = [item for sublist in params for item in sublist] #rows
+        items = [item for sublist in items for item in self._complex_cast(sublist)] #components
+        cdef array.array params_array = array.array('d', items)
+
+        self.c_class.unitary1qb(bits_array.data.as_uchars, bitCount, params_array.data.as_doubles)
 
     def cu(self, bits, params):
         ctrlCount = len(bits) - 1
@@ -184,12 +201,6 @@ cdef class PyQrackController:
         ctrlCount = len(bits) - 2
         cdef array.array bits_array = array.array('B', bits)
         self.c_class.cswap(bits_array.data.as_uchars, ctrlCount)
-
-    def _complex_cast(self, x):
-        if isinstance(x, complex):
-            return [x.real, x.imag]
-        else:
-            return [x, 0.0]
 
     def initialize(self, bits, params):
         bitCount = len(bits)

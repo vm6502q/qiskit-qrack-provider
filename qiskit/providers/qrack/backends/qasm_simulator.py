@@ -95,7 +95,7 @@ class QasmSimulator(BaseBackend):
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
-            'multiplexer'
+            'multiplexer', 'reset'
         ],
         'gates': [{
             'name': 'u1',
@@ -303,6 +303,12 @@ class QasmSimulator(BaseBackend):
                            'The input parameters are the gates for each value.'
                            'WARNING: Qrack currently only supports single-qubit-target multiplexer gates',
             'qasm_def': 'TODO'
+        }, {
+            'name': 'reset',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Reset qubit to 0 state',
+            'qasm_def': 'TODO'
         }]
     }
 
@@ -428,7 +434,7 @@ class QasmSimulator(BaseBackend):
                 elif did_measure:
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
-                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider setting shots=1 or only measuring at the end of the circuit.')
+                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," setting shots=1, and/or only measuring at the end of the circuit.')
 
         for shot in range(shotLoopMax):
             for operation in experiment.instructions:
@@ -449,12 +455,22 @@ class QasmSimulator(BaseBackend):
                         if value != int(operation.conditional.val, 16):
                             continue
 
+                if shotsPerLoop == 1 and name == 'reset' and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+                    memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
+                    sample_qubits = []
+                    sample_clbits = []
+
                 if name == 'u1':
                     sim.u1(operation.qubits, operation.params)
                 elif name == 'u2':
                     sim.u2(operation.qubits, operation.params)
                 elif name == 'u3':
                     sim.u(operation.qubits, operation.params)
+                elif name == 'unitary':
+                    if (len(operation.qubits) != len(operation.params)) or (len(operation.params) != 2):
+                        raise QrackError('Invalid unitary instruction. Qrack only supports single qubit targets for "unitary."')
+                    for qbi in range(len(operation.qubits)):
+                        sim.unitary1qb([operation.qubits[qbi]], operation.params[qbi])
                 elif name == 'cx':
                     sim.cx(operation.qubits)
                 elif name == 'cz':
