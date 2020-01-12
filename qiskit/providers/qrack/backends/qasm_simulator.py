@@ -324,7 +324,6 @@ class QasmSimulator(BaseBackend):
         self._results = {}
         self._shots = {}
         self._local_random = np.random.RandomState()
-        self._sample_measure = False
         self._chop_threshold = 15  # chop to 10^-15
 
     #@profile
@@ -400,8 +399,6 @@ class QasmSimulator(BaseBackend):
             seed = np.random.randint(2147483647, dtype='int32')
         self._local_random.seed(seed)
 
-        self._can_sample(experiment)
-
         sample_qubits = []
         sample_clbits = []
         memory = []
@@ -410,17 +407,27 @@ class QasmSimulator(BaseBackend):
 
         shotLoopMax = 1
         shotsPerLoop = self._shots
+        self._sample_measure = True
+        did_measure = False
         if self._shots != 1:
-            did_measure = False
             for operation in experiment.instructions:
                 if operation.name == 'id' or operation.name == 'barrier':
                     continue
+
+                if operation.name == 'reset':
+                    shotLoopMax = self._shots
+                    shotsPerLoop = 1
+                    self._sample_measure = False
+                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," setting shots=1, and/or only measuring at the end of the circuit.')
+
                 if operation.name == 'measure':
                     did_measure = True
                 elif did_measure:
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
+                    self._sample_measure = False
                     logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," setting shots=1, and/or only measuring at the end of the circuit.')
+                    break
 
         for shot in range(shotLoopMax):
             try:
@@ -434,6 +441,7 @@ class QasmSimulator(BaseBackend):
                                     self._configuration.zero_threshold)
             except OverflowError:
                 raise QrackError('too many qubits')
+
             self._classical_memory = 0
             self._classical_register = 0
 
@@ -449,7 +457,7 @@ class QasmSimulator(BaseBackend):
                     # Skip measurement logic
                     continue
 
-                if shotsPerLoop == 1 and (name != 'measure' or hasattr(operation, 'conditional')) and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+                if (name != 'measure' or hasattr(operation, 'conditional')) and len(sample_qubits) > 0:
                     memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
                     sample_qubits = []
                     sample_clbits = []
@@ -543,8 +551,17 @@ class QasmSimulator(BaseBackend):
                 elif name == 'reset':
                     sim.reset(operation.qubits[0])
                 elif name == 'measure':
-                    sample_qubits.append(operation.qubits)
-                    sample_clbits.append(operation.memory)
+                    if self._sample_measure:
+                        # If sampling measurements record the qubit and cmembit
+                        # for this measurement for later sampling
+                        sample_qubits.append(operation.qubits)
+                        sample_clbits.append(operation.memory)
+                    else:
+                        qubit = operation.qubits[0]
+                        cmembit = operation.memory[0]
+                        cregbit = operation.register[0] if hasattr(operation, 'register') else None
+                        # If not sampling perform measurement as normal
+                        self._add_qasm_measure(qubit, cmembit, sim, cregbit)
                 elif name == 'bfunc':
                     mask = int(operation.mask, 16)
                     relation = operation.relation
@@ -583,8 +600,14 @@ class QasmSimulator(BaseBackend):
                     err_msg = '{0} encountered unrecognized operation "{1}"'
                     raise QrackError(err_msg.format(backend, operation))
 
-            if len(sample_qubits) > 0 and self._number_of_cbits > 0:
+            if (not self._sample_measure) or (shotsPerLoop == 1):
+                # Turn classical_memory (int) into bit string and pad zero for unused cmembits
+                memory.append(hex(int(bin(self._classical_memory)[2:], 2)))
+            elif len(sample_qubits) > 0:
                 memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
+
+        if not did_measure:
+            memory += self._shots * [hex(0)]
 
         end = time.time()
 
@@ -649,8 +672,7 @@ class QasmSimulator(BaseBackend):
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
-                qubit_outcome = (sample & 1)
-                sample = sample >> 1
+                qubit_outcome = (sample >> index) & 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
             outKey = bin(classical_state)[2:]
@@ -659,37 +681,23 @@ class QasmSimulator(BaseBackend):
         return memory
 
     #@profile
-    def _can_sample(self, experiment):
-        """Determine if sampling can be used for an experiment
+    def _add_qasm_measure(self, qubit, cmembit, sim, cregbit=None):
+        """Apply a measure instruction to a qubit.
         Args:
-            experiment (QobjExperiment): a qobj experiment
+            qubit (int): qubit is the qubit measured.
+            cmembit (int): is the classical memory bit to store outcome in.
+            cregbit (int, optional): is the classical register bit to store outcome in.
         """
-        measure_flags = {}
-        if hasattr(experiment.config, 'allows_measure_sampling'):
-            self._sample_measure = experiment.config.allows_measure_sampling
-        else:
+        # get measure outcome
+        outcome = int(1 if sim.measure([qubit]) > 0 else 0)
+        # update classical state
+        membit = 1 << cmembit
+        self._classical_memory = (self._classical_memory & (~membit)) | (int(outcome) << cmembit)
 
-            for instruction in experiment.instructions:
-                if instruction.name == "reset":
-                    measure_flags[instruction.qubits[0]] = False
-                    self._sample_measure = False
-                    return
-
-                if hasattr(instruction, 'qubits') and measure_flags.get(instruction.qubits[0], False):
-                    if instruction.name not in ["measure", "barrier", "id", "u0"]:
-                        for qubit in instruction.qubits:
-                            measure_flags[qubit] = False
-                            return
-                elif instruction.name == "measure":
-                     for qubit in instruction.qubits:
-                            measure_flags[qubit] = True
-        
-        self._sample_measure = True
-
-        for key, value in measure_flags.items():
-            if value == False:
-                self._sample_measure = False
-                return
+        if cregbit is not None:
+            regbit = 1 << cregbit
+            self._classical_register = \
+                (self._classical_register & (~regbit)) | (int(outcome) << cregbit)
 
     @staticmethod
     def name():
