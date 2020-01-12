@@ -95,7 +95,7 @@ class QasmSimulator(BaseBackend):
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
-            'multiplexer', 'reset'
+            'multiplexer', 'reset', 'measure'
         ],
         'gates': [{
             'name': 'u1',
@@ -389,8 +389,6 @@ class QasmSimulator(BaseBackend):
         self._number_of_qubits = experiment.header.n_qubits
         self._number_of_cbits = experiment.header.memory_slots
         self._statevector = 0
-        self._classical_memory = 0
-        self._classical_register = 0
 
         if hasattr(experiment.config, 'seed'):
             seed = experiment.config.seed
@@ -410,18 +408,6 @@ class QasmSimulator(BaseBackend):
 
         start = time.time()
 
-        try:
-            sim = qrack_controller_factory()
-            sim.initialize_qreg(self._configuration.opencl,
-                                self._configuration.gate_fusion,
-                                self._configuration.schmidt_decompose,
-                                self._number_of_qubits,
-                                self._configuration.opencl_device_id,
-                                self._configuration.normalize,
-                                self._configuration.zero_threshold)
-        except OverflowError:
-            raise QrackError('too many qubits')
-
         shotLoopMax = 1
         shotsPerLoop = self._shots
         if self._shots != 1:
@@ -437,6 +423,20 @@ class QasmSimulator(BaseBackend):
                     logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," setting shots=1, and/or only measuring at the end of the circuit.')
 
         for shot in range(shotLoopMax):
+            try:
+                sim = qrack_controller_factory()
+                sim.initialize_qreg(self._configuration.opencl,
+                                    self._configuration.gate_fusion,
+                                    self._configuration.schmidt_decompose,
+                                    self._number_of_qubits,
+                                    self._configuration.opencl_device_id,
+                                    self._configuration.normalize,
+                                    self._configuration.zero_threshold)
+            except OverflowError:
+                raise QrackError('too many qubits')
+            self._classical_memory = 0
+            self._classical_register = 0
+
             for operation in experiment.instructions:
                 name = operation.name
 
@@ -627,16 +627,17 @@ class QasmSimulator(BaseBackend):
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            sample = sim.measure(measure_qubit);
+            sample = sim.measure(measure_qubit)
             classical_state = self._classical_memory
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
-                qubit_outcome = (sample & (1 << qubit)) >> qubit
+                qubit_outcome = (sample >> qubit) & 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
             outKey = bin(classical_state)[2:]
             memory += [hex(int(outKey, 2))]
+            self._classical_memory = classical_state
             return memory
 
         # Sample and convert to bit-strings

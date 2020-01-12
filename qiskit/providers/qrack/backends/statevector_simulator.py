@@ -98,7 +98,7 @@ class StatevectorSimulator(BaseBackend):
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
-            'multiplexer'
+            'multiplexer', 'reset', 'measure'
         ],
         'gates': [{
             'name': 'u1',
@@ -411,6 +411,20 @@ class StatevectorSimulator(BaseBackend):
         for operation in experiment.instructions:
             name = operation.name
 
+            if name == 'id':
+                logger.info('Identity gates are ignored.')
+                # Skip measurement logic
+                continue
+            elif name == 'barrier':
+                logger.info('Barrier gates are ignored.')
+                # Skip measurement logic
+                continue
+
+            if (name != 'measure' or hasattr(operation, 'conditional')) and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+                memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
+                sample_qubits = []
+                sample_clbits = []
+
             conditional = getattr(operation, 'conditional', None)
             if isinstance(conditional, int):
                 conditional_bit_set = (self._classical_register >> conditional) & 1
@@ -443,10 +457,6 @@ class StatevectorSimulator(BaseBackend):
                 sim.cz(operation.qubits)
             elif name == 'ch':
                 sim.ch(operation.qubits)
-            elif name == 'id':
-                logger.info('Identity gates are ignored.')
-                # Skip measurement logic
-                continue
             elif name == 'x':
                 sim.x(operation.qubits)
             elif name == 'y':
@@ -507,10 +517,6 @@ class StatevectorSimulator(BaseBackend):
             elif name == 'measure':
                 sample_qubits.append(operation.qubits)
                 sample_clbits.append(operation.memory)
-            elif name == 'barrier':
-                logger.info('Barrier gates are ignored.')
-                # Skip measurement logic
-                continue
             elif name == 'bfunc':
                 mask = int(operation.mask, 16)
                 relation = operation.relation
@@ -575,7 +581,6 @@ class StatevectorSimulator(BaseBackend):
             'header': experiment.header.to_dict(),
         }
 
-    #@profile
     def _add_sample_measure(self, sample_qubits, sample_clbits, sim, num_samples):
         """Generate memory samples from current statevector.
         Taken almost straight from the terra source code.
@@ -595,25 +600,25 @@ class StatevectorSimulator(BaseBackend):
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            sample = sim.measure(measure_qubit);
+            sample = sim.measure(measure_qubit)
             classical_state = self._classical_memory
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
-                qubit_outcome = (sample & (1 << qubit)) >> qubit
+                qubit_outcome = (sample >> qubit) & 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
             outKey = bin(classical_state)[2:]
             memory += [hex(int(outKey, 2))]
+            self._classical_memory = classical_state
             return memory
-
 
         # Sample and convert to bit-strings
         measure_results = sim.measure_shots(measure_qubit, num_samples)
-        classical_state = self._classical_state
+        classical_state = self._classical_memory
         for key, value in measure_results.items():
             sample = key
-            classical_state = self._classical_state
+            classical_state = self._classical_memory
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
