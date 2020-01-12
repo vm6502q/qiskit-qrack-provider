@@ -440,6 +440,20 @@ class QasmSimulator(BaseBackend):
             for operation in experiment.instructions:
                 name = operation.name
 
+                if name == 'id':
+                    logger.info('Identity gates are ignored.')
+                    # Skip measurement logic
+                    continue
+                elif name == 'barrier':
+                    logger.info('Barrier gates are ignored.')
+                    # Skip measurement logic
+                    continue
+
+                if shotsPerLoop == 1 and (name != 'measure' or hasattr(operation, 'conditional')) and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+                    memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
+                    sample_qubits = []
+                    sample_clbits = []
+
                 conditional = getattr(operation, 'conditional', None)
                 if isinstance(conditional, int):
                     conditional_bit_set = (self._classical_register >> conditional) & 1
@@ -454,11 +468,6 @@ class QasmSimulator(BaseBackend):
                             value >>= 1
                         if value != int(operation.conditional.val, 16):
                             continue
-
-                if shotsPerLoop == 1 and name != 'measure' and len(sample_qubits) > 0 and self._number_of_cbits > 0:
-                    memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
-                    sample_qubits = []
-                    sample_clbits = []
 
                 if name == 'u1':
                     sim.u1(operation.qubits, operation.params)
@@ -477,10 +486,6 @@ class QasmSimulator(BaseBackend):
                     sim.cz(operation.qubits)
                 elif name == 'ch':
                     sim.ch(operation.qubits)
-                elif name == 'id':
-                    logger.info('Identity gates are ignored.')
-                    # Skip measurement logic
-                    continue
                 elif name == 'x':
                     sim.x(operation.qubits)
                 elif name == 'y':
@@ -540,10 +545,6 @@ class QasmSimulator(BaseBackend):
                 elif name == 'measure':
                     sample_qubits.append(operation.qubits)
                     sample_clbits.append(operation.memory)
-                elif name == 'barrier':
-                    logger.info('Barrier gates are ignored.')
-                    # Skip measurement logic
-                    continue
                 elif name == 'bfunc':
                     mask = int(operation.mask, 16)
                     relation = operation.relation
