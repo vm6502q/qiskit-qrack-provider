@@ -368,7 +368,7 @@ class QasmSimulator(BaseBackend):
             'success': True,
             'time_taken': (end - start),
             'header': qobj.header.to_dict(),
-            'metadata': 'NotImplemented'
+            'metadata': { 'measure_sampling' : self._sample_measure }
         }
 
         return Result.from_dict(result)
@@ -414,11 +414,11 @@ class QasmSimulator(BaseBackend):
                 if operation.name == 'id' or operation.name == 'barrier':
                     continue
 
-                if operation.name == 'reset':
+                if (operation.name == 'reset') or (operation.name == 'initialize'):
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
                     self._sample_measure = False
-                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," setting shots=1, and/or only measuring at the end of the circuit.')
+                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset" and "initialize," setting shots=1, and/or only measuring at the end of the circuit.')
 
                 if operation.name == 'measure':
                     did_measure = True
@@ -628,6 +628,7 @@ class QasmSimulator(BaseBackend):
             'success': True,
             'time_taken': (end - start),
             'header': experiment.header.to_dict(),
+            'metadata': { 'measure_sampling' : self._sample_measure }
         }
 
     #@profile

@@ -124,14 +124,15 @@ class QiskitAerTestCase(unittest.TestCase):
             output = result.get_statevector(circuit)
             msg = ("Circuit ({}/{}):".format(pos + 1, len(circuits)) +
                    " {} != {}".format(output, target))
-            if (global_phase):
-                # Test equal including global phase
-                self.assertAlmostEqual(norm(output - target), 0, places=places,
-                                       msg=msg)
-            else:
-                # Test equal ignorning global phase
-                self.assertAlmostEqual(state_fidelity(output, target) - 1, 0, places=places,
-                                       msg=msg + " up to global phase")
+            # Qrack specifically optimizes based on arbitrary overall global phase
+            #if (global_phase):
+            #    # Test equal including global phase
+            #    self.assertAlmostEqual(norm(output - target), 0, places=places,
+            #                           msg=msg)
+            #else:
+            # Test equal ignorning global phase
+            self.assertAlmostEqual(state_fidelity(output, target) - 1, 0, places=places,
+                                   msg=msg + " up to global phase")
 
     def compare_unitary(self, result, circuits, targets,
                         global_phase=True, places=None):

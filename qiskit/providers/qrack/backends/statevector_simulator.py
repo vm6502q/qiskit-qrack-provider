@@ -370,7 +370,7 @@ class StatevectorSimulator(BaseBackend):
             'success': True,
             'time_taken': (end - start),
             'header': qobj.header.to_dict(),
-            'metadata': 'NotImplemented'
+            'metadata': {}
         }
 
         return Result.from_dict(result) # This can be sped up
@@ -600,6 +600,7 @@ class StatevectorSimulator(BaseBackend):
             'success': True,
             'time_taken': (end - start),
             'header': experiment.header.to_dict(),
+            'metadata': {}
         }
 
     def _add_sample_measure(self, sample_qubits, sample_clbits, sim, num_samples):

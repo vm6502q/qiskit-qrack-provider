@@ -35,8 +35,6 @@ from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmUnitaryGate
 from test.terra.backends.qasm_simulator.qasm_initialize import QasmInitializeTests
 # Conditional instruction tests
 from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalGateTests
-from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalUnitaryTests
-from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalKrausTests
 # Algorithm circuit tests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsWaltzBasis
@@ -52,7 +50,6 @@ class TestQasmMatrixProductStateSimulator(
         QasmMultiQubitMeasureTests,
         QasmResetTests,
         QasmConditionalGateTests,
-        QasmConditionalUnitaryTests,
         QasmCliffordTests,
         QasmCliffordTestsWaltzBasis,
         QasmCliffordTestsMinimalBasis,

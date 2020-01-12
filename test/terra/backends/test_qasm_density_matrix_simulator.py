@@ -34,9 +34,6 @@ from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonClifford
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmUnitaryGateTests
 # Conditional instruction tests
 from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalGateTests
-from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalUnitaryTests
-from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalKrausTests
-from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalSuperOpTests
 # Algorithm circuit tests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsWaltzBasis
@@ -51,9 +48,6 @@ class TestQasmDensityMatrixSimulator(common.QiskitAerTestCase,
                                      QasmMultiQubitMeasureTests,
                                      QasmResetTests,
                                      QasmConditionalGateTests,
-                                     QasmConditionalUnitaryTests,
-                                     QasmConditionalKrausTests,
-                                     QasmConditionalSuperOpTests,
                                      QasmCliffordTests,
                                      QasmCliffordTestsWaltzBasis,
                                      QasmCliffordTestsMinimalBasis,
