@@ -455,7 +455,7 @@ class QasmSimulator(BaseBackend):
                         if value != int(operation.conditional.val, 16):
                             continue
 
-                if shotsPerLoop == 1 and name == 'reset' and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+                if shotsPerLoop == 1 and name != 'measure' and len(sample_qubits) > 0 and self._number_of_cbits > 0:
                     memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
                     sample_qubits = []
                     sample_clbits = []
@@ -582,13 +582,7 @@ class QasmSimulator(BaseBackend):
                     err_msg = '{0} encountered unrecognized operation "{1}"'
                     raise QrackError(err_msg.format(backend, operation))
 
-
-                if shotsPerLoop == 1 and name != 'measure' and len(sample_qubits) > 0 and self._number_of_cbits > 0:
-                    memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
-                    sample_qubits = []
-                    sample_clbits = []
-
-            if (shotsPerLoop != 1 or name == 'measure') and len(sample_qubits) > 0 and self._number_of_cbits > 0:
+            if len(sample_qubits) > 0 and self._number_of_cbits > 0:
                 memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
 
         end = time.time()
