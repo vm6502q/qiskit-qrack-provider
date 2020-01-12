@@ -250,9 +250,9 @@ public:
     }
 
     virtual void multiplexer(unsigned char* bits, unsigned char ctrlCount, double* params) {
-        bitCapInt partPower = Qrack::pow2(ctrlCount);
-        Qrack::complex* mtrxs = new Qrack::complex[partPower];
-        _darray_to_creal1_array(params, partPower, mtrxs);
+        bitCapInt ampCount = 4U * Qrack::pow2(ctrlCount);
+        Qrack::complex* mtrxs = new Qrack::complex[ampCount];
+        _darray_to_creal1_array(params, ampCount, mtrxs);
 
         qReg->UniformlyControlledSingleBit((bitLenInt*)bits, ctrlCount, (bitLenInt)bits[ctrlCount], mtrxs);
 

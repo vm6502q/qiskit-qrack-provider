@@ -488,8 +488,8 @@ class StatevectorSimulator(BaseBackend):
             elif name == 'mcswap':
                 sim.cswap(operation.qubits)
             elif name == 'multiplexer':
-                if len(operation.params[0]) != 2: #matrix row count, equal to 2^n for n target qubits
-                    raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
+                if (len(operation.params) != 1 << (len(operation.qubits) - 1)) or (len(operation.params[0]) != 2):
+                        raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
                 sim.multiplexer(operation.qubits, len(operation.qubits) - 1, operation.params)
             elif name == 'reset':
                 sim.reset(operation.qubits[0])
