@@ -41,24 +41,11 @@ from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalK
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsWaltzBasis
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsMinimalBasis
-# Noise model simulation tests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmReadoutNoiseTests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmPauliNoiseTests
-# Snapshot tests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotStatevectorTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotDensityMatrixTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotStabilizerTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotProbabilitiesTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpValPauliTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpValMatrixTests
 # Other tests
 from test.terra.backends.qasm_simulator.qasm_method import QasmMethodTests
-from test.terra.backends.qasm_simulator.qasm_thread_management import QasmThreadManagementTests
 from test.terra.backends.qasm_simulator.qasm_fusion import QasmFusionTests
 from test.terra.backends.qasm_simulator.qasm_delay_measure import QasmDelayMeasureTests
 from test.terra.backends.qasm_simulator.qasm_basics import QasmBasicsTests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmResetNoiseTests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmKrausNoiseTests
 
 
 class TestQasmSimulator(common.QiskitAerTestCase,
@@ -80,20 +67,9 @@ class TestQasmSimulator(common.QiskitAerTestCase,
                         QasmAlgorithmTestsWaltzBasis,
                         QasmAlgorithmTestsMinimalBasis,
                         QasmUnitaryGateTests,
-                        #QasmReadoutNoiseTests,
-                        #QasmPauliNoiseTests,
-                        QasmThreadManagementTests,
                         QasmFusionTests,
                         QasmDelayMeasureTests,
-                        #QasmResetNoiseTests,
-                        #QasmKrausNoiseTests,
                         QasmBasicsTests):
-                        #QasmSnapshotStatevectorTests,
-                        #QasmSnapshotDensityMatrixTests,
-                        #QasmSnapshotProbabilitiesTests,
-                        #QasmSnapshotExpValPauliTests,
-                        #QasmSnapshotExpValMatrixTests,
-                        #QasmSnapshotStabilizerTests):
     """QasmSimulator automatic method tests."""
 
     BACKEND_OPTS = {

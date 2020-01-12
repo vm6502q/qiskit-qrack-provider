@@ -41,20 +41,8 @@ from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalS
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsWaltzBasis
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsMinimalBasis
-# Noise model simulation tests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmReadoutNoiseTests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmPauliNoiseTests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmResetNoiseTests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmKrausNoiseTests
 # Other tests
 from test.terra.backends.qasm_simulator.qasm_method import QasmMethodTests
-# Snapshot tests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotStatevectorTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotDensityMatrixTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotStabilizerTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotProbabilitiesTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpValPauliTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpValMatrixTests
 
 
 class TestQasmDensityMatrixSimulator(common.QiskitAerTestCase,
@@ -75,17 +63,7 @@ class TestQasmDensityMatrixSimulator(common.QiskitAerTestCase,
                                      QasmAlgorithmTests,
                                      QasmAlgorithmTestsWaltzBasis,
                                      QasmAlgorithmTestsMinimalBasis,
-                                     QasmUnitaryGateTests,
-                                     QasmReadoutNoiseTests,
-                                     QasmPauliNoiseTests,
-                                     QasmResetNoiseTests,
-                                     QasmKrausNoiseTests,
-                                     QasmSnapshotStatevectorTests,
-                                     QasmSnapshotDensityMatrixTests,
-                                     QasmSnapshotProbabilitiesTests,
-                                     QasmSnapshotExpValPauliTests,
-                                     QasmSnapshotExpValMatrixTests,
-                                     QasmSnapshotStabilizerTests):
+                                     QasmUnitaryGateTests):
     """QasmSimulator density_matrix method tests."""
 
     BACKEND_OPTS = {

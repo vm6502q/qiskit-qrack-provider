@@ -398,9 +398,6 @@ class QasmSimulator(BaseBackend):
 
         self._can_sample(experiment)
 
-        if not self._sample_measure:
-            raise QrackError('Measurements are only supported at the end')
-
         sample_qubits = []
         sample_clbits = []
         memory = []

@@ -41,15 +41,6 @@ from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalK
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsWaltzBasis
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsMinimalBasis
-# Noise model simulation tests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmReadoutNoiseTests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmPauliNoiseTests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmResetNoiseTests
-from test.terra.backends.qasm_simulator.qasm_noise import QasmKrausNoiseTests
-# Snapshot tests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotStatevectorTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotStabilizerTests
-from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotProbabilitiesTests
 # Other tests
 from test.terra.backends.qasm_simulator.qasm_method import QasmMethodTests
 
@@ -71,15 +62,7 @@ class TestQasmMatrixProductStateSimulator(
         QasmAlgorithmTests,
         QasmAlgorithmTestsWaltzBasis,
         QasmAlgorithmTestsMinimalBasis,
-        QasmUnitaryGateTests,
-        #QasmInitializeTests,  # THROWS: uncaught exception
-        QasmReadoutNoiseTests,
-        QasmPauliNoiseTests,
-        QasmResetNoiseTests,
-        QasmSnapshotStatevectorTests,
-        QasmSnapshotProbabilitiesTests,
-        QasmSnapshotStabilizerTests
-        ):
+        QasmUnitaryGateTests):
     """QasmSimulator matrix product state method tests."""
 
     BACKEND_OPTS = {
