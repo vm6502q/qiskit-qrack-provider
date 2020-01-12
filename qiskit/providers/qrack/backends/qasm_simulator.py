@@ -410,16 +410,22 @@ class QasmSimulator(BaseBackend):
         shotsPerLoop = self._shots
         self._sample_measure = True
         did_measure = False
+        is_initializing = True
         if self._shots != 1:
             for operation in experiment.instructions:
                 if operation.name == 'id' or operation.name == 'barrier':
                     continue
 
                 if (operation.name == 'reset') or (operation.name == 'initialize'):
+                    if is_initializing:
+                        continue
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
                     self._sample_measure = False
                     logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset" and "initialize," setting shots=1, and/or only measuring at the end of the circuit.')
+                    continue
+
+                is_initializing = False
 
                 if operation.name == 'measure':
                     did_measure = True
