@@ -95,7 +95,7 @@ class QasmSimulator(BaseBackend):
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
-            'multiplexer'
+            'multiplexer', 'reset', 'measure'
         ],
         'gates': [{
             'name': 'u1',
@@ -303,6 +303,12 @@ class QasmSimulator(BaseBackend):
                            'The input parameters are the gates for each value.'
                            'WARNING: Qrack currently only supports single-qubit-target multiplexer gates',
             'qasm_def': 'TODO'
+        }, {
+            'name': 'reset',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Reset qubit to 0 state',
+            'qasm_def': 'TODO'
         }]
     }
 
@@ -318,7 +324,6 @@ class QasmSimulator(BaseBackend):
         self._results = {}
         self._shots = {}
         self._local_random = np.random.RandomState()
-        self._sample_measure = False
         self._chop_threshold = 15  # chop to 10^-15
 
     #@profile
@@ -362,7 +367,8 @@ class QasmSimulator(BaseBackend):
             'status': 'COMPLETED',
             'success': True,
             'time_taken': (end - start),
-            'header': qobj.header.to_dict()
+            'header': qobj.header.to_dict(),
+            'metadata': { 'measure_sampling' : self._sample_measure }
         }
 
         return Result.from_dict(result)
@@ -382,8 +388,6 @@ class QasmSimulator(BaseBackend):
         self._number_of_qubits = experiment.header.n_qubits
         self._number_of_cbits = experiment.header.memory_slots
         self._statevector = 0
-        self._classical_memory = 0
-        self._classical_register = 0
 
         if hasattr(experiment.config, 'seed'):
             seed = experiment.config.seed
@@ -395,131 +399,174 @@ class QasmSimulator(BaseBackend):
             seed = np.random.randint(2147483647, dtype='int32')
         self._local_random.seed(seed)
 
-        self._can_sample(experiment)
-
-        if not self._sample_measure:
-            raise QrackError('Measurements are only supported at the end')
-
         sample_qubits = []
         sample_clbits = []
+        sample_cregbits = []
         memory = []
 
         start = time.time()
 
-        try:
-            sim = qrack_controller_factory()
-            sim.initialize_qreg(self._configuration.opencl,
-                                self._configuration.gate_fusion,
-                                self._configuration.schmidt_decompose,
-                                self._number_of_qubits,
-                                self._configuration.opencl_device_id,
-                                self._configuration.normalize,
-                                self._configuration.zero_threshold)
-        except OverflowError:
-            raise QrackError('too many qubits')
-
+        shotLoopMax = 1
+        shotsPerLoop = self._shots
+        self._sample_measure = True
+        did_measure = False
+        is_initializing = True
         if self._shots != 1:
-            did_measure = False
             for operation in experiment.instructions:
+                if operation.name == 'id' or operation.name == 'barrier':
+                    continue
+
+                if (operation.name == 'reset') or (operation.name == 'initialize'):
+                    if is_initializing:
+                        continue
+                    shotLoopMax = self._shots
+                    shotsPerLoop = 1
+                    self._sample_measure = False
+                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset" and "initialize," setting shots=1, and/or only measuring at the end of the circuit.')
+                    continue
+
+                is_initializing = False
+
                 if operation.name == 'measure':
                     did_measure = True
                 elif did_measure:
-                    raise QrackError('Only 1 shot measurement is supported, unless at end of circuit')
+                    shotLoopMax = self._shots
+                    shotsPerLoop = 1
+                    self._sample_measure = False
+                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," setting shots=1, and/or only measuring at the end of the circuit.')
+                    break
 
-        for operation in experiment.instructions:
-            name = operation.name
+        for shot in range(shotLoopMax):
+            try:
+                sim = qrack_controller_factory()
+                sim.initialize_qreg(self._configuration.opencl,
+                                    self._configuration.gate_fusion,
+                                    self._configuration.schmidt_decompose,
+                                    self._number_of_qubits,
+                                    self._configuration.opencl_device_id,
+                                    self._configuration.normalize,
+                                    self._configuration.zero_threshold)
+            except OverflowError:
+                raise QrackError('too many qubits')
 
-            conditional = getattr(operation, 'conditional', None)
-            if isinstance(conditional, int):
-                conditional_bit_set = (self._classical_register >> conditional) & 1
-                if not conditional_bit_set:
+            self._classical_memory = 0
+            self._classical_register = 0
+
+            for operation in experiment.instructions:
+                name = operation.name
+
+                if name == 'id':
+                    logger.info('Identity gates are ignored.')
+                    # Skip measurement logic
                     continue
-            elif conditional is not None:
-                mask = int(operation.conditional.mask, 16)
-                if mask > 0:
-                    value = self._classical_memory & mask
-                    while (mask & 0x1) == 0:
-                        mask >>= 1
-                        value >>= 1
-                    if value != int(operation.conditional.val, 16):
-                        continue
+                elif name == 'barrier':
+                    logger.info('Barrier gates are ignored.')
+                    # Skip measurement logic
+                    continue
 
-            if name == 'u1':
-                sim.u1(operation.qubits, operation.params)
-            elif name == 'u2':
-                sim.u2(operation.qubits, operation.params)
-            elif name == 'u3':
-                sim.u(operation.qubits, operation.params)
-            elif name == 'cx':
-                sim.cx(operation.qubits)
-            elif name == 'cz':
-                sim.cz(operation.qubits)
-            elif name == 'ch':
-                sim.ch(operation.qubits)
-            elif name == 'id':
-                logger.info('Identity gates are ignored.')
-            elif name == 'x':
-                sim.x(operation.qubits)
-            elif name == 'y':
-                sim.y(operation.qubits)
-            elif name == 'z':
-                sim.z(operation.qubits)
-            elif name == 'h':
-                sim.h(operation.qubits)
-            elif name == 'rx':
-                sim.rx(operation.qubits, operation.params)
-            elif name == 'ry':
-                sim.ry(operation.qubits, operation.params)
-            elif name == 'rz':
-                sim.rz(operation.qubits, operation.params)
-            elif name == 's':
-                sim.s(operation.qubits)
-            elif name == 'sdg':
-                sim.sdg(operation.qubits)
-            elif name == 't':
-                sim.t(operation.qubits)
-            elif name == 'tdg':
-                sim.tdg(operation.qubits)
-            elif name == 'swap':
-                sim.swap(operation.qubits[0], operation.qubits[1])
-            elif name == 'ccx':
-                sim.cx(operation.qubits)
-            elif name == 'cu1':
-                sim.cu1(operation.qubits, operation.params)
-            elif name == 'cu2':
-                sim.cu2(operation.qubits, operation.params)
-            elif name == 'cu3':
-                sim.cu(operation.qubits, operation.params)
-            elif name == 'cswap':
-                sim.cswap(operation.qubits)
-            elif name == 'mcx':
-                sim.cx(operation.qubits)
-            elif name == 'mcy':
-                sim.cy(operation.qubits)
-            elif name == 'mcz':
-                sim.cz(operation.qubits)
-            elif name == 'initialize':
-                sim.initialize(operation.qubits, operation.params)
-            elif name == 'cu1':
-                sim.cu1(operation.qubits, operation.params)
-            elif name == 'cu2':
-                sim.cu2(operation.qubits, operation.params)
-            elif name == 'cu3':
-                sim.cu(operation.qubits, operation.params)
-            elif name == 'mcswap':
-                sim.cswap(operation.qubits)
-            elif name == 'multiplexer':
-                if len(operation.params[0]) != 2: #matrix row count, equal to 2^n for n target qubits
-                    raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
-                sim.multiplexer(operation.qubits, len(operation.qubits) - 1, operation.params)
-            elif name == 'reset':
-                sim.reset(operation.qubits[0])
-            elif name == 'measure':
-                sample_qubits.append(operation.qubits)
-                sample_clbits.append(operation.memory)
-            elif name == 'barrier':
-                logger.info('Barrier gates are ignored.')
-            elif name == 'bfunc':
+                if (name != 'measure' or hasattr(operation, 'conditional')) and len(sample_qubits) > 0:
+                    if self._sample_measure:
+                        memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
+                    else:
+                        self._add_qasm_measure(sample_qubits, sample_clbits, sim, sample_cregbits)
+                    sample_qubits = []
+                    sample_clbits = []
+                    sample_cregbits = []
+
+                conditional = getattr(operation, 'conditional', None)
+                if isinstance(conditional, int):
+                    conditional_bit_set = (self._classical_register >> conditional) & 1
+                    if not conditional_bit_set:
+                        continue
+                elif conditional is not None:
+                    mask = int(operation.conditional.mask, 16)
+                    if mask > 0:
+                        value = self._classical_memory & mask
+                        while (mask & 0x1) == 0:
+                            mask >>= 1
+                            value >>= 1
+                        if value != int(operation.conditional.val, 16):
+                            continue
+
+                if name == 'u1':
+                    sim.u1(operation.qubits, operation.params)
+                elif name == 'u2':
+                    sim.u2(operation.qubits, operation.params)
+                elif name == 'u3':
+                    sim.u(operation.qubits, operation.params)
+                elif name == 'unitary':
+                    if (len(operation.qubits) != len(operation.params)) or (len(operation.params) != 2):
+                        raise QrackError('Invalid unitary instruction. Qrack only supports single qubit targets for "unitary."')
+                    for qbi in range(len(operation.qubits)):
+                        sim.unitary1qb([operation.qubits[qbi]], operation.params[qbi])
+                elif name == 'cx':
+                    sim.cx(operation.qubits)
+                elif name == 'cz':
+                    sim.cz(operation.qubits)
+                elif name == 'ch':
+                    sim.ch(operation.qubits)
+                elif name == 'x':
+                    sim.x(operation.qubits)
+                elif name == 'y':
+                    sim.y(operation.qubits)
+                elif name == 'z':
+                    sim.z(operation.qubits)
+                elif name == 'h':
+                    sim.h(operation.qubits)
+                elif name == 'rx':
+                    sim.rx(operation.qubits, operation.params)
+                elif name == 'ry':
+                    sim.ry(operation.qubits, operation.params)
+                elif name == 'rz':
+                    sim.rz(operation.qubits, operation.params)
+                elif name == 's':
+                    sim.s(operation.qubits)
+                elif name == 'sdg':
+                    sim.sdg(operation.qubits)
+                elif name == 't':
+                    sim.t(operation.qubits)
+                elif name == 'tdg':
+                    sim.tdg(operation.qubits)
+                elif name == 'swap':
+                    sim.swap(operation.qubits[0], operation.qubits[1])
+                elif name == 'ccx':
+                    sim.cx(operation.qubits)
+                elif name == 'cu1':
+                    sim.cu1(operation.qubits, operation.params)
+                elif name == 'cu2':
+                    sim.cu2(operation.qubits, operation.params)
+                elif name == 'cu3':
+                    sim.cu(operation.qubits, operation.params)
+                elif name == 'cswap':
+                    sim.cswap(operation.qubits)
+                elif name == 'mcx':
+                    sim.cx(operation.qubits)
+                elif name == 'mcy':
+                    sim.cy(operation.qubits)
+                elif name == 'mcz':
+                    sim.cz(operation.qubits)
+                elif name == 'initialize':
+                    sim.initialize(operation.qubits, operation.params)
+                elif name == 'cu1':
+                    sim.cu1(operation.qubits, operation.params)
+                elif name == 'cu2':
+                    sim.cu2(operation.qubits, operation.params)
+                elif name == 'cu3':
+                    sim.cu(operation.qubits, operation.params)
+                elif name == 'mcswap':
+                    sim.cswap(operation.qubits)
+                elif name == 'multiplexer':
+                    if (len(operation.params) != 1 << (len(operation.qubits) - 1)) or (len(operation.params[0]) != 2):
+                        raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
+                    sim.multiplexer(operation.qubits, len(operation.qubits) - 1, operation.params)
+                elif name == 'reset':
+                    sim.reset(operation.qubits[0])
+                elif name == 'measure':
+                    cregbits = operation.register if hasattr(operation, 'register') else len(operation.qubits) * [-1]
+                    sample_qubits.append(operation.qubits)
+                    sample_clbits.append(operation.memory)
+                    sample_cregbits.append(cregbits)
+                elif name == 'bfunc':
                     mask = int(operation.mask, 16)
                     relation = operation.relation
                     val = int(operation.val, 16)
@@ -552,19 +599,26 @@ class QasmSimulator(BaseBackend):
                         membit = 1 << cmembit
                         self._classical_memory = \
                             (self._classical_memory & (~membit)) | (int(outcome) << cmembit)
-            else:
-                backend = self.name()
-                err_msg = '{0} encountered unrecognized operation "{1}"'
-                raise QrackError(err_msg.format(backend, operation))
+                else:
+                    backend = self.name()
+                    err_msg = '{0} encountered unrecognized operation "{1}"'
+                    raise QrackError(err_msg.format(backend, operation))
 
-
-            if self._shots == 1 and name != 'measure' and len(sample_qubits) > 0 and self._number_of_cbits > 0:
-                memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
+            if len(sample_qubits) > 0:
+                if self._sample_measure:
+                    memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
+                else:
+                    self._add_qasm_measure(sample_qubits, sample_clbits, sim, sample_cregbits)
                 sample_qubits = []
                 sample_clbits = []
+                sample_cregbits = []
 
-        if (self._shots != 1 or name == 'measure') and len(sample_qubits) > 0 and self._number_of_cbits > 0:
-            memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
+            if not self._sample_measure:
+                # Turn classical_memory (int) into bit string and pad zero for unused cmembits
+                memory.append(hex(int(bin(self._classical_memory)[2:], 2)))
+
+        if not did_measure:
+            memory += self._shots * [hex(0)]
 
         end = time.time()
 
@@ -585,7 +639,7 @@ class QasmSimulator(BaseBackend):
             'success': True,
             'time_taken': (end - start),
             'header': experiment.header.to_dict(),
-            'metadata': 'NotImplemented'
+            'metadata': { 'measure_sampling' : self._sample_measure }
         }
 
     #@profile
@@ -608,17 +662,17 @@ class QasmSimulator(BaseBackend):
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            sample = sim.measure(measured_qubits);
+            sample = sim.measure(measure_qubit)
             classical_state = self._classical_memory
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
-                qubit_outcome = (sample & 1)
-                sample = sample >> 1
+                qubit_outcome = (sample >> qubit) & 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            value = bin(classical_state)[2:]
-            memory.append(hex(int(value, 2)))
+            outKey = bin(classical_state)[2:]
+            memory += [hex(int(outKey, 2))]
+            self._classical_memory = classical_state
             return memory
 
         # Sample and convert to bit-strings
@@ -630,8 +684,7 @@ class QasmSimulator(BaseBackend):
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
-                qubit_outcome = (sample & 1)
-                sample = sample >> 1
+                qubit_outcome = (sample >> index) & 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
             outKey = bin(classical_state)[2:]
@@ -640,37 +693,34 @@ class QasmSimulator(BaseBackend):
         return memory
 
     #@profile
-    def _can_sample(self, experiment):
-        """Determine if sampling can be used for an experiment
+    def _add_qasm_measure(self, sample_qubits, sample_clbits, sim, sample_cregbits=None):
+        """Apply a measure instruction to a qubit.
         Args:
-            experiment (QobjExperiment): a qobj experiment
+            qubit (int): qubit is the qubit measured.
+            cmembit (int): is the classical memory bit to store outcome in.
+            cregbit (int, optional): is the classical register bit to store outcome in.
         """
-        measure_flags = {}
-        if hasattr(experiment.config, 'allows_measure_sampling'):
-            self._sample_measure = experiment.config.allows_measure_sampling
-        else:
 
-            for instruction in experiment.instructions:
-                if instruction.name == "reset":
-                    measure_flags[instruction.qubits[0]] = False
-                    self._sample_measure = False
-                    return
+        measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
+        measure_clbit = [clbit for sublist in sample_clbits for clbit in sublist]
+        measure_cregbit = [clbit for sublist in sample_cregbits for clbit in sublist]
 
-                if hasattr(instruction, 'qubits') and measure_flags.get(instruction.qubits[0], False):
-                    if instruction.name not in ["measure", "barrier", "id", "u0"]:
-                        for qubit in instruction.qubits:
-                            measure_flags[qubit] = False
-                            return
-                elif instruction.name == "measure":
-                     for qubit in instruction.qubits:
-                            measure_flags[qubit] = True
-        
-        self._sample_measure = True
-
-        for key, value in measure_flags.items():
-            if value == False:
-                self._sample_measure = False
-                return
+        sample = sim.measure(measure_qubit)
+        classical_state = self._classical_memory
+        classical_register = self._classical_register
+        for index in range(len(measure_qubit)):
+            qubit = measure_qubit[index]
+            cbit = measure_clbit[index]
+            cregbit = measure_cregbit[index]
+            qubit_outcome = (sample >> qubit) & 1
+            bit = 1 << cbit
+            classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
+            if cregbit >= 0:
+                regbit = 1 << cregbit
+                classical_register = \
+                    (classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
+        self._classical_memory = classical_state
+        self._classical_register = classical_register
 
     @staticmethod
     def name():

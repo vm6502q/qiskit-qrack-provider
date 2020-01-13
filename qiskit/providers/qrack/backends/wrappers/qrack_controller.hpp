@@ -89,6 +89,15 @@ public:
         }
     }
 
+    virtual void unitary1qb(unsigned char* bits, unsigned char bitCount, double* params) {
+        Qrack::complex mtrx[4];
+        _darray_to_creal1_array(params, 4, mtrx);
+
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->ApplySingleBit(mtrx, (bitLenInt)bits[i]);
+        }
+    }
+
     virtual void _cu(unsigned char* bits, unsigned char ctrlCount, Qrack::real1 theta, Qrack::real1 phi, Qrack::real1 lambda) {
         Qrack::real1 cos0 = cos(theta / 2);
         Qrack::real1 sin0 = sin(theta / 2);
@@ -200,8 +209,8 @@ public:
         qReg->CSwap((bitLenInt*)bits, ctrlCount, bits[ctrlCount], bits[ctrlCount + 1U]);
     }
 
-    virtual void _darray_to_creal1_array(double *params, bitCapInt ampCount, Qrack::complex* amps) {
-        for (bitCapInt j = 0; j < ampCount; j++) {
+    virtual void _darray_to_creal1_array(double *params, bitCapInt componentCount, Qrack::complex* amps) {
+        for (bitCapInt j = 0; j < componentCount; j++) {
             amps[j] = Qrack::complex(Qrack::real1(params[2 * j]), Qrack::real1(params[2 * j + 1]));
         }
     }
@@ -250,9 +259,9 @@ public:
     }
 
     virtual void multiplexer(unsigned char* bits, unsigned char ctrlCount, double* params) {
-        bitCapInt partPower = Qrack::pow2(ctrlCount);
-        Qrack::complex* mtrxs = new Qrack::complex[partPower];
-        _darray_to_creal1_array(params, partPower, mtrxs);
+        bitCapInt componentCount = 4U * Qrack::pow2(ctrlCount);
+        Qrack::complex* mtrxs = new Qrack::complex[componentCount];
+        _darray_to_creal1_array(params, componentCount, mtrxs);
 
         qReg->UniformlyControlledSingleBit((bitLenInt*)bits, ctrlCount, (bitLenInt)bits[ctrlCount], mtrxs);
 
@@ -286,32 +295,7 @@ public:
     }
 
     virtual unsigned long int measure(unsigned char* bits, unsigned char bitCount) {
-        bitCapInt result = 0;
-        bitLenInt i;
-        bitLenInt start, len;
-        bitLenInt shift;
-
-        bitLenInt* sortedBits = new bitLenInt[bitCount];
-        std::copy(bits, bits + bitCount, sortedBits);
-        std::sort(sortedBits, sortedBits + bitCount);
-
-        i = 0;
-        while (i < bitCount) {
-            shift = i;
-            start = sortedBits[i];
-            len = 1U;
-            i++;
-            while (sortedBits[i] == (start + len)) {
-                len++;
-                i++;
-            }
-            
-            result |= (qReg->MReg(start, len) << (bitCapInt)shift);
-        }
-
-        delete[] sortedBits;
-
-        return (unsigned long int)result;
+        return (unsigned long int)qReg->M(bits, bitCount);
     }
 
     virtual unsigned long long measure_all() {

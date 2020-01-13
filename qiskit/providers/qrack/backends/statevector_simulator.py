@@ -98,7 +98,7 @@ class StatevectorSimulator(BaseBackend):
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
-            'multiplexer'
+            'multiplexer', 'reset', 'measure'
         ],
         'gates': [{
             'name': 'u1',
@@ -306,6 +306,12 @@ class StatevectorSimulator(BaseBackend):
                            'The input parameters are the gates for each value.'
                            'WARNING: Qrack currently only supports single-qubit-target multiplexer gates',
             'qasm_def': 'TODO'
+        }, {
+            'name': 'reset',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Reset qubit to 0 state',
+            'qasm_def': 'TODO'
         }],
         # Location where we put external libraries that will be loaded at runtime
         # by the simulator extension
@@ -363,7 +369,8 @@ class StatevectorSimulator(BaseBackend):
             'status': 'COMPLETED',
             'success': True,
             'time_taken': (end - start),
-            'header': qobj.header.to_dict()
+            'header': qobj.header.to_dict(),
+            'metadata': {}
         }
 
         return Result.from_dict(result) # This can be sped up
@@ -381,11 +388,15 @@ class StatevectorSimulator(BaseBackend):
         """
         self._number_of_qubits = experiment.header.n_qubits
         self._statevector = 0
+        self._statevector = 0
         self._classical_memory = 0
         self._classical_register = 0
 
+        memory = []
+
         sample_qubits = []
         sample_clbits = []
+        sample_cregbits = []
 
         start = time.time()
 
@@ -401,8 +412,38 @@ class StatevectorSimulator(BaseBackend):
         except OverflowError:
             raise QrackError('too many qubits')
 
+        self._measure_coalesce = True
+        did_measure = False
+        for operation in experiment.instructions:
+            if operation.name == 'id' or operation.name == 'barrier':
+                continue
+
+            if hasattr(operation, 'conditional'):
+                self._measure_coalesce = False
+
+            if operation.name == 'measure':
+                did_measure = True
+
         for operation in experiment.instructions:
             name = operation.name
+
+            if name == 'id':
+                logger.info('Identity gates are ignored.')
+                # Skip measurement logic
+                continue
+            elif name == 'barrier':
+                logger.info('Barrier gates are ignored.')
+                # Skip measurement logic
+                continue
+
+            if (name != 'measure' or hasattr(operation, 'conditional')) and len(sample_qubits) > 0:
+                if self._measure_coalesce:
+                    memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
+                else:
+                    self._add_qasm_measure(sample_qubits, sample_clbits, sim, sample_cregbits)
+                sample_qubits = []
+                sample_clbits = []
+                sample_cregbits = []
 
             conditional = getattr(operation, 'conditional', None)
             if isinstance(conditional, int):
@@ -425,14 +466,17 @@ class StatevectorSimulator(BaseBackend):
                 sim.u2(operation.qubits, operation.params)
             elif name == 'u3':
                 sim.u(operation.qubits, operation.params)
+            elif name == 'unitary':
+                if (len(operation.qubits) != len(operation.params)) or (len(operation.params) != 2):
+                    raise QrackError('Invalid unitary instruction. Qrack only supports single qubit targets for "unitary."')
+                for qbi in range(len(operation.qubits)):
+                    sim.unitary1qb([operation.qubits[qbi]], operation.params[qbi])
             elif name == 'cx':
                 sim.cx(operation.qubits)
             elif name == 'cz':
                 sim.cz(operation.qubits)
             elif name == 'ch':
                 sim.ch(operation.qubits)
-            elif name == 'id':
-                logger.info('Identity gates are ignored.')
             elif name == 'x':
                 sim.x(operation.qubits)
             elif name == 'y':
@@ -485,16 +529,16 @@ class StatevectorSimulator(BaseBackend):
             elif name == 'mcswap':
                 sim.cswap(operation.qubits)
             elif name == 'multiplexer':
-                if len(operation.params[0]) != 2: #matrix row count, equal to 2^n for n target qubits
-                    raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
+                if (len(operation.params) != 1 << (len(operation.qubits) - 1)) or (len(operation.params[0]) != 2):
+                        raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
                 sim.multiplexer(operation.qubits, len(operation.qubits) - 1, operation.params)
             elif name == 'reset':
                 sim.reset(operation.qubits[0])
             elif name == 'measure':
+                cregbits = operation.register if hasattr(operation, 'register') else len(operation.qubits) * [-1]
                 sample_qubits.append(operation.qubits)
                 sample_clbits.append(operation.memory)
-            elif name == 'barrier':
-                logger.info('Barrier gates are ignored.')
+                sample_cregbits.append(cregbits)
             elif name == 'bfunc':
                 mask = int(operation.mask, 16)
                 relation = operation.relation
@@ -532,15 +576,21 @@ class StatevectorSimulator(BaseBackend):
                 err_msg = '{0} encountered unrecognized operation "{1}"'
                 raise QrackError(err_msg.format(backend, name))
 
-            if name != 'measure' and len(sample_qubits) > 0:
-                memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, 1)
-                sample_qubits = []
-                sample_clbits = []
-
         if len(sample_qubits) > 0:
-            memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, 1)
+            if self._measure_coalesce:
+                memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
+            else:
+                self._add_qasm_measure(sample_qubits, sample_clbits, sim, sample_cregbits)
             sample_qubits = []
             sample_clbits = []
+            sample_cregbits = []
+
+        if not self._measure_coalesce:
+            # Turn classical_memory (int) into bit string and pad zero for unused cmembits
+            memory.append(hex(int(bin(self._classical_memory)[2:], 2)))
+
+        if not did_measure:
+            memory = [hex(0)]
 
         end = time.time()
 
@@ -557,10 +607,9 @@ class StatevectorSimulator(BaseBackend):
             'success': True,
             'time_taken': (end - start),
             'header': experiment.header.to_dict(),
-            'metadata': 'NotImplemented'
+            'metadata': {}
         }
 
-    #@profile
     def _add_sample_measure(self, sample_qubits, sample_clbits, sim, num_samples):
         """Generate memory samples from current statevector.
         Taken almost straight from the terra source code.
@@ -580,25 +629,25 @@ class StatevectorSimulator(BaseBackend):
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
-            sample = sim.measure(measured_qubits);
-            classical_state = self._classical_state
+            sample = sim.measure(measure_qubit)
+            classical_state = self._classical_memory
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
-                qubit_outcome = (sample & 1)
-                sample = sample >> 1
+                qubit_outcome = (sample >> qubit) & 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            value = bin(classical_state)[2:]
-            memory.append(hex(int(value, 2)))
+            outKey = bin(classical_state)[2:]
+            memory += [hex(int(outKey, 2))]
+            self._classical_memory = classical_state
             return memory
 
         # Sample and convert to bit-strings
         measure_results = sim.measure_shots(measure_qubit, num_samples)
-        classical_state = self._classical_state
+        classical_state = self._classical_memory
         for key, value in measure_results.items():
             sample = key
-            classical_state = self._classical_state
+            classical_state = self._classical_memory
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
@@ -610,6 +659,35 @@ class StatevectorSimulator(BaseBackend):
             memory += value * [hex(int(outKey, 2))]
 
         return memory
+
+    def _add_qasm_measure(self, sample_qubits, sample_clbits, sim, sample_cregbits=None):
+        """Apply a measure instruction to a qubit.
+        Args:
+            qubit (int): qubit is the qubit measured.
+            cmembit (int): is the classical memory bit to store outcome in.
+            cregbit (int, optional): is the classical register bit to store outcome in.
+        """
+
+        measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
+        measure_clbit = [clbit for sublist in sample_clbits for clbit in sublist]
+        measure_cregbit = [clbit for sublist in sample_cregbits for clbit in sublist]
+
+        sample = sim.measure(measure_qubit)
+        classical_state = self._classical_memory
+        classical_register = self._classical_register
+        for index in range(len(measure_qubit)):
+            qubit = measure_qubit[index]
+            cbit = measure_clbit[index]
+            cregbit = measure_cregbit[index]
+            qubit_outcome = (sample >> qubit) & 1
+            bit = 1 << cbit
+            classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
+            if cregbit >= 0:
+                regbit = 1 << cregbit
+                classical_register = \
+                    (classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
+        self._classical_memory = classical_state
+        self._classical_register = classical_register
 
     def _validate(self, qobj, backend_options=None, noise_model=None):
         """Semantic validations of the qobj which cannot be done via schemas.
