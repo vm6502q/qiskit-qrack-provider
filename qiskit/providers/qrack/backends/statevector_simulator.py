@@ -589,9 +589,6 @@ class StatevectorSimulator(BaseBackend):
             # Turn classical_memory (int) into bit string and pad zero for unused cmembits
             memory.append(hex(int(bin(self._classical_memory)[2:], 2)))
 
-        if not did_measure:
-            memory = [hex(0)]
-
         end = time.time()
 
         if self._chop_threshold:

@@ -416,13 +416,13 @@ class QasmSimulator(BaseBackend):
                 if operation.name == 'id' or operation.name == 'barrier':
                     continue
 
-                if (operation.name == 'reset') or (operation.name == 'initialize'):
+                if hasattr(operation, 'conditional') or (operation.name == 'reset') or (operation.name == 'initialize'):
                     if is_initializing:
                         continue
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
                     self._sample_measure = False
-                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset" and "initialize," setting shots=1, and/or only measuring at the end of the circuit.')
+                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," "initialize," and conditionals, setting shots=1, and/or only measuring at the end of the circuit.')
                     continue
 
                 is_initializing = False
@@ -433,7 +433,7 @@ class QasmSimulator(BaseBackend):
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
                     self._sample_measure = False
-                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," setting shots=1, and/or only measuring at the end of the circuit.')
+                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," "initialize," and conditionals, setting shots=1, and/or only measuring at the end of the circuit.')
                     break
 
         for shot in range(shotLoopMax):
@@ -606,7 +606,7 @@ class QasmSimulator(BaseBackend):
 
             if len(sample_qubits) > 0:
                 if self._sample_measure:
-                    memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
+                    memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, shotsPerLoop)
                 else:
                     self._add_qasm_measure(sample_qubits, sample_clbits, sim, sample_cregbits)
                 sample_qubits = []
@@ -616,9 +616,6 @@ class QasmSimulator(BaseBackend):
             if not self._sample_measure:
                 # Turn classical_memory (int) into bit string and pad zero for unused cmembits
                 memory.append(hex(int(bin(self._classical_memory)[2:], 2)))
-
-        if not did_measure:
-            memory += self._shots * [hex(0)]
 
         end = time.time()
 
