@@ -578,7 +578,7 @@ class StatevectorSimulator(BaseBackend):
 
         if len(sample_qubits) > 0:
             if self._measure_coalesce:
-                memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, self._shots)
+                memory = self._add_sample_measure(sample_qubits, sample_clbits, sim, 1)
             else:
                 self._add_qasm_measure(sample_qubits, sample_clbits, sim, sample_cregbits)
             sample_qubits = []
