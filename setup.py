@@ -39,7 +39,8 @@ qrack_extension = [Extension(
                        ['qiskit/providers/qrack/backends/wrappers/qrack_controller_wrapper.pyx'],
                        include_dirs=[],
                        libraries=['qrack', str(get_opencl_library())],
-                       language="c++"
+                       language="c++",
+                       extra_compile_args=["-std=c++11"]
                   )]
 
 setup(
