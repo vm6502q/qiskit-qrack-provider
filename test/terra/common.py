@@ -117,7 +117,7 @@ class QiskitAerTestCase(unittest.TestCase):
             items.pop(pos)
 
     def compare_statevector(self, result, circuits, targets,
-                            global_phase=True, places=None):
+                            global_phase=True, places=6):
         """Compare final statevectors to targets."""
         for pos, test_case in enumerate(zip(circuits, targets)):
             circuit, target = test_case

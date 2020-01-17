@@ -35,15 +35,13 @@ def add_conditional_x(circuit, qreg, creg, val, conditional_type):
     """
     # X-gate matrix
     x_mat = np.array([[0, 1], [1, 0]], dtype=complex)
-    x_superop = Instruction('superop', 1, 0, [np.kron(x_mat, x_mat)])
-    x_kraus = Instruction('kraus', 1, 0, [x_mat])
 
     if conditional_type == 'unitary':
         circuit.unitary(x_mat, [qreg]).c_if(creg, val)
     elif conditional_type == 'kraus':
-        circuit.append(x_kraus, [qreg]).c_if(creg, val)
+        raise NotImplementedError
     elif conditional_type == 'superop':
-        circuit.append(x_superop, [qreg]).c_if(creg, val)
+        raise NotImplementedError
     else:
         circuit.x(qreg).c_if(creg, val)
 
