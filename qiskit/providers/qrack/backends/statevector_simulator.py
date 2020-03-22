@@ -85,7 +85,7 @@ class StatevectorSimulator(BaseBackend):
         'conditional': True,
         'open_pulse': False,
         'memory': True,
-        'max_shots': 1,
+        'max_shots': 65536,
         'description': 'A Qrack-based, GPU-accelerated, C++ statevector simulator for qobj files',
         'coupling_map': None,
         'normalize': True,
