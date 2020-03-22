@@ -595,7 +595,7 @@ class StatevectorSimulator(BaseBackend):
             self._statevector = sim.amplitudes().round(self._chop_threshold)
         else:
             self._statevector = sim.amplitudes()
-        self._statevector = np.stack((self._statevector.real, self._statevector.imag), axis=-1)
+        self._statevector = np.ndarray(shape=(1<<self._number_of_qubits,), dtype='complex', buffer=np.stack((self._statevector.real, self._statevector.imag), axis=-1))
         return {
             'name': experiment.header.name,
             'shots': 1,
