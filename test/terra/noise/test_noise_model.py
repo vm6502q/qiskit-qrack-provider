@@ -23,6 +23,11 @@ from qiskit.providers.aer.noise import NoiseModel
 from qiskit.providers.aer.noise.errors.standard_errors import pauli_error
 from qiskit.providers.aer.noise.errors.standard_errors import reset_error
 from qiskit.providers.aer.noise.errors.standard_errors import amplitude_damping_error
+from qiskit.test import mock
+
+# Backwards compatibility for Terra <= 0.13
+if not hasattr(QuantumCircuit, 'i'):
+    QuantumCircuit.i = QuantumCircuit.iden
 
 
 class TestNoise(common.QiskitAerTestCase):
@@ -37,7 +42,7 @@ class TestNoise(common.QiskitAerTestCase):
         for _ in range(30):
             # Add noisy identities
             circuit.barrier(qr)
-            circuit.iden(qr)
+            circuit.i(qr)
         circuit.barrier(qr)
         circuit.measure(qr, cr)
         shots = 2000
@@ -183,6 +188,45 @@ class TestNoise(common.QiskitAerTestCase):
 
         model2 = NoiseModel(basis_gates=['u3', 'cx'])
         model2.add_all_qubit_quantum_error(error, ['u3'], False)
+
+    def test_noise_model_from_backend_singapore(self):
+        circ = QuantumCircuit(2)
+        circ.x(0)
+        circ.x(1)
+        circ.measure_all()
+
+        backend = mock.FakeSingapore()
+        noise_model = NoiseModel.from_backend(backend)
+        qobj = assemble(transpile(circ, backend), backend)
+        sim = QasmSimulator()
+        result = sim.run(qobj, noise_model=noise_model).result()
+        self.assertTrue(result.success)
+
+    def test_noise_model_from_backend_almaden(self):
+        circ = QuantumCircuit(2)
+        circ.x(0)
+        circ.x(1)
+        circ.measure_all()
+
+        backend = mock.FakeAlmaden()
+        noise_model = NoiseModel.from_backend(backend)
+        qobj = assemble(transpile(circ, backend), backend)
+        sim = QasmSimulator()
+        result = sim.run(qobj, noise_model=noise_model).result()
+        self.assertTrue(result.success)
+
+    def test_noise_model_from_rochester(self):
+        circ = QuantumCircuit(2)
+        circ.x(0)
+        circ.x(1)
+        circ.measure_all()
+
+        backend = mock.FakeRochester()
+        noise_model = NoiseModel.from_backend(backend)
+        qobj = assemble(transpile(circ, backend), backend)
+        sim = QasmSimulator()
+        result = sim.run(qobj, noise_model=noise_model).result()
+        self.assertTrue(result.success)
 
 
 if __name__ == '__main__':
