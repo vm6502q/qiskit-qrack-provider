@@ -59,10 +59,6 @@ class StatevectorSimulator(BaseBackend):
     * ``"schmidt_decompose"`` (bool): If true, enable "QUnit" layer of
       Qrack, including Schmidt decomposition optimizations.
 
-    * ``"gate_fusion"`` (bool): If true, enable "QFusion" layer of
-      Qrack, which attempts compose subsequent gates (at polynomial
-      cost) before applying them (at exponential cost).
-
     * ``"opencl"`` (bool): If true, use the OpenCL engine of Qrack
       ("QEngineOCL") as the base "Schroedinger method" simulator.
       If OpenCL is not available, simulation will fall back to CPU.
@@ -91,7 +87,6 @@ class StatevectorSimulator(BaseBackend):
         'normalize': True,
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
-        'gate_fusion': True,
         'opencl': True,
         'opencl_device_id': -1,
         'basis_gates': [
@@ -403,7 +398,6 @@ class StatevectorSimulator(BaseBackend):
         try:
             sim = qrack_controller_factory()
             sim.initialize_qreg(self._configuration.opencl,
-                                self._configuration.gate_fusion,
                                 self._configuration.schmidt_decompose,
                                 self._number_of_qubits,
                                 self._configuration.opencl_device_id,
