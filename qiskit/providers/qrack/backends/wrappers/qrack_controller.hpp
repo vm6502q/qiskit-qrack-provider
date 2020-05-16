@@ -126,6 +126,15 @@ public:
     }
 
     virtual void ch(unsigned char* bits, unsigned char ctrlCount) {
+        if (ctrlCount == 0) {
+            qReg->H(bits[0]);
+            return;
+        }
+        if (ctrlCount == 1) {
+            qReg->CH(bits[0], bits[1]);
+            return;
+        }
+
         const Qrack::complex hadamard[4] = {
             Qrack::complex(M_SQRT1_2, ZERO_R1), Qrack::complex(M_SQRT1_2, ZERO_R1),
             Qrack::complex(M_SQRT1_2, ZERO_R1), Qrack::complex(-M_SQRT1_2, ZERO_R1)
