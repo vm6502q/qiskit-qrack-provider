@@ -9,10 +9,6 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-
-# NOTICE: Daniel Strano, one of the authors of vm6502q/qrack, has modified
-# files in this directory to use the Qrack provider instead of the
-# Aer provider, for the Qrack provider's own coverage.
 """
 QasmSimulator Integration Tests
 """
@@ -34,7 +30,7 @@ class QasmBasicsTests:
         quantum_circuit = transpile(succeed_circuit, mocked_backend)
         qobj = assemble(quantum_circuit)
         result = mocked_backend.run(qobj).result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
 
     def test_simulation_failed(self):
         """Test the we properly manage simulation failures."""

@@ -10,10 +10,6 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-# NOTICE: Daniel Strano, one of the authors of vm6502q/qrack, has modified
-# files in this directory to use the Qrack provider instead of the
-# Aer provider, for the Qrack provider's own coverage.
-
 """
 Shared functionality and helpers for the unit tests.
 """
@@ -33,7 +29,7 @@ from numpy.linalg import norm
 
 from qiskit.quantum_info import state_fidelity
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
-from qiskit.providers.qrack import __path__ as main_path
+from qiskit.providers.aer import __path__ as main_path
 
 
 class Path(Enum):
@@ -92,6 +88,16 @@ class QiskitAerTestCase(unittest.TestCase):
         # pylint: disable=invalid-name
         return _AssertNoLogsContext(self, logger, level)
 
+    def assertSuccess(self, result):
+        """Assert that simulation executed without errors"""
+        success = getattr(result, 'success', False)
+        msg = result.status
+        if not success:
+            for i, res in enumerate(getattr(result, 'results', [])):
+                if res.status != 'DONE':
+                    msg += ', (Circuit {}) {}'.format(i, res.status)
+        self.assertTrue(success, msg=msg)
+
     def check_position(self, obj, items, precision=15):
         """Return position of numeric object in a list."""
         for pos, item in enumerate(items):
@@ -117,22 +123,24 @@ class QiskitAerTestCase(unittest.TestCase):
             items.pop(pos)
 
     def compare_statevector(self, result, circuits, targets,
-                            global_phase=True, places=None):
+                            global_phase=False, places=None):
         """Compare final statevectors to targets."""
         for pos, test_case in enumerate(zip(circuits, targets)):
             circuit, target = test_case
             output = result.get_statevector(circuit)
-            msg = ("Circuit ({}/{}):".format(pos + 1, len(circuits)) +
-                   " {} != {}".format(output, target))
-            # Qrack specifically optimizes based on arbitrary overall global phase
-            #if (global_phase):
-            #    # Test equal including global phase
-            #    self.assertAlmostEqual(norm(output - target), 0, places=places,
-            #                           msg=msg)
-            #else:
-            # Test equal ignorning global phase
-            self.assertAlmostEqual(state_fidelity(output, target) - 1, 0, places=places,
-                                   msg=msg + " up to global phase")
+            test_msg = "Circuit ({}/{}):".format(pos + 1, len(circuits))
+            with self.subTest(msg=test_msg):
+                msg = " {} != {}".format(output, target)
+                if global_phase:
+                    # Test equal including global phase
+                    self.assertAlmostEqual(
+                        norm(output - target), 0, places=places,
+                        msg=msg)
+                else:
+                    # Test equal ignorning global phase
+                    self.assertAlmostEqual(
+                        state_fidelity(output, target) - 1, 0, places=places,
+                        msg=msg + " up to global phase")
 
     def compare_unitary(self, result, circuits, targets,
                         global_phase=True, places=None):
@@ -140,17 +148,19 @@ class QiskitAerTestCase(unittest.TestCase):
         for pos, test_case in enumerate(zip(circuits, targets)):
             circuit, target = test_case
             output = result.get_unitary(circuit)
-            msg = ("Circuit ({}/{}):".format(pos + 1, len(circuits)) +
-                   " {} != {}".format(output, target))
-            if (global_phase):
-                # Test equal including global phase
-                self.assertAlmostEqual(norm(output - target), 0,
-                                       places=places, msg=msg)
-            else:
-                # Test equal ignorning global phase
-                delta = np.trace(np.dot(np.conj(np.transpose(output)), target)) - len(output)
-                self.assertAlmostEqual(delta, 0, places=places,
-                                       msg=msg + " up to global phase")
+            test_msg = "Circuit ({}/{}):".format(pos + 1, len(circuits))
+            with self.subTest(msg=test_msg):
+                msg = "\n{}\n {} != {}".format(circuit, output, target)
+                if global_phase:
+                    # Test equal including global phase
+                    self.assertAlmostEqual(
+                        norm(output - target), 0, places=places, msg=msg)
+                else:
+                    # Test equal ignorning global phase
+                    delta = np.trace(np.dot(
+                        np.conj(np.transpose(output)), target)) - len(output)
+                    self.assertAlmostEqual(
+                        delta, 0, places=places, msg=msg + " up to global phase")
 
     def compare_counts(self, result, circuits, targets, hex_counts=True, delta=0):
         """Compare counts dictionary to targets."""
@@ -162,9 +172,11 @@ class QiskitAerTestCase(unittest.TestCase):
             else:
                 # Use get counts method which converts hex
                 output = result.get_counts(circuit)
-            msg = ("Circuit ({}/{}):".format(pos + 1, len(circuits)) +
-                   " {} != {}".format(output, target))
-            self.assertDictAlmostEqual(output, target, delta=delta, msg=msg)
+            test_msg = "Circuit ({}/{}):".format(pos + 1, len(circuits))
+            with self.subTest(msg=test_msg):
+                msg = " {} != {}".format(output, target)
+                self.assertDictAlmostEqual(
+                    output, target, delta=delta, msg=msg)
 
     def compare_memory(self, result, circuits, targets, hex_counts=True):
         """Compare memory list to target."""
@@ -177,23 +189,25 @@ class QiskitAerTestCase(unittest.TestCase):
             else:
                 # Use get counts method which converts hex
                 output = result.get_memory(circuit)
-            msg = ("Circuit ({}/{}):".format(pos + 1, len(circuits)) +
-                   " {} != {}".format(output, target))
-            self.assertEqual(output, target, msg=msg)
+            test_msg = "Circuit ({}/{}):".format(pos + 1, len(circuits))
+            with self.subTest(msg=test_msg):
+                msg = " {} != {}".format(output, target)
+                self.assertEqual(output, target, msg=msg)
 
     def compare_result_metadata(self, result, circuits, key, targets):
         """Compare result metadata key value."""
-        #if not isinstance(targets, (list, tuple)):
-        #    targets = len(circuits) * [targets]
-        #for pos, test_case in enumerate(zip(circuits, targets)):
-        #    circuit, target = test_case
-        #    value = None
-        #    metadata = getattr(result.results[0], 'metadata')
-        #    if metadata:
-        #        value = metadata.get(key)
-        #    msg = ("Circuit ({}/{}):".format(pos + 1, len(circuits)) +
-        #           " metadata {} value {} != {}".format(key, value, target))
-        #    self.assertEqual(value, target, msg=msg)
+        if not isinstance(targets, (list, tuple)):
+            targets = len(circuits) * [targets]
+        for pos, test_case in enumerate(zip(circuits, targets)):
+            circuit, target = test_case
+            value = None
+            metadata = getattr(result.results[0], 'metadata')
+            if metadata:
+                value = metadata.get(key)
+            test_msg = "Circuit ({}/{}):".format(pos + 1, len(circuits))
+            with self.subTest(msg=test_msg):
+                msg = " metadata {} value {} != {}".format(key, value, target)
+                self.assertEqual(value, target, msg=msg)
 
     def assertDictAlmostEqual(self, dict1, dict2, delta=None, msg=None,
                               places=None, default_value=0):

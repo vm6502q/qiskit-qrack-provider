@@ -9,10 +9,6 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-
-# NOTICE: Daniel Strano, one of the authors of vm6502q/qrack, has modified
-# files in this directory to use the Qrack provider instead of the
-# Aer provider, for the Qrack provider's own coverage.
 """
 QasmSimulator Integration Tests
 """
@@ -40,7 +36,7 @@ class QasmConditionalGateTests:
         qobj = assemble(circuits, self.SIMULATOR, shots=shots)
         result = self.SIMULATOR.run(
             qobj, backend_options=self.BACKEND_OPTS).result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_counts(result, circuits, targets, delta=0)
 
     def test_conditional_gates_2bit(self):
@@ -52,11 +48,46 @@ class QasmConditionalGateTests:
         qobj = assemble(circuits, self.SIMULATOR, shots=shots)
         result = self.SIMULATOR.run(
             qobj, backend_options=self.BACKEND_OPTS).result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_counts(result, circuits, targets, delta=0)
 
 
-class QasmConditionalUnitaryTests:
+#TODO: Support this with Qrack?
+#class QasmConditionalUnitaryTests:
+#    """QasmSimulator conditional tests."""
+#
+#    SIMULATOR = QasmSimulator()
+#    BACKEND_OPTS = {}
+#
+#    # ---------------------------------------------------------------------
+#    # Test conditional
+#    # ---------------------------------------------------------------------
+#    def test_conditional_unitary_1bit(self):
+#        """Test conditional unitary operations on 1-bit conditional register."""
+#        shots = 100
+#        circuits = ref_conditionals.conditional_circuits_1bit(
+#            final_measure=True, conditional_type='unitary')
+#        targets = ref_conditionals.conditional_counts_1bit(shots)
+#        qobj = assemble(circuits, self.SIMULATOR, shots=shots)
+#        result = self.SIMULATOR.run(
+#            qobj, backend_options=self.BACKEND_OPTS).result()
+#        self.assertSuccess(result)
+#        self.compare_counts(result, circuits, targets, delta=0)
+#
+#    def test_conditional_unitary_2bit(self):
+#        """Test conditional unitary operations on 2-bit conditional register."""
+#        shots = 100
+#        circuits = ref_conditionals.conditional_circuits_2bit(
+#            final_measure=True, conditional_type='unitary')
+#        targets = ref_conditionals.conditional_counts_2bit(shots)
+#        qobj = assemble(circuits, self.SIMULATOR, shots=shots)
+#        result = self.SIMULATOR.run(
+#            qobj, backend_options=self.BACKEND_OPTS).result()
+#        self.assertSuccess(result)
+#        self.compare_counts(result, circuits, targets, delta=0)
+
+
+class QasmConditionalSuperOpTests:
     """QasmSimulator conditional tests."""
 
     SIMULATOR = QasmSimulator()
@@ -65,15 +96,26 @@ class QasmConditionalUnitaryTests:
     # ---------------------------------------------------------------------
     # Test conditional
     # ---------------------------------------------------------------------
-    def test_conditional_unitary_1bit(self):
-        """Test conditional unitary operations on 1-bit conditional register."""
+    def test_conditional_superop_1bit(self):
+        """Test conditional superop operations on 1-bit conditional register."""
         shots = 100
         circuits = ref_conditionals.conditional_circuits_1bit(
-            final_measure=True, conditional_type='unitary')
+            final_measure=True, conditional_type='superop')
         targets = ref_conditionals.conditional_counts_1bit(shots)
         qobj = assemble(circuits, self.SIMULATOR, shots=shots)
         result = self.SIMULATOR.run(
             qobj, backend_options=self.BACKEND_OPTS).result()
-        self.assertTrue(getattr(result, 'success', False))
+        self.assertSuccess(result)
         self.compare_counts(result, circuits, targets, delta=0)
 
+    def test_conditional_superop_2bit(self):
+        """Test conditional superop operations on 2-bit conditional register."""
+        shots = 100
+        circuits = ref_conditionals.conditional_circuits_2bit(
+            final_measure=True, conditional_type='superop')
+        targets = ref_conditionals.conditional_counts_2bit(shots)
+        qobj = assemble(circuits, self.SIMULATOR, shots=shots)
+        result = self.SIMULATOR.run(
+            qobj, backend_options=self.BACKEND_OPTS).result()
+        self.assertSuccess(result)
+        self.compare_counts(result, circuits, targets, delta=0)

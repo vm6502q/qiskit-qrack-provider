@@ -9,10 +9,6 @@
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
-
-# NOTICE: Daniel Strano, one of the authors of vm6502q/qrack, has modified
-# files in this directory to use the Qrack provider instead of the
-# Aer provider, for the Qrack provider's own coverage.
 """
 Benchmarking utility functions.
 """

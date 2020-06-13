@@ -1,8 +1,8 @@
 #define CATCH_CONFIG_MAIN
 #include <map>
-#include <catch.hpp>
+#include <catch2/catch.hpp>
 
-#include <simulators/qasm/qasm_controller.hpp>
+#include <controllers/qasm_controller.hpp>
 
 #include "utils.hpp"
 

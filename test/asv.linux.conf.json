@@ -22,32 +22,30 @@
 
     // Customizable commands for building, installing, and
     // uninstalling the project. See asv.conf.json documentation.
+    //
+    // "install_command": ["python -mpip install {wheel_file}"],
+    // "uninstall_command": ["return-code=any python -mpip uninstall -y {project}"],
+    // "build_command": [
+    //     "python setup.py build",
+    //     "PIP_NO_BUILD_ISOLATION=false python -mpip wheel --no-deps --no-index -w {build_cache_dir} {build_dir}"
+    // ],
 
     "install_command": [
-        "python -m pip install qiskit qiskit-terra",
-        "python setup.py install",
-        "python -m pip install git+https://github.com/vm6502q/qiskit-qrack-provider.git"
+        "python -c \"import shutil; shutil.rmtree('{build_dir}/qiskit', True)\"",
+        "python -c \"import shutil; shutil.rmtree('{build_dir}/qiskit_aer.egg-info', True)\"",
+        "python -mpip install {wheel_file}",
+        "python -mpip install qiskit-ignis==0.2.0"
     ],
-    "uninstall_command": ["return-code=any python -mpip uninstall -y {project}"],
+    "uninstall_command": [
+        "return-code=any python -mpip uninstall -y qiskit-terra",
+        "return-code=any python -mpip uninstall -y {project}",
+        "return-code=any python -mpip uninstall -y qiskit-ignis"
+    ],
     "build_command": [
-        "python -m pip install qiskit qiskit-terra",
-        "python setup.py build"
+        "python -mpip install -U scikit-build cython",
+        "python -mpip install qiskit-terra",
+        "python setup.py bdist_wheel --dist-dir={build_cache_dir} -- -DCMAKE_CXX_COMPILER=g++ -- -j"
     ],
-
-    // "install_command": [
-    //     "python -c \"import shutil; shutil.rmtree('{build_dir}/qiskit')\"",
-    //     "python -c \"import shutil; shutil.rmtree('{build_dir}/qiskit_aer.egg-info')\"",
-    //     "python -mpip install {wheel_file}"
-    // ],
-    // "uninstall_command": [
-    //     "return-code=any python -mpip uninstall -y qiskit-terra",
-    //     "return-code=any python -mpip uninstall -y {project}"
-    // ],
-    // "build_command": [
-    //     "python -mpip install -U scikit-build cython",
-    //     "python setup.py bdist_wheel --dist-dir={build_cache_dir} -- -DCMAKE_CXX_COMPILER=g++ -DSTATIC_LINKING=True -- -j8",
-    //     "python -mpip install https://github.com/QISKit/qiskit-terra/archive/master.zip"
-    // ],
 
     // List of branches to benchmark. If not provided, defaults to "master"
     // (for git) or "default" (for mercurial).

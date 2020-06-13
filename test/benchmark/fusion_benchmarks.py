@@ -1,12 +1,8 @@
-# NOTICE: Daniel Strano, one of the authors of vm6502q/qrack, has modified
-# files in this directory to use the Qrack provider instead of the
-# Aer provider, for the Qrack provider's own coverage.
-
 import numpy as np
 import math
-from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
+from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit, QiskitError
 from qiskit.compiler import assemble
-from qiskit.providers.qrack import QasmSimulator
+from qiskit.providers.aer import QasmSimulator
 from qiskit.quantum_info.random import random_unitary
 from qiskit.quantum_info.synthesis import two_qubit_cnot_decompose
 

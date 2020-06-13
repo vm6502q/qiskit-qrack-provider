@@ -10,17 +10,13 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-# NOTICE: Daniel Strano, one of the authors of vm6502q/qrack, has modified
-# files in this directory to use the Qrack provider instead of the
-# Aer provider, for the Qrack provider's own coverage.
-
 """Quantum Voluming benchmark suite"""
 # Write the benchmarking functions here.
 # See "Writing benchmarks" in the asv docs for more information.
 
 from qiskit import QiskitError
 from qiskit.compiler import transpile, assemble
-from qiskit.providers.qrack import QasmSimulator
+from qiskit.providers.aer import QasmSimulator
 from .tools import quantum_volume_circuit, mixed_unitary_noise_model, \
                    reset_noise_model, kraus_noise_model, no_noise
 
@@ -32,8 +28,10 @@ class QuantumVolumeTimeSuite:
     - mixed state
     - reset
     - kraus
+
     For each noise model, we want to test various configurations of number of
     qubits
+
     The methods defined in this class will be executed by ASV framework as many
     times as the combination of all parameters exist in `self.params`, for
     exmaple: self.params = ([1,2,3],[4,5,6]), will run all methdos 9 times:
@@ -52,8 +50,8 @@ class QuantumVolumeTimeSuite:
         self.timeout = 60 * 20
         self.qv_circuits = []
         self.backend = QasmSimulator()
-        for num_qubits in (5, 10, 15, 20, 25, 30):
-            for depth in (5, 10, 15, 20, 25, 30 ):
+        for num_qubits in (5, 10, 15):
+            for depth in (10, ):
                 # We want always the same seed, as we want always the same
                 # circuits for the same value pairs of qubits and depth
                 circ = quantum_volume_circuit(num_qubits, depth, seed=1)
@@ -67,7 +65,10 @@ class QuantumVolumeTimeSuite:
         # bench(qv_circuits, None) => bench(qv_circuits, mixed()) =>
         # bench(qv_circuits, reset) => bench(qv_circuits, kraus())
         self.params = (self.qv_circuits, [
-            no_noise()
+            no_noise(),
+            mixed_unitary_noise_model(),
+            reset_noise_model(),
+            kraus_noise_model()
         ])
 
     def setup(self, qobj, noise_model_wrapper):
@@ -75,6 +76,8 @@ class QuantumVolumeTimeSuite:
 
     def time_quantum_volume(self, qobj, noise_model_wrapper):
         """ Benchmark for quantum volume """
-        result = self.backend.run(qobj).result()
+        result = self.backend.run(
+            qobj, noise_model=noise_model_wrapper()
+        ).result()
         if result.status != 'COMPLETED':
             raise QiskitError("Simulation failed. Status: " + result.status)

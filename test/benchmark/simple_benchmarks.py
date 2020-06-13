@@ -10,16 +10,13 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-# NOTICE: Daniel Strano, one of the authors of vm6502q/qrack, has modified
-# files in this directory to use the Qrack provider instead of the
-# Aer provider, for the Qrack provider's own coverage.
 """
 Airspeed Velocity (ASV) benchmarks suite for simple 1-qubit/2-qubit gates
 """
 
 from qiskit import QiskitError
 from qiskit.compiler import assemble
-from qiskit.providers.qrack import QasmSimulator
+from qiskit.providers.aer import QasmSimulator
 from .tools import mixed_unitary_noise_model, \
                    reset_noise_model, kraus_noise_model, no_noise, \
                    simple_cnot_circuit, simple_u3_circuit
@@ -53,7 +50,7 @@ class SimpleU3TimeSuite:
         self.timeout = 60 * 20
         self.backend = QasmSimulator()
         self.circuits = []
-        for i in range(4, 31):
+        for i in 5, 10, 15:
             circuit = simple_u3_circuit(i)
             self.circuits.append(assemble(circuit, self.backend, shots=1))
 
@@ -61,12 +58,17 @@ class SimpleU3TimeSuite:
             "Simple u3 circuits", "Noise Model"
         ]
         self.params = (self.circuits, [
-            no_noise()
+            no_noise(),
+            mixed_unitary_noise_model(),
+            reset_noise_model(),
+            kraus_noise_model()
         ])
 
     def time_simple_u3(self, qobj, noise_model_wrapper):
         """ Benchmark for circuits with a simple u3 gate """
-        result = self.backend.run(qobj).result()
+        result = self.backend.run(
+            qobj, noise_model=noise_model_wrapper()
+        ).result()
         if result.status != 'COMPLETED':
             raise QiskitError("Simulation failed. Status: " + result.status)
 
@@ -86,13 +88,20 @@ class SimpleCxTimeSuite:
         self.param_names = [
             "Simple cnot circuits", "Noise Model"
         ]
-        for i in range(4, 31):
+        for i in 5, 10, 15:
             circuit = simple_cnot_circuit(i)
             self.circuits.append(assemble(circuit, self.backend, shots=1))
-        self.params = (self.circuits)
+        self.params = (self.circuits, [
+            no_noise(),
+            mixed_unitary_noise_model(),
+            reset_noise_model(),
+            kraus_noise_model()
+        ])
 
-    def time_simple_cx(self, qobj):
+    def time_simple_cx(self, qobj, noise_model_wrapper):
         """ Benchmark for circuits with a simple cx gate """
-        result = self.backend.run(qobj).result()
+        result = self.backend.run(
+            qobj, noise_model=noise_model_wrapper()
+        ).result()
         if result.status != 'COMPLETED':
             raise QiskitError("Simulation failed. Status: " + result.status)

@@ -1,0 +1,46 @@
+time: 2020-06-13 17:34:52.123268Z
+tags: worker-5
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_max_memory_settings
+time: 2020-06-13 17:34:52.141287Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_max_memory_settings [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+1A2
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_thread_management.py", line 77, in test_max_memory_settings
+    msg="Default 'max_memory_mb' is too small.")
+  File "/home/iamu/anaconda3/lib/python3.7/unittest/case.py", line 1255, in assertGreaterEqual
+    if not a >= b:
+TypeError: '>=' not supported between instances of 'NoneType' and 'int'
+0
+]
+tags: -worker-5
+time: 2020-06-13 17:34:58.961685Z
+tags: worker-5
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_simulation_failed
+time: 2020-06-13 17:34:58.965583Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_simulation_failed [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+4DE
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_basics.py", line 44, in test_simulation_failed
+    self.assertRaises(QrackError, job.result)
+  File "/home/iamu/anaconda3/lib/python3.7/unittest/case.py", line 756, in assertRaises
+    return context.handle('assertRaises', args, kwargs)
+  File "/home/iamu/anaconda3/lib/python3.7/unittest/case.py", line 178, in handle
+    callable_obj(*args, **kwargs)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/utils/mock.py", line 200, in result
+    return self._future.result(timeout=timeout)
+  File "/home/iamu/anaconda3/lib/python3.7/concurrent/futures/_base.py", line 428, in result
+    return self.__get_result()
+  File "/home/iamu/anaconda3/lib/python3.7/concurrent/futures/_base.py", line 384, in __get_result
+    raise self._exception
+  File "/home/iamu/anaconda3/lib/python3.7/concurrent/futures/thread.py", line 57, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/utils/mock.py", line 179, in run_job
+    raise AerError("Mocking a failure in the QASM Simulator")
+qiskit.providers.aer.aererror.AerError: 'Mocking a failure in the QASM Simulator'
+0
+]
+tags: -worker-5

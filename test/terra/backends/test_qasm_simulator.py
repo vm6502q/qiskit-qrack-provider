@@ -10,10 +10,6 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-# NOTICE: Daniel Strano, one of the authors of vm6502q/qrack, has modified
-# files in this directory to use the Qrack provider instead of the
-# Aer provider, for the Qrack provider's own coverage.
-
 """
 QasmSimulator Integration Tests
 """
@@ -28,44 +24,58 @@ from test.terra.backends.qasm_simulator.qasm_measure import QasmMultiQubitMeasur
 from test.terra.backends.qasm_simulator.qasm_cliffords import QasmCliffordTests
 from test.terra.backends.qasm_simulator.qasm_cliffords import QasmCliffordTestsWaltzBasis
 from test.terra.backends.qasm_simulator.qasm_cliffords import QasmCliffordTestsMinimalBasis
-from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTests
+from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsTGate
+from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsCCXGate
+from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsCGates
 from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsWaltzBasis
 from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsMinimalBasis
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmUnitaryGateTests
+from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmDiagonalGateTests
 from test.terra.backends.qasm_simulator.qasm_initialize import QasmInitializeTests
+from test.terra.backends.qasm_simulator.qasm_multiplexer import QasmMultiplexerTests
 # Conditional instruction tests
 from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalGateTests
+#from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalUnitaryTests
 # Algorithm circuit tests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsWaltzBasis
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsMinimalBasis
 # Other tests
-from test.terra.backends.qasm_simulator.qasm_method import QasmMethodTests
+from test.terra.backends.qasm_simulator.qasm_thread_management import QasmThreadManagementTests
+from test.terra.backends.qasm_simulator.qasm_fusion import QasmFusionTests
+from test.terra.backends.qasm_simulator.qasm_delay_measure import QasmDelayMeasureTests
 from test.terra.backends.qasm_simulator.qasm_basics import QasmBasicsTests
 
 
 class TestQasmSimulator(common.QiskitAerTestCase,
-                        QasmMethodTests,
                         QasmMeasureTests,
                         QasmMultiQubitMeasureTests,
                         QasmResetTests,
                         QasmInitializeTests,
                         QasmConditionalGateTests,
+                        #QasmConditionalUnitaryTests,
                         QasmCliffordTests,
                         QasmCliffordTestsWaltzBasis,
                         QasmCliffordTestsMinimalBasis,
-                        QasmNonCliffordTests,
+                        QasmNonCliffordTestsTGate,
+                        QasmNonCliffordTestsCCXGate,
+                        QasmNonCliffordTestsCGates,
                         QasmNonCliffordTestsWaltzBasis,
                         QasmNonCliffordTestsMinimalBasis,
+                        QasmMultiplexerTests,
                         QasmAlgorithmTests,
                         QasmAlgorithmTestsWaltzBasis,
                         QasmAlgorithmTestsMinimalBasis,
                         QasmUnitaryGateTests,
+                        QasmDiagonalGateTests,
+                        QasmThreadManagementTests,
+                        QasmFusionTests,
+                        QasmDelayMeasureTests,
                         QasmBasicsTests):
     """QasmSimulator automatic method tests."""
 
     BACKEND_OPTS = {
-        #"seed_simulator": 2113
+        "seed_simulator": 2113
     }
 
 
