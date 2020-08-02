@@ -54,13 +54,13 @@ public:
     QrackController() = default;
     virtual ~QrackController() = default;
 
-    virtual void initialize_qreg(bool use_opencl, bool use_qunit, unsigned char num_qubits, int device_id, bool doNormalize, Qrack::real1 zero_threshold) {
+    virtual void initialize_qreg(bool use_opencl, bool use_qunit, unsigned char num_qubits, int device_id, bool opencl_multi, bool doNormalize, Qrack::real1 zero_threshold) {
         deviceId = device_id;
         doNorm = doNormalize;
         amplitudeFloor = zero_threshold;
 
         qIType2 = use_opencl ? Qrack::QINTERFACE_OPTIMAL : Qrack::QINTERFACE_CPU;
-        qIType1 = use_qunit ? Qrack::QINTERFACE_QUNIT : qIType2;
+        qIType1 = use_qunit ? (opencl_mutli ? Qrack::QINTERFACE_QUNIT_MULTI : Qrack::QINTERFACE_QUNIT) : qIType2;
 
         qReg = MAKE_ENGINE(num_qubits, 0);
     }

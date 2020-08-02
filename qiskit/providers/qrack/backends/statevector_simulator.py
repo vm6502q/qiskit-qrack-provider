@@ -68,6 +68,11 @@ class StatevectorSimulator(BaseBackend):
       discovery on OpenCL load/compilation). "-1" indicates to use
       the Qrack default device, (the last discovered, which tends to
       be a non-CPU accelerator, on common personal hardware systems.)
+      If "opencl-multi" is active, set the default device index.
+
+    * ``"opencl-multi"`` (bool): (If OpenCL and Schmidt decomposition
+      are enabled,) distribute Schmidt-decomposed sub-engines among
+      all available OpenCL devices.
     """
 
     DEFAULT_CONFIGURATION = {
@@ -89,6 +94,7 @@ class StatevectorSimulator(BaseBackend):
         'schmidt_decompose': True,
         'opencl': True,
         'opencl_device_id': -1,
+        'opencl_multi': False,
         'basis_gates': [
             'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
             'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
@@ -401,6 +407,7 @@ class StatevectorSimulator(BaseBackend):
                                 self._configuration.schmidt_decompose,
                                 self._number_of_qubits,
                                 self._configuration.opencl_device_id,
+                                self._configuration.opencl_multi,
                                 self._configuration.normalize,
                                 self._configuration.zero_threshold)
         except OverflowError:

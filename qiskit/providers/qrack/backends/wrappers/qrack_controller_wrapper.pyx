@@ -22,7 +22,7 @@ from libcpp.vector cimport vector
 cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
     cdef cppclass QrackController:
         QrackController() except +
-        void initialize_qreg(bool use_opencl, bool use_qunit, unsigned char num_qubits, int opencl_device_id, bool doNormalize, double zero_threshold) except +
+        void initialize_qreg(bool use_opencl, bool use_qunit, unsigned char num_qubits, int opencl_device_id, bool opencl_multi, bool doNormalize, double zero_threshold) except +
         void u(unsigned char* bits, unsigned char bitCount, double* params)
         void u2(unsigned char* bits, unsigned char bitCount, double* params)
         void u1(unsigned char* bits, unsigned char bitCount, double* params)
@@ -72,8 +72,8 @@ cdef class PyQrackController:
         else:
             return [x, 0.0]
 
-    def initialize_qreg(self, use_opencl, use_qunit, num_qubits, opencl_device_id, doNormalize, zero_threshold):
-        self.c_class.initialize_qreg(use_opencl, use_qunit, num_qubits, opencl_device_id, doNormalize, zero_threshold)
+    def initialize_qreg(self, use_opencl, use_qunit, num_qubits, opencl_device_id, opencl_multi, doNormalize, zero_threshold):
+        self.c_class.initialize_qreg(use_opencl, use_qunit, num_qubits, opencl_device_id, opencl_multi, doNormalize, zero_threshold)
 
     def u(self, bits, params):
         bitCount = len(bits)
