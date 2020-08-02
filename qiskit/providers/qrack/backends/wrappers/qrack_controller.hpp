@@ -60,7 +60,7 @@ public:
         amplitudeFloor = zero_threshold;
 
         qIType2 = use_opencl ? Qrack::QINTERFACE_OPTIMAL : Qrack::QINTERFACE_CPU;
-        qIType1 = use_qunit ? (opencl_mutli ? Qrack::QINTERFACE_QUNIT_MULTI : Qrack::QINTERFACE_QUNIT) : qIType2;
+        qIType1 = use_qunit ? (opencl_multi ? Qrack::QINTERFACE_QUNIT_MULTI : Qrack::QINTERFACE_QUNIT) : qIType2;
 
         qReg = MAKE_ENGINE(num_qubits, 0);
     }
