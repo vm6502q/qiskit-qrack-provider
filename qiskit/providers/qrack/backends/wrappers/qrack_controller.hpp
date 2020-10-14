@@ -168,25 +168,25 @@ public:
 
     virtual void s(unsigned char* bits, unsigned char bitCount) {
         for (bitLenInt i = 0; i < bitCount; i++) {
-            qReg->S((bitLenInt)bits[i]);
+            qReg->IS((bitLenInt)bits[i]);
         }
     }
 
     virtual void sdg(unsigned char* bits, unsigned char bitCount) {
         for (bitLenInt i = 0; i < bitCount; i++) {
-            qReg->IS((bitLenInt)bits[i]);
+            qReg->S((bitLenInt)bits[i]);
         }
     }
 
     virtual void t(unsigned char* bits, unsigned char bitCount) {
         for (bitLenInt i = 0; i < bitCount; i++) {
-            qReg->T((bitLenInt)bits[i]);
+            qReg->IT((bitLenInt)bits[i]);
         }
     }
 
     virtual void tdg(unsigned char* bits, unsigned char bitCount) {
         for (bitLenInt i = 0; i < bitCount; i++) {
-            qReg->IT((bitLenInt)bits[i]);
+            qReg->T((bitLenInt)bits[i]);
         }
     }
 
