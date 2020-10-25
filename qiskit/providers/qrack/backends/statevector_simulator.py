@@ -96,8 +96,8 @@ class StatevectorSimulator(BaseBackend):
         'opencl_device_id': -1,
         'opencl_multi': False,
         'basis_gates': [
-            'u1', 'u2', 'u3', 'cx', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h', 'rx', 'ry',
-            'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
+            'u1', 'u2', 'u3', 'u', 'r', 'p', 'cx', 'cz', 'ch', 'id', 'x', 'sx', 'y', 'z', 'h',
+            'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
             'multiplexer', 'reset', 'measure'
         ],
@@ -124,6 +124,28 @@ class StatevectorSimulator(BaseBackend):
             'Single-qubit gate with three rotation angles',
             'qasm_def':
             'gate u3(theta,phi,lam) q { U(theta,phi,lam) q; }'
+        }, {
+            'name':
+            'u',
+            'parameters': ['theta', 'phi', 'lam'],
+            'conditional':
+            True,
+            'description':
+            'Single-qubit gate with three rotation angles',
+            'qasm_def':
+            'gate u(theta,phi,lam) q { U(theta,phi,lam) q; }'
+        }, {
+            'name': 'p',
+            'parameters': ['lam'],
+            'conditional': True,
+            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
+            'qasm_def': 'gate p(lam) q { U(0,0,lam) q; }'
+        }, {
+            'name': 'r',
+            'parameters': ['lam'],
+            'conditional': True,
+            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
+            'qasm_def': 'gate p(lam) q { U(0,0,lam) q; }'
         }, {
             'name': 'cx',
             'parameters': [],
@@ -154,6 +176,12 @@ class StatevectorSimulator(BaseBackend):
             'conditional': True,
             'description': 'Single-qubit Pauli-X gate',
             'qasm_def': 'gate x a { U(pi,0,pi) a; }'
+        }, {
+            'name': 'sx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit square root of Pauli-X gate',
+            'qasm_def': 'gate sx a { rz(-pi/2) a; h a; rz(-pi/2); }'
         }, {
             'name': 'y',
             'parameters': [],
@@ -329,8 +357,29 @@ class StatevectorSimulator(BaseBackend):
         self._statevector = None
         self._results = {}
         self._chop_threshold = None # chop to 10^-8
+        
+    def options(self):
+        """Return the current simulator options"""
+        #return self._options
+        return None
 
-    def run(self, qobj, backend_options={}):
+    def set_options(self, **backend_options):
+        """Set the simulator options"""
+        #for key, val in backend_options.items():
+        #    self._set_option(key, val)
+
+    def clear_options(self):
+        """Reset the simulator options to default values."""
+        #self._custom_configuration = None
+        #self._custom_properties = None
+        #self._custom_defaults = None
+        #self._options = {}
+
+    def run(self,
+            qobj,
+            backend_options=None,  # DEPRECATED
+            validate=False,
+            **run_options):
         """
         Run qobj asynchronously.
         Args:
@@ -461,12 +510,14 @@ class StatevectorSimulator(BaseBackend):
                     if value != int(operation.conditional.val, 16):
                         continue
 
-            if name == 'u1':
+            if (name == 'u1') or (name == 'p'):
                 sim.u1(operation.qubits, operation.params)
             elif name == 'u2':
                 sim.u2(operation.qubits, operation.params)
-            elif name == 'u3':
+            elif (name == 'u3') or (name == 'u'):
                 sim.u(operation.qubits, operation.params)
+            elif name == 'r':
+                sim.u(operation.qubits, [operation.params[0], operation.params[1] - np.pi/2, -operation.params[1] + np.pi/2])
             elif name == 'unitary':
                 if (len(operation.qubits) != len(operation.params)) or (len(operation.params) != 2):
                     raise QrackError('Invalid unitary instruction. Qrack only supports single qubit targets for "unitary."')
@@ -480,6 +531,8 @@ class StatevectorSimulator(BaseBackend):
                 sim.ch(operation.qubits)
             elif name == 'x':
                 sim.x(operation.qubits)
+            elif name == 'sx':
+                sim.sx(operation.qubits)
             elif name == 'y':
                 sim.y(operation.qubits)
             elif name == 'z':

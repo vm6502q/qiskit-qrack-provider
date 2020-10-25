@@ -35,7 +35,7 @@ class QasmConditionalGateTests:
         targets = ref_conditionals.conditional_counts_1bit(shots)
         qobj = assemble(circuits, self.SIMULATOR, shots=shots)
         result = self.SIMULATOR.run(
-            qobj, backend_options=self.BACKEND_OPTS).result()
+            qobj, **self.BACKEND_OPTS).result()
         self.assertSuccess(result)
         self.compare_counts(result, circuits, targets, delta=0)
 
@@ -47,44 +47,77 @@ class QasmConditionalGateTests:
         targets = ref_conditionals.conditional_counts_2bit(shots)
         qobj = assemble(circuits, self.SIMULATOR, shots=shots)
         result = self.SIMULATOR.run(
-            qobj, backend_options=self.BACKEND_OPTS).result()
+            qobj, **self.BACKEND_OPTS).result()
         self.assertSuccess(result)
         self.compare_counts(result, circuits, targets, delta=0)
 
 
-#TODO: Support this with Qrack?
-#class QasmConditionalUnitaryTests:
-#    """QasmSimulator conditional tests."""
-#
-#    SIMULATOR = QasmSimulator()
-#    BACKEND_OPTS = {}
-#
-#    # ---------------------------------------------------------------------
-#    # Test conditional
-#    # ---------------------------------------------------------------------
-#    def test_conditional_unitary_1bit(self):
-#        """Test conditional unitary operations on 1-bit conditional register."""
-#        shots = 100
-#        circuits = ref_conditionals.conditional_circuits_1bit(
-#            final_measure=True, conditional_type='unitary')
-#        targets = ref_conditionals.conditional_counts_1bit(shots)
-#        qobj = assemble(circuits, self.SIMULATOR, shots=shots)
-#        result = self.SIMULATOR.run(
-#            qobj, backend_options=self.BACKEND_OPTS).result()
-#        self.assertSuccess(result)
-#        self.compare_counts(result, circuits, targets, delta=0)
-#
-#    def test_conditional_unitary_2bit(self):
-#        """Test conditional unitary operations on 2-bit conditional register."""
-#        shots = 100
-#        circuits = ref_conditionals.conditional_circuits_2bit(
-#            final_measure=True, conditional_type='unitary')
-#        targets = ref_conditionals.conditional_counts_2bit(shots)
-#        qobj = assemble(circuits, self.SIMULATOR, shots=shots)
-#        result = self.SIMULATOR.run(
-#            qobj, backend_options=self.BACKEND_OPTS).result()
-#        self.assertSuccess(result)
-#        self.compare_counts(result, circuits, targets, delta=0)
+class QasmConditionalUnitaryTests:
+    """QasmSimulator conditional tests."""
+
+    SIMULATOR = QasmSimulator()
+    BACKEND_OPTS = {}
+
+    # ---------------------------------------------------------------------
+    # Test conditional
+    # ---------------------------------------------------------------------
+    def test_conditional_unitary_1bit(self):
+        """Test conditional unitary operations on 1-bit conditional register."""
+        shots = 100
+        circuits = ref_conditionals.conditional_circuits_1bit(
+            final_measure=True, conditional_type='unitary')
+        targets = ref_conditionals.conditional_counts_1bit(shots)
+        qobj = assemble(circuits, self.SIMULATOR, shots=shots)
+        result = self.SIMULATOR.run(
+            qobj, **self.BACKEND_OPTS).result()
+        self.assertSuccess(result)
+        self.compare_counts(result, circuits, targets, delta=0)
+
+    def test_conditional_unitary_2bit(self):
+        """Test conditional unitary operations on 2-bit conditional register."""
+        shots = 100
+        circuits = ref_conditionals.conditional_circuits_2bit(
+            final_measure=True, conditional_type='unitary')
+        targets = ref_conditionals.conditional_counts_2bit(shots)
+        qobj = assemble(circuits, self.SIMULATOR, shots=shots)
+        result = self.SIMULATOR.run(
+            qobj, **self.BACKEND_OPTS).result()
+        self.assertSuccess(result)
+        self.compare_counts(result, circuits, targets, delta=0)
+
+
+class QasmConditionalKrausTests:
+    """QasmSimulator conditional tests."""
+
+    SIMULATOR = QasmSimulator()
+    BACKEND_OPTS = {}
+
+    # ---------------------------------------------------------------------
+    # Test conditional
+    # ---------------------------------------------------------------------
+    def test_conditional_unitary_1bit(self):
+        """Test conditional kraus operations on 1-bit conditional register."""
+        shots = 100
+        circuits = ref_conditionals.conditional_circuits_1bit(
+            final_measure=True, conditional_type='kraus')
+        targets = ref_conditionals.conditional_counts_1bit(shots)
+        qobj = assemble(circuits, self.SIMULATOR, shots=shots)
+        result = self.SIMULATOR.run(
+            qobj, **self.BACKEND_OPTS).result()
+        self.assertSuccess(result)
+        self.compare_counts(result, circuits, targets, delta=0)
+
+    def test_conditional_kraus_2bit(self):
+        """Test conditional kraus operations on 2-bit conditional register."""
+        shots = 100
+        circuits = ref_conditionals.conditional_circuits_2bit(
+            final_measure=True, conditional_type='kraus')
+        targets = ref_conditionals.conditional_counts_2bit(shots)
+        qobj = assemble(circuits, self.SIMULATOR, shots=shots)
+        result = self.SIMULATOR.run(
+            qobj, **self.BACKEND_OPTS).result()
+        self.assertSuccess(result)
+        self.compare_counts(result, circuits, targets, delta=0)
 
 
 class QasmConditionalSuperOpTests:
@@ -104,7 +137,7 @@ class QasmConditionalSuperOpTests:
         targets = ref_conditionals.conditional_counts_1bit(shots)
         qobj = assemble(circuits, self.SIMULATOR, shots=shots)
         result = self.SIMULATOR.run(
-            qobj, backend_options=self.BACKEND_OPTS).result()
+            qobj, **self.BACKEND_OPTS).result()
         self.assertSuccess(result)
         self.compare_counts(result, circuits, targets, delta=0)
 
@@ -116,6 +149,6 @@ class QasmConditionalSuperOpTests:
         targets = ref_conditionals.conditional_counts_2bit(shots)
         qobj = assemble(circuits, self.SIMULATOR, shots=shots)
         result = self.SIMULATOR.run(
-            qobj, backend_options=self.BACKEND_OPTS).result()
+            qobj, **self.BACKEND_OPTS).result()
         self.assertSuccess(result)
         self.compare_counts(result, circuits, targets, delta=0)

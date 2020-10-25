@@ -18,8 +18,8 @@ import unittest
 import multiprocessing
 
 from qiskit import QuantumCircuit, assemble, execute
-from qiskit.providers.qrack import QrackProvider, QasmSimulator
-from qiskit.providers.qrack import QrackError
+from qiskit.providers.aer import AerProvider, QasmSimulator
+from qiskit.providers.aer import AerError
 
 # Backwards compatibility for Terra <= 0.13
 if not hasattr(QuantumCircuit, 'i'):
@@ -30,19 +30,19 @@ def is_method_available(backend, method):
     """Check if input method is available for the qasm simulator."""
     # Simple test circuit that should work on all simulators.
     if isinstance(backend, str):
-        backend = QrackProvider().get_backend(backend)
+        backend = AerProvider().get_backend(backend)
     dummy_circ = QuantumCircuit(1)
     dummy_circ.i(0)
     qobj = assemble(dummy_circ, optimization_level=0)
     backend_options = {"method": method}
     try:
-        job = backend.run(qobj, backend_options=backend_options)
+        job = backend.run(qobj, **backend_options)
         result = job.result()
         error_msg = 'not supported on this system'
         if not result.success and error_msg in result.results[0].status:
             return False
         return True
-    except QrackError:
+    except AerError:
         return True
 
 
@@ -50,7 +50,7 @@ def requires_method(backend, method):
     """Decorator that skips test if a simulation method is unavailable.
 
     Args:
-        backend (str or QrackBackend): backend to check method for.
+        backend (str or AerBackend): backend to check method for.
         method (str): the method string
 
     Returns:

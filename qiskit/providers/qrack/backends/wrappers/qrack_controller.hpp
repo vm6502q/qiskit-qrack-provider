@@ -153,6 +153,12 @@ public:
             qReg->X((bitLenInt)bits[i]);
         }
     }
+    
+    virtual void sx(unsigned char* bits, unsigned char bitCount) {
+        for (bitLenInt i = 0; i < bitCount; i++) {
+            qReg->SqrtX((bitLenInt)bits[i]);
+        }
+    }
 
     virtual void y(unsigned char* bits, unsigned char bitCount) {
         for (bitLenInt i = 0; i < bitCount; i++) {

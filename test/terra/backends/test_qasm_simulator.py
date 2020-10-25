@@ -33,27 +33,47 @@ from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmUnitaryGate
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmDiagonalGateTests
 from test.terra.backends.qasm_simulator.qasm_initialize import QasmInitializeTests
 from test.terra.backends.qasm_simulator.qasm_multiplexer import QasmMultiplexerTests
+from test.terra.backends.qasm_simulator.qasm_standard_gates import QasmStandardGateStatevectorTests
+from test.terra.backends.qasm_simulator.qasm_standard_gates import QasmStandardGateDensityMatrixTests
 # Conditional instruction tests
 from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalGateTests
 #from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalUnitaryTests
+#from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalKrausTests
 # Algorithm circuit tests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTests
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsWaltzBasis
 from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTestsMinimalBasis
+# Noise model simulation tests
+#from test.terra.backends.qasm_simulator.qasm_noise import QasmReadoutNoiseTests
+#from test.terra.backends.qasm_simulator.qasm_noise import QasmPauliNoiseTests
+#from test.terra.backends.qasm_simulator.qasm_noise import QasmResetNoiseTests
+#from test.terra.backends.qasm_simulator.qasm_noise import QasmKrausNoiseTests
+# Snapshot tests
+#from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotStatevectorTests
+#from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotDensityMatrixTests
+#from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotStabilizerTests
+#from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotProbabilitiesTests
+#from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpValPauliTests
+#from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpValPauliNCTests
+#from test.terra.backends.qasm_simulator.qasm_snapshot import QasmSnapshotExpValMatrixTests
 # Other tests
-from test.terra.backends.qasm_simulator.qasm_thread_management import QasmThreadManagementTests
+#from test.terra.backends.qasm_simulator.qasm_method import QasmMethodTests
+#from test.terra.backends.qasm_simulator.qasm_thread_management import QasmThreadManagementTests
 from test.terra.backends.qasm_simulator.qasm_fusion import QasmFusionTests
 from test.terra.backends.qasm_simulator.qasm_delay_measure import QasmDelayMeasureTests
+from test.terra.backends.qasm_simulator.qasm_truncate import QasmQubitsTruncateTests
 from test.terra.backends.qasm_simulator.qasm_basics import QasmBasicsTests
 
 
 class TestQasmSimulator(common.QiskitAerTestCase,
+                        #QasmMethodTests,
                         QasmMeasureTests,
                         QasmMultiQubitMeasureTests,
                         QasmResetTests,
                         QasmInitializeTests,
                         QasmConditionalGateTests,
                         #QasmConditionalUnitaryTests,
+                        #QasmConditionalKrausTests,
                         QasmCliffordTests,
                         QasmCliffordTestsWaltzBasis,
                         QasmCliffordTestsMinimalBasis,
@@ -68,14 +88,30 @@ class TestQasmSimulator(common.QiskitAerTestCase,
                         QasmAlgorithmTestsMinimalBasis,
                         QasmUnitaryGateTests,
                         QasmDiagonalGateTests,
-                        QasmThreadManagementTests,
+                        #QasmReadoutNoiseTests,
+                        #QasmPauliNoiseTests,
+                        #QasmThreadManagementTests,
                         QasmFusionTests,
                         QasmDelayMeasureTests,
-                        QasmBasicsTests):
+                        QasmQubitsTruncateTests,
+                        #QasmResetNoiseTests,
+                        #QasmKrausNoiseTests,
+                        QasmBasicsTests,
+                        QasmStandardGateStatevectorTests,
+                        QasmStandardGateDensityMatrixTests
+                        #QasmSnapshotStatevectorTests,
+                        #QasmSnapshotDensityMatrixTests,
+                        #QasmSnapshotProbabilitiesTests,
+                        #QasmSnapshotExpValPauliTests,
+                        #QasmSnapshotExpValPauliNCTests,
+                        #QasmSnapshotExpValMatrixTests,
+                        #QasmSnapshotStabilizerTests
+                        ):
     """QasmSimulator automatic method tests."""
 
     BACKEND_OPTS = {
-        "seed_simulator": 2113
+        "seed_simulator": 2113,
+        "max_parallel_threads": 1
     }
 
 

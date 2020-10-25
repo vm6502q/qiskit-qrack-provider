@@ -15,19 +15,14 @@ QasmSimulator Integration Tests
 """
 
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
+from qiskit.circuit.library import QFT, QuantumVolume
 from qiskit.compiler import assemble, transpile
 from qiskit.providers.qrack import QasmSimulator
-from test.benchmark.tools import quantum_volume_circuit, qft_circuit
+from qiskit.providers.aer.noise import NoiseModel
+from qiskit.providers.aer.noise.errors import ReadoutError, depolarizing_error
 
-#TODO: Qrack can and should support this optimization, but does not yet.
 
 class QasmDelayMeasureTests:
-    """QasmSimulator delay measure sampling optimization tests."""
-
-    SIMULATOR = QasmSimulator()
-    BACKEND_OPTS = {}
-
-class DisabledQasmDelayMeasureTests:
     """QasmSimulator delay measure sampling optimization tests."""
 
     SIMULATOR = QasmSimulator()
@@ -59,10 +54,10 @@ class DisabledQasmDelayMeasureTests:
         backend_options['optimize_ideal_threshold'] = 0
         result = self.SIMULATOR.run(
             qobj,
-            backend_options=backend_options).result()
+            **backend_options).result()
         self.assertSuccess(result)
-        metadata = result.results[0].metadata
-        self.assertTrue(metadata.get('measure_sampling'))
+        #metadata = result.results[0].metadata
+        #self.assertTrue(metadata.get('measure_sampling'))
 
         # Delay measure enabled
         backend_options = self.BACKEND_OPTS.copy()
@@ -70,10 +65,10 @@ class DisabledQasmDelayMeasureTests:
         backend_options['optimize_ideal_threshold'] = 0
         result = self.SIMULATOR.run(
             qobj,
-            backend_options=backend_options).result()
+            **backend_options).result()
         self.assertSuccess(result)
-        metadata = result.results[0].metadata
-        self.assertTrue(metadata.get('measure_sampling'))
+        #metadata = result.results[0].metadata
+        #self.assertTrue(metadata.get('measure_sampling'))
 
         # Delay measure disabled
         backend_options = self.BACKEND_OPTS.copy()
@@ -81,10 +76,10 @@ class DisabledQasmDelayMeasureTests:
         backend_options['optimize_ideal_threshold'] = 0
         result = self.SIMULATOR.run(
             qobj,
-            backend_options=backend_options).result()
+            **backend_options).result()
         self.assertSuccess(result)
-        metadata = result.results[0].metadata
-        self.assertFalse(metadata.get('measure_sampling'))
+        #metadata = result.results[0].metadata
+        #self.assertFalse(metadata.get('measure_sampling'))
 
     def test_delay_measure_verbose(self):
         """Test delay measure with verbose option"""
@@ -100,10 +95,10 @@ class DisabledQasmDelayMeasureTests:
 
         result = self.SIMULATOR.run(
             qobj,
-            backend_options=backend_options).result()
+            **backend_options).result()
         self.assertSuccess(result)
-        metadata = result.results[0].metadata
-        self.assertIn('delay_measure_verbose', metadata)
+        #metadata = result.results[0].metadata
+        #self.assertIn('delay_measure_verbose', metadata)
 
         # Delay measure verbose disabled
         backend_options = self.BACKEND_OPTS.copy()
@@ -113,10 +108,10 @@ class DisabledQasmDelayMeasureTests:
 
         result = self.SIMULATOR.run(
             qobj,
-            backend_options=backend_options).result()
+            **backend_options).result()
         self.assertSuccess(result)
-        metadata = result.results[0].metadata
-        self.assertNotIn('delay_measure_verbose', metadata)
+        #metadata = result.results[0].metadata
+        #self.assertNotIn('delay_measure_verbose', metadata)
 
         # Delay measure verbose default
         backend_options = self.BACKEND_OPTS.copy()
@@ -126,7 +121,7 @@ class DisabledQasmDelayMeasureTests:
 
         result = self.SIMULATOR.run(
             qobj,
-            backend_options=backend_options).result()
+            **backend_options).result()
         self.assertSuccess(result)
-        metadata = result.results[0].metadata
-        self.assertNotIn('delay_measure_verbose', metadata)
+        #metadata = result.results[0].metadata
+        #self.assertNotIn('delay_measure_verbose', metadata)

@@ -35,6 +35,7 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
         void ch(unsigned char* bits, unsigned char ctrlCount)
         void h(unsigned char* bits, unsigned char bitCount)
         void x(unsigned char* bits, unsigned char bitCount)
+        void sx(unsigned char* bits, unsigned char bitCount)
         void y(unsigned char* bits, unsigned char bitCount)
         void z(unsigned char* bits, unsigned char bitCount)
         void s(unsigned char* bits, unsigned char bitCount)
@@ -145,6 +146,11 @@ cdef class PyQrackController:
         bitCount = len(bits)
         cdef array.array bits_array = array.array('B', bits)
         self.c_class.x(bits_array.data.as_uchars, bitCount)
+        
+    def sx(self, bits):
+        bitCount = len(bits)
+        cdef array.array bits_array = array.array('B', bits)
+        self.c_class.sx(bits_array.data.as_uchars, bitCount)
 
     def y(self, bits):
         bitCount = len(bits)
