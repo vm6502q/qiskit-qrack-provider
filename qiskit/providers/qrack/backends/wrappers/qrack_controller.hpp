@@ -16,7 +16,6 @@
 #include <cstdint>
 
 #include "qrack/qfactory.hpp"
-#include "qrack/common/config.h"
 
 namespace AER {
 namespace Simulator {
@@ -325,7 +324,7 @@ public:
 
         delete[] qPowers;
 
-#if ENABLE_PURE32 || ENABLE_UINT128
+#if ENABLE_UINT32 || ENABLE_UINT128
         std::map<unsigned long int, int> resultULL;
 
         std::map<bitCapInt, int>::iterator it = result.begin();
