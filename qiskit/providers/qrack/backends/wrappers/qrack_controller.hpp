@@ -324,7 +324,7 @@ public:
 
         delete[] qPowers;
 
-#if ENABLE_UINT32 || ENABLE_UINT128
+#if QCCAPPOW != 6
         std::map<unsigned long int, int> resultULL;
 
         std::map<bitCapInt, int>::iterator it = result.begin();
