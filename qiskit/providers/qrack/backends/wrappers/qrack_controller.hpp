@@ -59,8 +59,8 @@ public:
         doNorm = doNormalize;
         amplitudeFloor = zero_threshold;
 
-        qIType3 = use_opencl ? Qrack::QINTERFACE_OPTIMAL : Qrack::QINTERFACE_CPU;
-        qIType2 = (use_qunit && use_qpager) ? Qrack::QINTERFACE_QPAGER : qIType3;
+        qIType3 = (use_qunit && use_qpager) ? Qrack::QINTERFACE_QPAGER : (use_opencl ? Qrack::QINTERFACE_HYBRID : Qrack::QINTERFACE_CPU);
+        qIType2 = (!use_qunit && use_qpager) ? qIType3 : Qrack::QINTERFACE_STABILIZER_HYBRID;
         qIType1 = use_qunit ? (opencl_multi ? Qrack::QINTERFACE_QUNIT_MULTI : Qrack::QINTERFACE_QUNIT) : (use_qpager ? Qrack::QINTERFACE_QPAGER : qIType2);
 
         qReg = MAKE_ENGINE(num_qubits, 0);

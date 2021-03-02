@@ -94,7 +94,7 @@ class StatevectorSimulator(BaseBackend):
         'normalize': True,
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
-        'paging': False,
+        'paging': True,
         'opencl': True,
         'opencl_device_id': -1,
         'opencl_multi': False,

@@ -58,11 +58,6 @@ class QasmSimulator(BaseBackend):
 
     * ``"paging"`` (bool): If true, enable "QPager" layer of Qrack.
 
-    * ``"hybrid"`` (bool): If true, enable Qrack CPU/GPU hybrid simulation.
-
-    * ``"stabilizer"`` (bool): If true, enable Qrack "QStabilizerHybrid"
-      layer of Qrack. (This can be enabled with universal gate simulations.)
-
     * ``"opencl"`` (bool): If true, use the OpenCL engine of Qrack
       ("QEngineOCL") as the base "Schroedinger method" simulator.
       If OpenCL is not available, simulation will fall back to CPU.
@@ -96,7 +91,7 @@ class QasmSimulator(BaseBackend):
         'normalize': True,
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
-        'paging': False,
+        'paging': True,
         'opencl': True,
         'opencl_device_id': -1,
         'opencl_multi': False,
