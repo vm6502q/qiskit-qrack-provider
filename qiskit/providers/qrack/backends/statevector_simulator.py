@@ -59,6 +59,8 @@ class StatevectorSimulator(BaseBackend):
     * ``"schmidt_decompose"`` (bool): If true, enable "QUnit" layer of
       Qrack, including Schmidt decomposition optimizations.
 
+    * ``"paging"`` (bool): If true, enable "QPager" layer of Qrack.
+
     * ``"opencl"`` (bool): If true, use the OpenCL engine of Qrack
       ("QEngineOCL") as the base "Schroedinger method" simulator.
       If OpenCL is not available, simulation will fall back to CPU.
@@ -92,6 +94,7 @@ class StatevectorSimulator(BaseBackend):
         'normalize': True,
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
+        'paging': False,
         'opencl': True,
         'opencl_device_id': -1,
         'opencl_multi': False,
@@ -454,6 +457,7 @@ class StatevectorSimulator(BaseBackend):
             sim = qrack_controller_factory()
             sim.initialize_qreg(self._configuration.opencl,
                                 self._configuration.schmidt_decompose,
+                                self._configuration.paging,
                                 self._number_of_qubits,
                                 self._configuration.opencl_device_id,
                                 self._configuration.opencl_multi,

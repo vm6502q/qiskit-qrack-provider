@@ -24,13 +24,14 @@ namespace Simulator {
 // QrackController class
 //=========================================================================
 
-#define MAKE_ENGINE(num_qubits, perm) Qrack::CreateQuantumInterface(qIType1, qIType2, num_qubits, perm, nullptr, Qrack::complex(-999.0, -999.0), doNorm, false, false, deviceId, true, amplitudeFloor)
+#define MAKE_ENGINE(num_qubits, perm) Qrack::CreateQuantumInterface(qIType1, qIType2, qIType3, num_qubits, perm, nullptr, Qrack::complex(-999.0, -999.0), doNorm, false, false, deviceId, true, amplitudeFloor)
 
 class QrackController {
 protected:
     Qrack::QInterfacePtr qReg;
     Qrack::QInterfaceEngine qIType1;
     Qrack::QInterfaceEngine qIType2;
+    Qrack::QInterfaceEngine qIType3;
     int deviceId;
     bool doNorm;
     Qrack::real1 amplitudeFloor;
@@ -53,13 +54,14 @@ public:
     QrackController() = default;
     virtual ~QrackController() = default;
 
-    virtual void initialize_qreg(bool use_opencl, bool use_qunit, unsigned char num_qubits, int device_id, bool opencl_multi, bool doNormalize, Qrack::real1 zero_threshold) {
+    virtual void initialize_qreg(bool use_opencl, bool use_qunit, bool use_qpager, unsigned char num_qubits, int device_id, bool opencl_multi, bool doNormalize, Qrack::real1 zero_threshold) {
         deviceId = device_id;
         doNorm = doNormalize;
         amplitudeFloor = zero_threshold;
 
-        qIType2 = use_opencl ? Qrack::QINTERFACE_OPTIMAL : Qrack::QINTERFACE_CPU;
-        qIType1 = use_qunit ? (opencl_multi ? Qrack::QINTERFACE_QUNIT_MULTI : Qrack::QINTERFACE_QUNIT) : qIType2;
+        qIType3 = use_opencl ? Qrack::QINTERFACE_OPTIMAL : Qrack::QINTERFACE_CPU;
+        qIType2 = (use_qunit && use_qpager) ? Qrack::QINTERFACE_QPAGER : qIType3;
+        qIType1 = use_qunit ? (opencl_multi ? Qrack::QINTERFACE_QUNIT_MULTI : Qrack::QINTERFACE_QUNIT) : (use_qpager ? Qrack::QINTERFACE_QPAGER : qIType2);
 
         qReg = MAKE_ENGINE(num_qubits, 0);
     }
@@ -288,7 +290,7 @@ public:
         std::vector<Qrack::complex> amps(qReg->GetMaxQPower());
         qReg->GetQuantumState(&(amps[0]));
 
-#if ENABLE_COMPLEX8
+#if FPPOW != 6
         std::vector<std::complex<double>> ampsDouble(amps.size());
         std::transform(amps.begin(), amps.end(), ampsDouble.begin(), cast_cfloat);
         return ampsDouble;
