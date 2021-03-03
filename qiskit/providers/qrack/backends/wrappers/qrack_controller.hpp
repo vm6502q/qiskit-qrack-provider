@@ -54,14 +54,31 @@ public:
     QrackController() = default;
     virtual ~QrackController() = default;
 
-    virtual void initialize_qreg(bool use_opencl, bool use_qunit, bool use_qpager, unsigned char num_qubits, int device_id, bool opencl_multi, bool doNormalize, Qrack::real1 zero_threshold) {
+    virtual void initialize_qreg(bool use_opencl, bool use_qunit, bool use_qpager, bool use_stabilizer, unsigned char num_qubits, int device_id, bool opencl_multi, bool doNormalize, Qrack::real1 zero_threshold) {
         deviceId = device_id;
         doNorm = doNormalize;
         amplitudeFloor = zero_threshold;
 
-        qIType3 = (use_qunit && use_qpager) ? Qrack::QINTERFACE_QPAGER : (use_opencl ? Qrack::QINTERFACE_HYBRID : Qrack::QINTERFACE_CPU);
-        qIType2 = (!use_qunit && use_qpager) ? qIType3 : Qrack::QINTERFACE_STABILIZER_HYBRID;
-        qIType1 = use_qunit ? (opencl_multi ? Qrack::QINTERFACE_QUNIT_MULTI : Qrack::QINTERFACE_QUNIT) : (use_qpager ? Qrack::QINTERFACE_QPAGER : qIType2);
+        Qrack::QInterfaceEngine qIType1, qIType2, qIType3;
+        if (use_qunit) {
+            qIType1 = opencl_multi ? Qrack::QINTERFACE_QUNIT_MULTI : Qrack::QINTERFACE_QUNIT;
+            if (use_qpager) {
+                qIType2 = use_stabilizer ? Qrack::QINTERFACE_STABILIZER_HYBRID : (use_opencl ? Qrack::QINTERFACE_OPTIMAL_SCHROEDINGER : Qrack::QINTERFACE_CPU);
+                qIType3 = use_opencl ? (use_stabilizer ? Qrack::QINTERFACE_OPTIMAL_SCHROEDINGER : Qrack::QINTERFACE_OPTIMAL_SINGLE_PAGE ) : Qrack::QINTERFACE_CPU;
+            } else {
+                qIType2 = use_stabilizer ? Qrack::QINTERFACE_STABILIZER_HYBRID : (use_opencl ? Qrack::QINTERFACE_OPTIMAL_SINGLE_PAGE : Qrack::QINTERFACE_CPU);
+                qIType3 = use_opencl ? Qrack::QINTERFACE_OPTIMAL_SINGLE_PAGE : Qrack::QINTERFACE_CPU;
+            }
+        } else {
+            if (use_qpager) {
+                qIType1 = use_stabilizer ? Qrack::QINTERFACE_STABILIZER_HYBRID : (use_opencl ? Qrack::QINTERFACE_OPTIMAL_SCHROEDINGER : Qrack::QINTERFACE_CPU);
+                qIType2 = use_opencl ? (use_stabilizer ? Qrack::QINTERFACE_OPTIMAL_SCHROEDINGER : Qrack::QINTERFACE_OPTIMAL_SINGLE_PAGE) : Qrack::QINTERFACE_CPU;
+            } else {
+                qIType1 = use_stabilizer ? Qrack::QINTERFACE_STABILIZER_HYBRID : (use_opencl ? Qrack::QINTERFACE_OPTIMAL_SINGLE_PAGE : Qrack::QINTERFACE_CPU);
+                qIType2 = use_opencl ? Qrack::QINTERFACE_OPTIMAL_SINGLE_PAGE : Qrack::QINTERFACE_CPU;
+            }
+            qIType3 = Qrack::QINTERFACE_OPTIMAL_SINGLE_PAGE;
+        }
 
         qReg = MAKE_ENGINE(num_qubits, 0);
     }
