@@ -348,7 +348,16 @@ class QasmSimulator(BaseBackend):
         }]
     }
 
-    def __init__(self, configuration=None, provider=None):
+    # TODO: Implement these __init__ options. (We only match the signature for any compatibility at all, for now.)
+    def __init__(self,
+                 configuration=None,
+                 provider=None,
+                 seed_simulator=-1,
+                 method=None,
+                 max_parallel_threads=-1,
+                 blocking_enable=False,
+                 blocking_ignore_diagonal=False,
+                 blocking_qubits=0):
         configuration = configuration or BackendConfiguration.from_dict(
             self.DEFAULT_CONFIGURATION)
         super().__init__(configuration=configuration, provider=provider)
