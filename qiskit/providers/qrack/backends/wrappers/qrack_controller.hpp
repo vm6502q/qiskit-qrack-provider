@@ -59,7 +59,6 @@ public:
         doNorm = doNormalize;
         amplitudeFloor = zero_threshold;
 
-        Qrack::QInterfaceEngine qIType1, qIType2, qIType3;
         if (use_qunit) {
             qIType1 = opencl_multi ? Qrack::QINTERFACE_QUNIT_MULTI : Qrack::QINTERFACE_QUNIT;
             if (use_qpager) {
