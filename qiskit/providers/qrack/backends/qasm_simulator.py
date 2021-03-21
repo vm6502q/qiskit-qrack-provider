@@ -489,7 +489,7 @@ class QasmSimulator(BaseBackend):
                     shotsPerLoop = 1
                     self._sample_measure = False
                     logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," "initialize," and conditionals, setting shots=1, and/or only measuring at the end of the circuit.')
-                    continue
+                    break
 
                 is_initializing = False
 
