@@ -23,7 +23,7 @@ cdef extern from "qrack_controller.hpp" namespace "AER::Simulator":
     cdef cppclass QrackController:
         QrackController() except +
         void initialize_qreg(bool use_opencl, bool use_qunit, bool use_qpager, bool use_stabilizer, unsigned char num_qubits, int opencl_device_id, bool opencl_multi, bool doNormalize, double zero_threshold) except +
-        QrackController clone()
+        QrackController* clone()
         void u(unsigned char* bits, unsigned char bitCount, double* params)
         void u2(unsigned char* bits, unsigned char bitCount, double* params)
         void u1(unsigned char* bits, unsigned char bitCount, double* params)
@@ -80,7 +80,7 @@ cdef class PyQrackController:
     def clone(self):
         cdef PyQrackController py_obj = PyQrackController()
         # Set extension pointer to clone of existing C++ class ptr
-        py_obj.c_class[0] = self.c_class.clone()
+        py_obj.c_class = self.c_class.clone()
         return py_obj
 
     def u(self, bits, params):

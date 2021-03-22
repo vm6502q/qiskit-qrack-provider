@@ -513,7 +513,7 @@ class QasmSimulator(BaseBackend):
 
         is_unitary_preamble = False
 
-        if nonunitary_start <= 1 or shotLoopMax != 1:
+        if self._sample_measure:
             nonunitary_start = 0
         else:
             is_unitary_preamble = True
