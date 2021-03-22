@@ -485,10 +485,11 @@ class QasmSimulator(BaseBackend):
                 if operation.name == 'id' or operation.name == 'barrier':
                     continue
 
-                if hasattr(operation, 'conditional') or (operation.name == 'reset') or (operation.name == 'initialize'):
+                if hasattr(operation, 'conditional') or operation.name == 'reset' or operation.name == 'initialize':
                     if is_initializing:
                         continue
-                    nonunitary_start = opcount
+                    if operation.name != 'reset':
+                        nonunitary_start = opcount
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
                     self._sample_measure = False
