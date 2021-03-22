@@ -82,18 +82,18 @@ public:
         qReg = MAKE_ENGINE(num_qubits, 0);
     }
 
-    virtual QrackController clone() {
-        QrackController c;
+    virtual QrackController* clone() {
+        QrackController* c = new QrackController();
 
-        c.deviceId = deviceId;
-        c.doNorm = doNorm;
-        c.amplitudeFloor = amplitudeFloor;
+        c->deviceId = deviceId;
+        c->doNorm = doNorm;
+        c->amplitudeFloor = amplitudeFloor;
 
-        c.qIType1 = qIType1;
-        c.qIType2 = qIType2;
-        c.qIType3 = qIType3;
+        c->qIType1 = qIType1;
+        c->qIType2 = qIType2;
+        c->qIType3 = qIType3;
 
-        c.qReg = qReg->Clone();
+        c->qReg = qReg->Clone();
 
         return c;
     }
