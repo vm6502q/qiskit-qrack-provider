@@ -1,6 +1,6 @@
 # This code is based on and adapted from https://github.com/Qiskit/qiskit-qcgpu-provider/blob/master/qiskit_qcgpu_provider/qasm_simulator.py
 #
-# Adapted by Daniel Strano. Many thanks to Adam Kelley for pioneering a third-party Qiskit provider.
+# Adapted by Daniel Strano. Many thanks to Adam Kelly for pioneering a third-party Qiskit provider.
 #
 # This code is licensed under the Apache License, Version 2.0. You may
 # obtain a copy of this license in the LICENSE.txt file in the root directory
@@ -95,7 +95,7 @@ class QasmSimulator(BaseBackend):
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
         'paging': True,
-        'stabilizer': True,
+        'stabilizer': False,
         'opencl': True,
         'opencl_device_id': -1,
         'opencl_multi': False,

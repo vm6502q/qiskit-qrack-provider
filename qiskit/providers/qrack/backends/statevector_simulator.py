@@ -61,8 +61,9 @@ class StatevectorSimulator(BaseBackend):
 
     * ``"paging"`` (bool): If true, enable "QPager" layer of Qrack.
 
-    * ``"stabilizer"`` (bool): If true, enable Qrack "QStabilizerHybrid"
-      layer of Qrack. (This can be enabled with universal gate simulations.)
+    * ``"stabilizer"`` (bool): (EXPERIMENTAL, not fully accurate!)
+      If true, enable Qrack "QStabilizerHybrid" layer of Qrack.
+      (This can be enabled with universal gate simulations.)
 
     * ``"opencl"`` (bool): If true, use the OpenCL engine of Qrack
       ("QEngineOCL") as the base "Schroedinger method" simulator.
@@ -98,7 +99,7 @@ class StatevectorSimulator(BaseBackend):
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
         'paging': True,
-        'stabilizer': True,
+        'stabilizer': False,
         'opencl': True,
         'opencl_device_id': -1,
         'opencl_multi': False,
