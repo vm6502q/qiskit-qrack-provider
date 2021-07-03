@@ -95,7 +95,7 @@ class QasmSimulator(BaseBackend):
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
         'paging': True,
-        'stabilizer': False,
+        'stabilizer': True,
         'opencl': True,
         'opencl_device_id': -1,
         'opencl_multi': False,
