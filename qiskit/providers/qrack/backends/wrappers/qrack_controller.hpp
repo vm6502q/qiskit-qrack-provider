@@ -264,8 +264,8 @@ public:
     virtual void initialize(unsigned char* bits, unsigned char bitCount, double* params) {
         bitLenInt origBitCount = qReg->GetQubitCount();
         bitCapInt partPower = Qrack::pow2(bitCount);
-        Qrack::complex* amps = new Qrack::complex[partPower];
-        _darray_to_creal1_array(params, partPower, amps);
+        std::unique_ptr<Qrack::complex[]> amps(new Qrack::complex[partPower]);
+        _darray_to_creal1_array(params, partPower, amps.get());
 
         bitLenInt i;
 
@@ -280,10 +280,10 @@ public:
         }
 
         if (isNatural) {
-            qReg->SetQuantumState(amps);
+            qReg->SetQuantumState(amps.get());
         } else {
             Qrack::QInterfacePtr qRegTemp = MAKE_ENGINE(bitCount, 0);
-            qRegTemp->SetQuantumState(amps);
+            qRegTemp->SetQuantumState(amps.get());
             qReg->Compose(qRegTemp);
 
             for (i = 0; i < bitCount; i++) {
@@ -292,18 +292,14 @@ public:
 
             qReg->Dispose(origBitCount, bitCount);
         }
-
-        delete[] amps;
     }
 
     virtual void multiplexer(unsigned char* bits, unsigned char ctrlCount, double* params) {
         bitCapInt componentCount = 4U * Qrack::pow2(ctrlCount);
-        Qrack::complex* mtrxs = new Qrack::complex[componentCount];
-        _darray_to_creal1_array(params, componentCount, mtrxs);
+        std::unique_ptr<Qrack::complex[]> mtrxs(new Qrack::complex[componentCount]);
+        _darray_to_creal1_array(params, componentCount, mtrxs.get());
 
-        qReg->UniformlyControlledSingleBit((bitLenInt*)bits, ctrlCount, (bitLenInt)bits[ctrlCount], mtrxs);
-
-        delete[] mtrxs;
+        qReg->UniformlyControlledSingleBit((bitLenInt*)bits, ctrlCount, (bitLenInt)bits[ctrlCount], mtrxs.get());
     }
 
     virtual void reset(unsigned char target) {
@@ -341,14 +337,14 @@ public:
     }
 
     virtual std::map<unsigned long int, int> measure_shots(unsigned char* bits, unsigned char bitCount, unsigned int shots) {
-        bitCapInt* qPowers = new bitCapInt[bitCount];
+        std::unique_ptr<bitCapInt[]> qPowers(new bitCapInt[bitCount]);
         for (bitLenInt i = 0; i < bitCount; i++) {
-            qPowers[i] = Qrack::pow2(bits[i]);
+            qPowers.get()[i] = Qrack::pow2(bits[i]);
         }
 
-        std::map<bitCapInt, int> result = qReg->MultiShotMeasureMask(qPowers, bitCount, shots);
+        std::map<bitCapInt, int> result = qReg->MultiShotMeasureMask(qPowers.get(), bitCount, shots);
 
-        delete[] qPowers;
+        qPowers.reset();
 
 #if QCCAPPOW != 6
         std::map<unsigned long int, int> resultULL;
