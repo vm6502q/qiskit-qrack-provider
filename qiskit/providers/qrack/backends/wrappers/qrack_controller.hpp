@@ -337,7 +337,7 @@ public:
     }
 
     virtual unsigned long long measure_all() {
-        return (unsigned long int)qReg->MReg(0, qReg->GetQubitCount());
+        return (unsigned long int)qReg->MAll();
     }
 
     virtual std::map<unsigned long int, int> measure_shots(unsigned char* bits, unsigned char bitCount, unsigned int shots) {
