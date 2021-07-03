@@ -91,7 +91,7 @@ class QasmSimulator(BaseBackend):
         'max_shots': 65536,
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
-        'normalize': True,
+        'normalize': False,
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
         'paging': True,

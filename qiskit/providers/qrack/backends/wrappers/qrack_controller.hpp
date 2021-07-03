@@ -282,10 +282,6 @@ public:
         if (isNatural) {
             qReg->SetQuantumState(amps);
         } else {
-            for (i = 0; i < bitCount; i++) {
-                qReg->M(bits[i]);
-            }
-
             Qrack::QInterfacePtr qRegTemp = MAKE_ENGINE(bitCount, 0);
             qRegTemp->SetQuantumState(amps);
             qReg->Compose(qRegTemp);
@@ -295,10 +291,6 @@ public:
             }
 
             qReg->Dispose(origBitCount, bitCount);
-        }
-
-        for (i = 0; i < bitCount; i++) {
-            qReg->TrySeparate(bits[i]);
         }
 
         delete[] amps;

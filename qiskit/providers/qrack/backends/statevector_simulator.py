@@ -95,7 +95,7 @@ class StatevectorSimulator(BaseBackend):
         'max_shots': 65536,
         'description': 'A Qrack-based, GPU-accelerated, C++ statevector simulator for qobj files',
         'coupling_map': None,
-        'normalize': True,
+        'normalize': False,
         'zero_threshold': -999.0,
         'schmidt_decompose': True,
         'paging': True,
