@@ -61,7 +61,7 @@ from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTest
 #from test.terra.backends.qasm_simulator.qasm_thread_management import QasmThreadManagementTests
 from test.terra.backends.qasm_simulator.qasm_fusion import QasmFusionTests
 from test.terra.backends.qasm_simulator.qasm_delay_measure import QasmDelayMeasureTests
-from test.terra.backends.qasm_simulator.qasm_truncate import QasmQubitsTruncateTests
+#from test.terra.backends.qasm_simulator.qasm_truncate import QasmQubitsTruncateTests
 from test.terra.backends.qasm_simulator.qasm_basics import QasmBasicsTests
 
 
@@ -93,7 +93,7 @@ class TestQasmSimulator(common.QiskitAerTestCase,
                         #QasmThreadManagementTests,
                         QasmFusionTests,
                         QasmDelayMeasureTests,
-                        QasmQubitsTruncateTests,
+                        #QasmQubitsTruncateTests,
                         #QasmResetNoiseTests,
                         #QasmKrausNoiseTests,
                         QasmBasicsTests,

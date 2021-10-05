@@ -59,7 +59,7 @@ class QasmSimulator(BaseBackend):
         'coupling_map': None,
         'basis_gates': [
             'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'cy', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h',
-            'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'cu1', 'cu2',
+            'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'swap', 'iswap', 'ccx', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
             'reset', 'measure'
         ],
@@ -203,6 +203,12 @@ class QasmSimulator(BaseBackend):
             'parameters': [],
             'conditional': True,
             'description': 'Two-qubit SWAP gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'iswap',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit ISWAP gate',
             'qasm_def': 'TODO'
         }, {
             'name': 'ccx',
@@ -577,6 +583,8 @@ class QasmSimulator(BaseBackend):
             self._sim.adjt(operation.qubits[0])
         elif name == 'swap':
             self._sim.swap(operation.qubits[0], operation.qubits[1])
+        elif name == 'iswap':
+            self._sim.iswap(operation.qubits[0], operation.qubits[1])
         elif name == 'ccx':
             self._sim.mcx(operation.qubits[0:2], operation.qubits[2])
         elif name == 'cu1':
