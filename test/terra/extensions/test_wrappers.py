@@ -17,9 +17,8 @@ import pickle
 from multiprocessing import Pool
 
 from qiskit import assemble, transpile, QuantumCircuit
-from qiskit.providers.qrack.backends import QasmSimulator, StatevectorSimulator
-from qiskit.providers.aer.backends.controller_wrappers import (qasm_controller_execute,
-                                                               statevector_controller_execute)
+from qiskit.providers.qrack.backends import QasmSimulator
+#from qiskit.providers.aer.backends.controller_wrappers import qasm_controller_execute
 from test.terra.reference import ref_algorithms, ref_measure, ref_1q_clifford
 from test.terra.common import QiskitAerTestCase
 
@@ -27,19 +26,18 @@ from test.terra.common import QiskitAerTestCase
 class TestControllerExecuteWrappers(QiskitAerTestCase):
     """Basic functionality tests for pybind-generated wrappers"""
 
-    CFUNCS = [qasm_controller_execute(),
-              statevector_controller_execute()]
+    #CFUNCS = [qasm_controller_execute()]
 
-    def test_deepcopy(self):
-        """Test that the functors are deepcopy-able."""
-        for cfunc in self.CFUNCS:
-            cahpy = copy.deepcopy(cfunc)
+    #def test_deepcopy(self):
+    #    """Test that the functors are deepcopy-able."""
+    #    for cfunc in self.CFUNCS:
+    #        cahpy = copy.deepcopy(cfunc)
 
-    def test_pickleable(self):
-        """Test that the functors are pickle-able (directly)."""
-        for cfunc in self.CFUNCS:
-            bites = pickle.dumps(cfunc)
-            cahpy = pickle.loads(bites)
+    #def test_pickleable(self):
+    #    """Test that the functors are pickle-able (directly)."""
+    #    for cfunc in self.CFUNCS:
+    #        bites = pickle.dumps(cfunc)
+    #        cahpy = pickle.loads(bites)
 
     def _create_qobj(self, backend, noise_model=None):
         num_qubits = 2

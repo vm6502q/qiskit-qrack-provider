@@ -1,0 +1,445 @@
+time: 2021-10-05 13:28:55.138160Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_reset_deterministic
+time: 2021-10-05 13:28:55.174064Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_reset_deterministic [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+26B
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_reset.py", line 41, in test_reset_deterministic
+    self.compare_counts(result, circuits, targets, delta=0)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 100 != 0), ('0x2': 0 != 100) within 0 delta : Circuit (1/4): {'0x1': 100} != {'0x2': 100}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:55.174436Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_reset_nondeterministic
+time: 2021-10-05 13:28:55.346354Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_reset_nondeterministic [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2A1
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_reset.py", line 55, in test_reset_nondeterministic
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 1988 != 0), ('0x2': 0 != 2000.0) within 200.0 delta : Circuit (1/2): {'0x1': 1988, '0x0': 2012} != {'0x0': 2000.0, '0x2': 2000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:55.346654Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_reset_sampling_opt
+time: 2021-10-05 13:28:55.426980Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_reset_sampling_opt [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+29D
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_reset.py", line 66, in test_reset_sampling_opt
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 2062 != 0), ('0x2': 0 != 2000.0) within 200.0 delta : Circuit (1/1): {'0x0': 1938, '0x1': 2062} != {'0x0': 2000.0, '0x2': 2000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:57.312471Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_teleport_default_basis_gates
+time: 2021-10-05 13:28:57.532492Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_teleport_default_basis_gates [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2FE
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_algorithms.py", line 51, in test_teleport_default_basis_gates
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 1976 != 1000.0), ('0x0': 2024 != 1000.0), ('0x2': 0 != 1000.0), ('0x3': 0 != 1000.0) within 200.0 delta : Circuit (1/1): {'0x0': 2024, '0x1': 1976} != {'0x0': 1000.0, '0x1': 1000.0, '0x2': 1000.0, '0x3': 1000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:57.532743Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_teleport_minimal_basis_gates
+time: 2021-10-05 13:28:57.766614Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_teleport_minimal_basis_gates [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2FF
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_algorithms.py", line 128, in test_teleport_minimal_basis_gates
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 1963 != 1000.0), ('0x0': 2037 != 1000.0), ('0x2': 0 != 1000.0), ('0x3': 0 != 1000.0) within 200.0 delta : Circuit (1/1): {'0x1': 1963, '0x0': 2037} != {'0x0': 1000.0, '0x1': 1000.0, '0x2': 1000.0, '0x3': 1000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:57.766851Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_teleport_waltz_basis_gates
+time: 2021-10-05 13:28:57.986509Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_teleport_waltz_basis_gates [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2FC
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_algorithms.py", line 93, in test_teleport_waltz_basis_gates
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 1983 != 1000.0), ('0x0': 2017 != 1000.0), ('0x2': 0 != 1000.0), ('0x3': 0 != 1000.0) within 200.0 delta : Circuit (1/1): {'0x0': 2017, '0x1': 1983} != {'0x0': 1000.0, '0x1': 1000.0, '0x2': 1000.0, '0x3': 1000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:57.986765Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_truncate
+time: 2021-10-05 13:28:57.997960Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_truncate [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+1C5
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_truncate.py", line 222, in test_truncate
+    self.assertTrue('truncate_qubits' in result.to_dict()['results'][0]['metadata'], msg="truncate_qubits must work.")
+  File "/usr/lib/python3.8/unittest/case.py", line 765, in assertTrue
+    raise self.failureException(msg)
+AssertionError: False is not true : truncate_qubits must work.
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:58.008288Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_truncate_ideal_sparse_circuit
+time: 2021-10-05 13:28:58.011258Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_truncate_ideal_sparse_circuit [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+1B8
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_truncate.py", line 166, in test_truncate_ideal_sparse_circuit
+    self.assertTrue('truncate_qubits' in metadata, msg="truncate_qubits must work.")
+  File "/usr/lib/python3.8/unittest/case.py", line 765, in assertTrue
+    raise self.failureException(msg)
+AssertionError: False is not true : truncate_qubits must work.
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:58.011427Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_truncate_nonlocal_noise
+time: 2021-10-05 13:28:58.015029Z
+failure: test.terra.backends.test_qasm_simulator.TestQasmSimulator.test_truncate_nonlocal_noise [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+1B2
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_truncate.py", line 198, in test_truncate_nonlocal_noise
+    self.assertTrue('truncate_qubits' in metadata, msg="truncate_qubits must work.")
+  File "/usr/lib/python3.8/unittest/case.py", line 765, in assertTrue
+    raise self.failureException(msg)
+AssertionError: False is not true : truncate_qubits must work.
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:58.601893Z
+tags: worker-0
+test: unittest.loader._FailedTest.test.terra.backends.test_qasm_simulator_density_matrix
+time: 2021-10-05 13:28:58.601968Z
+failure: unittest.loader._FailedTest.test.terra.backends.test_qasm_simulator_density_matrix [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+3BD
+Traceback (most recent call last):
+ImportError: Failed to import test module: test.terra.backends.test_qasm_simulator_density_matrix
+Traceback (most recent call last):
+  File "/usr/lib/python3.8/unittest/loader.py", line 436, in _find_test_path
+    module = self._get_module_from_name(name)
+  File "/usr/lib/python3.8/unittest/loader.py", line 377, in _get_module_from_name
+    __import__(name)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/test_qasm_simulator_density_matrix.py", line 104, in <module>
+    @requires_method("qasm_simulator", "density_matrix_thrust")
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/decorators.py", line 60, in requires_method
+    skip = not is_method_available(backend, method)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/decorators.py", line 42, in is_method_available
+    if not result.success and error_msg in result.results[0].status:
+IndexError: list index out of range
+
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:59.091027Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_extended_stabilizer.TestQasmExtendedStabilizerSimulator.test_reset_deterministic
+time: 2021-10-05 13:28:59.126634Z
+failure: test.terra.backends.test_qasm_simulator_extended_stabilizer.TestQasmExtendedStabilizerSimulator.test_reset_deterministic [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+279
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/test_qasm_simulator_extended_stabilizer.py", line 61, in test_reset_deterministic
+    self.compare_counts(result, circuits, targets, delta=0)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 100 != 0), ('0x2': 0 != 100) within 0 delta : Circuit (1/4): {'0x1': 100} != {'0x2': 100}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:59.126989Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_extended_stabilizer.TestQasmExtendedStabilizerSimulator.test_reset_nondeterministic
+time: 2021-10-05 13:28:59.305445Z
+failure: test.terra.backends.test_qasm_simulator_extended_stabilizer.TestQasmExtendedStabilizerSimulator.test_reset_nondeterministic [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2AF
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/test_qasm_simulator_extended_stabilizer.py", line 75, in test_reset_nondeterministic
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 2007 != 0), ('0x2': 0 != 2000.0) within 200.0 delta : Circuit (1/2): {'0x1': 2007, '0x0': 1993} != {'0x0': 2000.0, '0x2': 2000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:28:59.603076Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_extended_stabilizer.TestQasmExtendedStabilizerSimulator.test_teleport_default_basis_gates
+time: 2021-10-05 13:28:59.701045Z
+failure: test.terra.backends.test_qasm_simulator_extended_stabilizer.TestQasmExtendedStabilizerSimulator.test_teleport_default_basis_gates [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2FB
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/test_qasm_simulator_extended_stabilizer.py", line 529, in test_teleport_default_basis_gates
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 496 != 250.0), ('0x0': 504 != 250.0), ('0x2': 0 != 250.0), ('0x3': 0 != 250.0) within 50.0 delta : Circuit (1/1): {'0x0': 504, '0x1': 496} != {'0x0': 250.0, '0x1': 250.0, '0x2': 250.0, '0x3': 250.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:03.039689Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_reset_deterministic
+time: 2021-10-05 13:29:03.074913Z
+failure: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_reset_deterministic [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+26B
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_reset.py", line 41, in test_reset_deterministic
+    self.compare_counts(result, circuits, targets, delta=0)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 100 != 0), ('0x2': 0 != 100) within 0 delta : Circuit (1/4): {'0x1': 100} != {'0x2': 100}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:03.075252Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_reset_nondeterministic
+time: 2021-10-05 13:29:03.249293Z
+failure: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_reset_nondeterministic [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2A1
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_reset.py", line 55, in test_reset_nondeterministic
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 1985 != 0), ('0x2': 0 != 2000.0) within 200.0 delta : Circuit (1/2): {'0x0': 2015, '0x1': 1985} != {'0x0': 2000.0, '0x2': 2000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:03.249616Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_reset_sampling_opt
+time: 2021-10-05 13:29:03.328150Z
+failure: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_reset_sampling_opt [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+29D
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_reset.py", line 66, in test_reset_sampling_opt
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 2014 != 0), ('0x2': 0 != 2000.0) within 200.0 delta : Circuit (1/1): {'0x1': 2014, '0x0': 1986} != {'0x0': 2000.0, '0x2': 2000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:05.206769Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_teleport_default_basis_gates
+time: 2021-10-05 13:29:05.422974Z
+failure: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_teleport_default_basis_gates [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2FE
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_algorithms.py", line 51, in test_teleport_default_basis_gates
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 2012 != 1000.0), ('0x0': 1988 != 1000.0), ('0x2': 0 != 1000.0), ('0x3': 0 != 1000.0) within 200.0 delta : Circuit (1/1): {'0x1': 2012, '0x0': 1988} != {'0x0': 1000.0, '0x1': 1000.0, '0x2': 1000.0, '0x3': 1000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:05.423230Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_teleport_minimal_basis_gates
+time: 2021-10-05 13:29:05.652377Z
+failure: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_teleport_minimal_basis_gates [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2FF
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_algorithms.py", line 128, in test_teleport_minimal_basis_gates
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 1984 != 1000.0), ('0x0': 2016 != 1000.0), ('0x2': 0 != 1000.0), ('0x3': 0 != 1000.0) within 200.0 delta : Circuit (1/1): {'0x0': 2016, '0x1': 1984} != {'0x0': 1000.0, '0x1': 1000.0, '0x2': 1000.0, '0x3': 1000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:05.652606Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_teleport_waltz_basis_gates
+time: 2021-10-05 13:29:05.869148Z
+failure: test.terra.backends.test_qasm_simulator_matrix_product_state.TestQasmMatrixProductStateSimulator.test_teleport_waltz_basis_gates [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2FC
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_algorithms.py", line 93, in test_teleport_waltz_basis_gates
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 2024 != 1000.0), ('0x0': 1976 != 1000.0), ('0x2': 0 != 1000.0), ('0x3': 0 != 1000.0) within 200.0 delta : Circuit (1/1): {'0x0': 1976, '0x1': 2024} != {'0x0': 1000.0, '0x1': 1000.0, '0x2': 1000.0, '0x3': 1000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:07.072312Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_stabilizer.TestQasmStabilizerSimulator.test_reset_deterministic
+time: 2021-10-05 13:29:07.108689Z
+failure: test.terra.backends.test_qasm_simulator_stabilizer.TestQasmStabilizerSimulator.test_reset_deterministic [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+26B
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_reset.py", line 41, in test_reset_deterministic
+    self.compare_counts(result, circuits, targets, delta=0)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 100 != 0), ('0x2': 0 != 100) within 0 delta : Circuit (1/4): {'0x1': 100} != {'0x2': 100}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:07.108990Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_stabilizer.TestQasmStabilizerSimulator.test_reset_nondeterministic
+time: 2021-10-05 13:29:07.286892Z
+failure: test.terra.backends.test_qasm_simulator_stabilizer.TestQasmStabilizerSimulator.test_reset_nondeterministic [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+2A1
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_reset.py", line 55, in test_reset_nondeterministic
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 1984 != 0), ('0x2': 0 != 2000.0) within 200.0 delta : Circuit (1/2): {'0x0': 2016, '0x1': 1984} != {'0x0': 2000.0, '0x2': 2000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:07.287207Z
+tags: worker-0
+test: test.terra.backends.test_qasm_simulator_stabilizer.TestQasmStabilizerSimulator.test_reset_sampling_opt
+time: 2021-10-05 13:29:07.368594Z
+failure: test.terra.backends.test_qasm_simulator_stabilizer.TestQasmStabilizerSimulator.test_reset_sampling_opt [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+29D
+Traceback (most recent call last):
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/qasm_simulator/qasm_reset.py", line 66, in test_reset_sampling_opt
+    self.compare_counts(result, circuits, targets, delta=0.05 * shots)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 191, in compare_counts
+    self.assertDictAlmostEqual(
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/common.py", line 312, in assertDictAlmostEqual
+    raise self.failureException(msg)
+AssertionError: ('0x1': 1929 != 0), ('0x2': 0 != 2000.0) within 200.0 delta : Circuit (1/1): {'0x1': 1929, '0x0': 2071} != {'0x0': 2000.0, '0x2': 2000.0}
+0
+]
+tags: -worker-0
+time: 2021-10-05 13:29:07.904065Z
+tags: worker-0
+test: unittest.loader._FailedTest.test.terra.backends.test_qasm_simulator_statevector
+time: 2021-10-05 13:29:07.904140Z
+failure: unittest.loader._FailedTest.test.terra.backends.test_qasm_simulator_statevector [ multipart
+Content-Type: text/x-traceback;charset=utf8
+traceback
+3B4
+Traceback (most recent call last):
+ImportError: Failed to import test module: test.terra.backends.test_qasm_simulator_statevector
+Traceback (most recent call last):
+  File "/usr/lib/python3.8/unittest/loader.py", line 436, in _find_test_path
+    module = self._get_module_from_name(name)
+  File "/usr/lib/python3.8/unittest/loader.py", line 377, in _get_module_from_name
+    __import__(name)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/backends/test_qasm_simulator_statevector.py", line 116, in <module>
+    @requires_method("qasm_simulator", "statevector_thrust")
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/decorators.py", line 60, in requires_method
+    skip = not is_method_available(backend, method)
+  File "/home/iamu/GitHub/qiskit-qrack-provider/test/terra/decorators.py", line 42, in is_method_available
+    if not result.success and error_msg in result.results[0].status:
+IndexError: list index out of range
+
+0
+]
+tags: -worker-0

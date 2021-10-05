@@ -17,7 +17,7 @@
 from qiskit.providers import BaseProvider
 from qiskit.providers.providerutils import filter_backends
 
-from .backends import QasmSimulator, StatevectorSimulator
+from .backends import QasmSimulator
 
 
 class QrackProvider(BaseProvider):
@@ -27,8 +27,7 @@ class QrackProvider(BaseProvider):
         super().__init__(args, kwargs)
 
         # Populate the list of Aer simulator providers.
-        self._backends = [QasmSimulator(provider=self),
-                          StatevectorSimulator(provider=self)]
+        self._backends = [QasmSimulator(provider=self)]
 
     def get_backend(self, name=None, **kwargs):
         return super().get_backend(name=name, **kwargs)

@@ -31,8 +31,8 @@ from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonClifford
 from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsMinimalBasis
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmUnitaryGateTests
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmDiagonalGateTests
-from test.terra.backends.qasm_simulator.qasm_initialize import QasmInitializeTests
-from test.terra.backends.qasm_simulator.qasm_multiplexer import QasmMultiplexerTests
+#from test.terra.backends.qasm_simulator.qasm_initialize import QasmInitializeTests
+#from test.terra.backends.qasm_simulator.qasm_multiplexer import QasmMultiplexerTests
 from test.terra.backends.qasm_simulator.qasm_standard_gates import QasmStandardGateStatevectorTests
 # Conditional instruction tests
 from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalGateTests
@@ -67,13 +67,16 @@ from test.terra.backends.qasm_simulator.qasm_basics import QasmBasicsTests
 class StatevectorTests(
         #QasmMethodTests,
         QasmMeasureTests, QasmMultiQubitMeasureTests,
-        QasmResetTests, QasmInitializeTests, QasmConditionalGateTests,
+        QasmResetTests,
+        #QasmInitializeTests,
+        QasmConditionalGateTests,
         #QasmConditionalUnitaryTests, QasmConditionalKrausTests,
         QasmCliffordTests, QasmCliffordTestsWaltzBasis,
         QasmCliffordTestsMinimalBasis, QasmNonCliffordTestsTGate,
         QasmNonCliffordTestsCCXGate, QasmNonCliffordTestsCGates,
         QasmNonCliffordTestsWaltzBasis, QasmNonCliffordTestsMinimalBasis,
-        QasmMultiplexerTests, QasmAlgorithmTests, QasmAlgorithmTestsWaltzBasis,
+        #QasmMultiplexerTests,
+        QasmAlgorithmTests, QasmAlgorithmTestsWaltzBasis,
         QasmAlgorithmTestsMinimalBasis, QasmUnitaryGateTests, QasmDiagonalGateTests,
         #QasmReadoutNoiseTests, QasmPauliNoiseTests, QasmThreadManagementTests,
         QasmFusionTests, QasmDelayMeasureTests, QasmQubitsTruncateTests,
