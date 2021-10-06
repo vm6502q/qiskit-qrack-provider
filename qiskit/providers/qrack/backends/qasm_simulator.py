@@ -30,12 +30,22 @@ from qiskit.providers.backend import BackendV1
 from qiskit.providers.options import Options
 from qiskit.result import Result
 
+from qiskit.circuit.gate import Gate
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
 
 class QrackExperimentResultHeader:
     def __init__(self, name):
         self.name = name
+
+
+class QrackExperimentResultData:
+    def __init__(self, counts, memory):
+        self.counts = counts
+        self.memory = memory
+
+    def to_dict(self):
+        return { 'counts': self.counts, 'memory': self.memory }
 
 
 class QrackExperimentResult:
@@ -57,7 +67,6 @@ class QasmSimulator(BackendV1):
     DEFAULT_OPTIONS = {
         'method': 'automatic',
         'shots': 1024,
-        'memory': 0,
         'is_multi_device': True,
         'is_schmidt_decompose': True,
         'is_stabilizer_hybrid': True,
@@ -79,7 +88,8 @@ class QasmSimulator(BackendV1):
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
         'basis_gates': [
-            'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'cz', 'ch', 'id', 'x', 'sx', 'y', 'z', 'h',
+            'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'csx', 'csxdg', 'cz', 'ch', 'cp', 'dcx',
+            'id', 'x', 'sx', 'sxdg', 'y', 'z', 'h', 'p',
             'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'iswap', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
             'multiplexer', 'reset', 'measure'
@@ -136,6 +146,18 @@ class QasmSimulator(BackendV1):
             'description': 'Two-qubit Controlled-NOT gate',
             'qasm_def': 'gate cx c,t { CX c,t; }'
         }, {
+            'name': 'csx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit Controlled square root of Pauli-X gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'csxdg',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit Controlled inverse square root of Pauli-X gate',
+            'qasm_def': 'TODO'
+        }, {
             'name': 'cz',
             'parameters': [],
             'conditional': True,
@@ -146,6 +168,18 @@ class QasmSimulator(BackendV1):
             'parameters': [],
             'conditional': True,
             'description': 'Two-qubit Controlled-H gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'cp',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Controlled-Phase gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'dcx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Double-CNOT gate',
             'qasm_def': 'TODO'
         }, {
             'name': 'id',
@@ -166,6 +200,12 @@ class QasmSimulator(BackendV1):
             'description': 'Single-qubit square root of Pauli-X gate',
             'qasm_def': 'gate sx a { rz(-pi/2) a; h a; rz(-pi/2); }'
         }, {
+            'name': 'sxdg',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit inverse square root of Pauli-X gate',
+            'qasm_def': 'TODO'
+        }, {
             'name': 'y',
             'parameters': [],
             'conditional': True,
@@ -182,6 +222,12 @@ class QasmSimulator(BackendV1):
             'parameters': [],
             'conditional': True,
             'description': 'Single-qubit Hadamard gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'p',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Phase gate',
             'qasm_def': 'TODO'
         }, {
             'name': 'rx',
@@ -347,7 +393,7 @@ class QasmSimulator(BackendV1):
         self._number_of_qubits = 0
         self._number_of_cbits = 0
         self._shots = 1
-        self._memory = 0
+        self._data = []
 
         self._options = self._default_options()
 
@@ -407,13 +453,16 @@ class QasmSimulator(BackendV1):
             'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid')
         }
 
+        data = run_input.config.memory if hasattr(run_input, 'config') else []
         shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
-        memory = options['memory'] if 'memory' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('memory'))
+        qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
+        qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
         job_id = str(uuid.uuid4())
-        job = QrackJob(self, job_id, self._run_job(job_id, run_input, shots, memory, **qrack_options), run_input)
+
+        job = QrackJob(self, job_id, self._run_job(job_id, run_input, data, shots, qobj_id, qobj_header, **qrack_options), run_input)
         return job
 
-    def _run_job(self, job_id, run_input, shots, memory, **options):
+    def _run_job(self, job_id, run_input, data, shots, qobj_id, qobj_header, **options):
         """Run experiments in run_input
         Args:
             job_id (str): unique id for the job.
@@ -421,10 +470,12 @@ class QasmSimulator(BackendV1):
         Returns:
             Result: Result object
         """
+        self._data = data
         self._shots = shots
-        self._memory = memory
 
         experiments = run_input.experiments if hasattr(run_input, 'config') else run_input
+        if isinstance(experiments, QuantumCircuit):
+            experiments = [experiments]
         results = []
 
         start = time.time()
@@ -435,17 +486,15 @@ class QasmSimulator(BackendV1):
         return Result(
             backend_name = self.name(),
             backend_version = self._configuration.backend_version,
-            qobj_id = run_input.qobj_id if hasattr(run_input, 'config') else '',
+            qobj_id = qobj_id,
             job_id = job_id,
             success = True,
             results = results,
             date = datetime.now(),
             status = 'COMPLETED',
-            header = run_input.header.to_dict() if hasattr(run_input, 'config') else {},
+            header = qobj_header,
             time_taken = (end - start)
         )
-
-        return Result.from_dict(result)
 
     def run_experiment(self, experiment, **options):
         """Run an experiment (circuit) and return a single experiment result.
@@ -479,6 +528,7 @@ class QasmSimulator(BackendV1):
                 instructions.append(QasmQobjInstruction(datum[0].name, qubits = qubits, memory = clbits, params = datum[0].params))
         else:
             raise QrackError('Unrecognized "run_input" argument specified for run().')
+
         self._sample_qubits = []
         self._sample_clbits = []
         self._sample_cregbits = []
@@ -576,33 +626,24 @@ class QasmSimulator(BackendV1):
         end = time.time()
 
         data = { 'counts': dict(Counter(self.__memory)) }
-        dfData = pd.DataFrame(data=data)
-        data['memory'] = self.__memory
-
         if isinstance(experiment, QasmQobjExperiment):
-            return {
-                'name': experiment.header.name,
-                'shots': self._shots,
-                'data': data,
-                'status': 'DONE',
-                'success': True,
-                'time_taken': (end - start),
-                'header': experiment.header.to_dict(),
-                'metadata': { 'measure_sampling' : self._sample_measure }
-            }
+            data['memory'] = self.__memory
+            data = QrackExperimentResultData(**data)
+        else:
+            data = pd.DataFrame(data=data)
 
         metadata = {}
-        if experiment.metadata is not None:
+        if isinstance(experiment, QuantumCircuit) and experiment.metadata is not None:
             metadata = experiment.metadata
 
         metadata['measure_sampling'] = self._sample_measure
 
         return QrackExperimentResult(
             shots = self._shots,
-            data = dfData,
+            data = data,
             status = 'DONE',
             success = True,
-            header = QrackExperimentResultHeader(name = experiment.name),
+            header = experiment.header if isinstance(experiment, QasmQobjExperiment) else QrackExperimentResultHeader(name = experiment.name),
             meta_data = metadata,
             time_taken = (end - start)
         )
@@ -620,7 +661,7 @@ class QasmSimulator(BackendV1):
 
         if (name != 'measure' or hasattr(operation, 'conditional')) and len(self._sample_qubits) > 0:
             if self._sample_measure:
-                self._memory = self._add_sample_measure(self._sample_qubits, sample_clbits, sim, shotsPerLoop)
+                self._data = self._add_sample_measure(self._sample_qubits, sample_clbits, sim, shotsPerLoop)
             else:
                 self._add_qasm_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits)
             self._sample_qubits = []
@@ -652,12 +693,21 @@ class QasmSimulator(BackendV1):
             self._sim.u(operation.qubits[0], operation.params[0], operation.params[1] - np.pi/2, -operation.params[1] + np.pi/2)
         elif name == 'cx':
             self._sim.mcx(operation.qubits[0:1], operation.qubits[1])
+        elif name == 'csx':
+            self._sim.mcmtrx(operation.qubits[0:1], [(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation.qubits[1])
+        elif name == 'csxdg':
+            self._sim.mcmtrx(operation.qubits[0:1], [(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], operation.qubits[1])
         elif name == 'cy':
             self._sim.mcy(operation.qubits[0:1], operation.qubits[1])
         elif name == 'cz':
             self._sim.mcz(operation.qubits[0:1], operation.qubits[1])
         elif name == 'ch':
             self._sim.mch(operation.qubits[0:1], operation.qubits[1])
+        elif name == 'cp':
+            self._sim.mcmtrx(operation.qubits[0:1], [1, 0, 0, np.exp(1j * operation.params[0])], operation.qubits[0])
+        elif name == 'dcx':
+            self._sim.mcx(operation.qubits[0:1], operation.qubits[1])
+            self._sim.mcx(operation.qubits[1:2], operation.qubits[0])
         elif name == 'x':
             self._sim.x(operation.qubits[0])
         elif name == 'y':
@@ -666,6 +716,8 @@ class QasmSimulator(BackendV1):
             self._sim.z(operation.qubits[0])
         elif name == 'h':
             self._sim.h(operation.qubits[0])
+        elif name == 'p':
+            self._sim.mtrx([1, 0, 0, np.exp(1j * operation.params[0])], operation.qubits[0])
         elif name == 'rx':
             self._sim.r(Pauli.PauliX, operation.params[0], operation.qubits[0])
         elif name == 'ry':
@@ -680,6 +732,10 @@ class QasmSimulator(BackendV1):
             self._sim.t(operation.qubits[0])
         elif name == 'tdg':
             self._sim.adjt(operation.qubits[0])
+        elif name == 'sx':
+            self._sim.mtrx([(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation.qubits[0])
+        elif name == 'sxdg':
+            self._sim.mtrx([(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], operation.qubits[0])
         elif name == 'swap':
             self._sim.swap(operation.qubits[0], operation.qubits[1])
         elif name == 'iswap':
@@ -752,16 +808,16 @@ class QasmSimulator(BackendV1):
 
     #@profile
     def _add_sample_measure(self, sample_qubits, sample_clbits, num_samples):
-        """Generate memory samples from current statevector.
+        """Generate data samples from current statevector.
         Taken almost straight from the terra source code.
         Args:
             measure_params (list): List of (qubit, clbit) values for
                                    measure instructions to sample.
-            num_samples (int): The number of memory samples to generate.
+            num_samples (int): The number of data samples to generate.
         Returns:
-            list: A list of memory values in hex format.
+            list: A list of data values in hex format.
         """
-        memory = []
+        data = []
 
         # Get unique qubits that are actually measured
         measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
@@ -779,9 +835,9 @@ class QasmSimulator(BackendV1):
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
             outKey = bin(classical_state)[2:]
-            memory += [hex(int(outKey, 2))]
+            data += [hex(int(outKey, 2))]
             self._classical_memory = classical_state
-            return memory
+            return data
 
         # Sample and convert to bit-strings
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
@@ -796,9 +852,9 @@ class QasmSimulator(BackendV1):
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
             outKey = bin(classical_state)[2:]
-            memory.append(hex(int(outKey, 2)))
+            data.append(hex(int(outKey, 2)))
 
-        return memory
+        return data
 
     #@profile
     def _add_qasm_measure(self, sample_qubits, sample_clbits, sample_cregbits=None):
