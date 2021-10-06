@@ -520,12 +520,13 @@ class QasmSimulator(BackendV1):
                 qubits = []
                 for qubit in datum[1]:
                     qubits.append(experiment.qubits.index(qubit))
+                register = range(len(qubits))
 
                 clbits = []
                 for clbit in datum[2]:
                     clbits.append(experiment.clbits.index(clbit))
 
-                instructions.append(QasmQobjInstruction(datum[0].name, qubits = qubits, memory = clbits, params = datum[0].params))
+                instructions.append(QasmQobjInstruction(datum[0].name, qubits = qubits, register = register, memory = clbits, params = datum[0].params))
         else:
             raise QrackError('Unrecognized "run_input" argument specified for run().')
 
@@ -759,10 +760,8 @@ class QasmSimulator(BackendV1):
         elif name == 'mcswap':
             self._sim.cswap(operation.qubits[:-2], operation.qubits[-2], operation.qubits[-1])
         elif name == 'reset':
-            mres = self._sim.measure_pauli([Pauli.PauliZ] * len(operation.qubits), operation.qubits)
-            for i in range(len(operation.qubits)):
-                if ((mres >> i) & 1) > 0:
-                    self._sim.x(operation.qubits[i])
+            if self._sim.m(operation.qubits[0]):
+                self._sim.x(operation.qubits[0])
         elif name == 'measure':
             cregbits = operation.register if hasattr(operation, 'register') else len(operation.qubits) * [-1]
             self._sample_qubits.append(operation.qubits)
