@@ -16,6 +16,7 @@
 import uuid
 import time
 import numpy as np
+from datetime import datetime
 from collections import Counter
 from qiskit.providers.models import BackendConfiguration
 
@@ -24,7 +25,6 @@ from ..qrackjob import QrackJob
 from ..qrackerror import QrackError
 from pyqrack import QrackSimulator, Pauli
 
-from qiskit.providers import BaseBackend
 from qiskit.providers.backend import BackendV1
 from qiskit.providers.options import Options
 from qiskit.result import Result
@@ -33,7 +33,7 @@ from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
 
 
-class QasmSimulator(BaseBackend):
+class QasmSimulator(BackendV1):
     """
     Contains an OpenCL based backend
     """
@@ -352,25 +352,6 @@ class QasmSimulator(BaseBackend):
         _def_opts.update_options(**cls.DEFAULT_OPTIONS)
         return _def_opts
 
-    def set_options(self, **fields):
-        """Set the options fields for the backend
-
-        This method is used to update the options of a backend. If
-        you need to change any of the options prior to running just
-        pass in the kwarg with the new value for the options.
-
-        Args:
-            fields: The fields to update the options
-
-        Raises:
-            AttributeError: If the field passed in is not part of the
-                options
-        """
-        for field in fields:
-            if not hasattr(self._options, field):
-                raise AttributeError("Options field %s is not valid for this " "backend" % field)
-        self._options.update_options(**fields)
-
     def run(self, run_input, **options):
         """Run on the backend.
 
@@ -435,18 +416,19 @@ class QasmSimulator(BaseBackend):
             results.append(self.run_experiment(experiment, **options))
         end = time.time()
 
-        result = {
-            'backend_name': self.name(),
-            'backend_version': self._configuration.backend_version,
-            'qobj_id': run_input.qobj_id if hasattr(run_input, 'config') else '',
-            'job_id': job_id,
-            'results': results,
-            'status': 'COMPLETED',
-            'success': True,
-            'time_taken': (end - start),
-            'header': run_input.header.to_dict() if hasattr(run_input, 'config') else {},
-            'metadata': { 'measure_sampling' : self._sample_measure }
-        }
+        return Result(
+            backend_name = self.name(),
+            backend_version = self._configuration.backend_version,
+            qobj_id = run_input.qobj_id if hasattr(run_input, 'config') else job_id,
+            job_id = job_id,
+            success = True,
+            results = results,
+            date = datetime.now(),
+            status = 'COMPLETED',
+            header = run_input.header.to_dict() if hasattr(run_input, 'config') else {},
+            time_taken = (end - start),
+            metadata = { 'measure_sampling' : self._sample_measure }
+        )
 
         return Result.from_dict(result)
 
