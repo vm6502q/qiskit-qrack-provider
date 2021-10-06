@@ -16,6 +16,7 @@
 import uuid
 import time
 import numpy as np
+import pandas as pd
 from datetime import datetime
 from collections import Counter
 from qiskit.providers.models import BackendConfiguration
@@ -31,6 +32,21 @@ from qiskit.result import Result
 
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
+
+class QrackExperimentResultHeader:
+    def __init__(self, name):
+        self.name = name
+
+
+class QrackExperimentResult:
+    def __init__(self, shots, data, status, success, header, meta_data = None, time_taken = None):
+        self.shots = shots
+        self.data = data
+        self.status = status
+        self.success = success
+        self.header = header
+        self.meta_data = meta_data,
+        self.time_taken = time_taken
 
 
 class QasmSimulator(BackendV1):
@@ -419,15 +435,14 @@ class QasmSimulator(BackendV1):
         return Result(
             backend_name = self.name(),
             backend_version = self._configuration.backend_version,
-            qobj_id = run_input.qobj_id if hasattr(run_input, 'config') else job_id,
+            qobj_id = run_input.qobj_id if hasattr(run_input, 'config') else '',
             job_id = job_id,
             success = True,
             results = results,
             date = datetime.now(),
             status = 'COMPLETED',
             header = run_input.header.to_dict() if hasattr(run_input, 'config') else {},
-            time_taken = (end - start),
-            metadata = { 'measure_sampling' : self._sample_measure }
+            time_taken = (end - start)
         )
 
         return Result.from_dict(result)
@@ -560,10 +575,9 @@ class QasmSimulator(BackendV1):
 
         end = time.time()
 
-        data = {'counts': dict(Counter(self.__memory))}
-
-        if self._memory:
-            data['memory'] = self.__memory
+        data = { 'counts': dict(Counter(self.__memory)) }
+        dfData = pd.DataFrame(data=data)
+        data['memory'] = self.__memory
 
         if isinstance(experiment, QasmQobjExperiment):
             return {
@@ -577,16 +591,15 @@ class QasmSimulator(BackendV1):
                 'metadata': { 'measure_sampling' : self._sample_measure }
             }
 
-        return {
-                'name': uuid.uuid4(),
-                'shots': self._shots,
-                'data': data,
-                'status': 'DONE',
-                'success': True,
-                'time_taken': (end - start),
-                'header': experiment.header,
-                'metadata': { 'measure_sampling' : self._sample_measure }
-            }
+        return QrackExperimentResult(
+            shots = self._shots,
+            data = dfData,
+            status = 'DONE',
+            success = True,
+            header = QrackExperimentResultHeader(name = experiment.name),
+            meta_data = { 'measure_sampling' : self._sample_measure },
+            time_taken = (end - start)
+        )
 
     #@profile
     def _apply_op(self, operation, shotsPerLoop):
