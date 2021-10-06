@@ -38,6 +38,15 @@ class QasmSimulator(BaseBackend):
     Contains an OpenCL based backend
     """
 
+    DEFAULT_OPTIONS = {
+        'method': 'automatic',
+        'is_multi_device': True,
+        'is_schmidt_decompose': True,
+        'is_stabilizer_hybrid': True,
+        'is_1qb_fusion': True,
+        'is_cpu_gpu_hybrid': True
+    }
+
     DEFAULT_CONFIGURATION = {
         'backend_name': 'statevector_simulator',
         'backend_version': __version__,
@@ -322,6 +331,8 @@ class QasmSimulator(BaseBackend):
         self._shots = 1
         self._memory = 0
 
+        self._options = self._default_options()
+
         super().__init__(configuration=configuration, provider=provider, **fields)
 
     @classmethod
@@ -338,14 +349,27 @@ class QasmSimulator(BaseBackend):
                 default values set
         """
         _def_opts = Options()
-        _def_opts.update_options(
-            is_multi_device = True,
-            is_schmidt_decompose = True,
-            is_stabilizer_hybrid = True,
-            is_1qb_fusion = True,
-            is_cpu_gpu_hybrid = True
-        )
+        _def_opts.update_options(**cls.DEFAULT_OPTIONS)
         return _def_opts
+
+    def set_options(self, **fields):
+        """Set the options fields for the backend
+
+        This method is used to update the options of a backend. If
+        you need to change any of the options prior to running just
+        pass in the kwarg with the new value for the options.
+
+        Args:
+            fields: The fields to update the options
+
+        Raises:
+            AttributeError: If the field passed in is not part of the
+                options
+        """
+        for field in fields:
+            if not hasattr(self._options, field):
+                raise AttributeError("Options field %s is not valid for this " "backend" % field)
+        self._options.update_options(**fields)
 
     def run(self, run_input, **options):
         """Run on the backend.
@@ -377,11 +401,11 @@ class QasmSimulator(BaseBackend):
             Job: The job object for the run
         """
         qrack_options = {
-            'isMultiDevice': options.is_multi_device if hasattr(options, 'is_multi_device') else True,
-            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else True,
-            'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else True,
-            'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else True,
-            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else True
+            'isMultiDevice': options.is_multi_device if hasattr(options, 'is_multi_device') else self._options.get('is_multi_device'),
+            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
+            'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
+            'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.get('is_1qb_fusion'),
+            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid')
         }
 
         job_id = str(uuid.uuid4())
