@@ -441,8 +441,8 @@ class QasmSimulator(BackendV1):
             self._number_of_cbits = experiment.header.memory_slots
             instructions = experiment.instructions
         elif isinstance(experiment, QuantumCircuit):
-            self._number_of_qubits = len(experiment._qubits)
-            self._number_of_cbits = len(experiment._clbits)
+            self._number_of_qubits = len(experiment.qubits)
+            self._number_of_cbits = len(experiment.clbits)
             instructions = experiment._data
         else:
             raise QrackError('Unrecognized "run_input" argument specified for run().')
