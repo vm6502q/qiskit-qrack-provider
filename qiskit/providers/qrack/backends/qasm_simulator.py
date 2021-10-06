@@ -56,6 +56,8 @@ class QasmSimulator(BackendV1):
 
     DEFAULT_OPTIONS = {
         'method': 'automatic',
+        'shots': 1024,
+        'memory': 0,
         'is_multi_device': True,
         'is_schmidt_decompose': True,
         'is_stabilizer_hybrid': True,
@@ -405,11 +407,13 @@ class QasmSimulator(BackendV1):
             'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid')
         }
 
+        shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
+        memory = options['memory'] if 'memory' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('memory'))
         job_id = str(uuid.uuid4())
-        job = QrackJob(self, job_id, self._run_job(job_id, run_input, **qrack_options), run_input)
+        job = QrackJob(self, job_id, self._run_job(job_id, run_input, shots, memory, **qrack_options), run_input)
         return job
 
-    def _run_job(self, job_id, run_input, **options):
+    def _run_job(self, job_id, run_input, shots, memory, **options):
         """Run experiments in run_input
         Args:
             job_id (str): unique id for the job.
@@ -417,12 +421,8 @@ class QasmSimulator(BackendV1):
         Returns:
             Result: Result object
         """
-        if hasattr(run_input, 'config'):
-            self._shots = run_input.config.shots
-            self._memory = run_input.config.memory
-        else:
-            self._shots = 1
-            self._memory = 0
+        self._shots = shots
+        self._memory = memory
 
         experiments = run_input.experiments if hasattr(run_input, 'config') else run_input
         results = []
@@ -591,13 +591,19 @@ class QasmSimulator(BackendV1):
                 'metadata': { 'measure_sampling' : self._sample_measure }
             }
 
+        metadata = {}
+        if experiment.metadata is not None:
+            metadata = experiment.metadata
+
+        metadata['measure_sampling'] = self._sample_measure
+
         return QrackExperimentResult(
             shots = self._shots,
             data = dfData,
             status = 'DONE',
             success = True,
             header = QrackExperimentResultHeader(name = experiment.name),
-            meta_data = { 'measure_sampling' : self._sample_measure },
+            meta_data = metadata,
             time_taken = (end - start)
         )
 
