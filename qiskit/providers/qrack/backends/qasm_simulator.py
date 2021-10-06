@@ -28,6 +28,9 @@ from qiskit.providers.backend import BackendV1
 from qiskit.providers.options import Options
 from qiskit.result import Result
 
+from qiskit.circuit.quantumcircuit import QuantumCircuit
+from qiskit.qobj.qasm_qobj import QasmQobjExperiment
+
 
 class QasmSimulator(BackendV1):
     """
@@ -35,7 +38,7 @@ class QasmSimulator(BackendV1):
     """
 
     DEFAULT_CONFIGURATION = {
-        'backend_name': 'qasm_simulator',
+        'backend_name': 'statevector_simulator',
         'backend_version': __version__,
         'n_qubits': 64,
         'conditional': True,
@@ -333,7 +336,13 @@ class QasmSimulator(BackendV1):
                 default values set
         """
         _def_opts = Options()
-        _def_opts.update_options(is_multi_device = True, is_schmidt_decompose = True, is_stabilizer_hybrid = True, is_1qb_fusion = True, is_cpu_gpu_hybrid = True)
+        _def_opts.update_options(
+            is_multi_device = True,
+            is_schmidt_decompose = True,
+            is_stabilizer_hybrid = True,
+            is_1qb_fusion = True,
+            is_cpu_gpu_hybrid = True
+        )
         return _def_opts
 
     def run(self, run_input, **options):
@@ -365,9 +374,16 @@ class QasmSimulator(BackendV1):
         Returns:
             Job: The job object for the run
         """
+        qrack_options = {
+            'isMultiDevice': options.is_multi_device if hasattr(options, 'is_multi_device') else True,
+            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else True,
+            'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else True,
+            'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else True,
+            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else True
+        }
 
         job_id = str(uuid.uuid4())
-        job = QrackJob(self, job_id, self._run_job(job_id, run_input, **options), run_input)
+        job = QrackJob(self, job_id, self._run_job(job_id, run_input, **qrack_options), run_input)
         return job
 
     def _run_job(self, job_id, run_input, **options):
@@ -390,7 +406,7 @@ class QasmSimulator(BackendV1):
 
         start = time.time()
         for experiment in experiments:
-            results.append(self.run_experiment(experiment))
+            results.append(self.run_experiment(experiment, **options))
         end = time.time()
 
         result = {
@@ -408,7 +424,7 @@ class QasmSimulator(BackendV1):
 
         return Result.from_dict(result)
 
-    def run_experiment(self, experiment):
+    def run_experiment(self, experiment, **options):
         """Run an experiment (circuit) and return a single experiment result.
         Args:
             experiment (QobjExperiment): experiment from qobj experiments list
@@ -419,8 +435,17 @@ class QasmSimulator(BackendV1):
             QrackError: If the number of qubits is too large, or another
                 error occurs during execution.
         """
-        self._number_of_qubits = experiment.header.n_qubits
-        self._number_of_cbits = experiment.header.memory_slots
+        instructions = []
+        if isinstance(experiment, QasmQobjExperiment):
+            self._number_of_qubits = experiment.header.n_qubits
+            self._number_of_cbits = experiment.header.memory_slots
+            instructions = experiment.instructions
+        elif isinstance(experiment, QuantumCircuit):
+            self._number_of_qubits = len(experiment._qubits)
+            self._number_of_cbits = len(experiment._clbits)
+            instructions = experiment._data
+        else:
+            raise QrackError('Unrecognized "run_input" argument specified for run().')
         self._sample_qubits = []
         self._sample_clbits = []
         self._sample_cregbits = []
@@ -438,7 +463,7 @@ class QasmSimulator(BackendV1):
         nonunitary_start = 0
 
         if self._shots != 1:
-            for operation in experiment.instructions:
+            for operation in instructions:
                 opcount = opcount + 1
 
                 if operation.name == 'id' or operation.name == 'barrier':
@@ -452,7 +477,6 @@ class QasmSimulator(BackendV1):
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
                     self._sample_measure = False
-                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset" and conditionals, setting shots=1, and/or only measuring at the end of the circuit.')
                     break
 
                 is_initializing = False
@@ -465,7 +489,6 @@ class QasmSimulator(BackendV1):
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
                     self._sample_measure = False
-                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset" "and conditionals, setting shots=1, and/or only measuring at the end of the circuit.')
                     break
 
         preamble_classical_memory = 0
@@ -482,7 +505,7 @@ class QasmSimulator(BackendV1):
             self._classical_memory = 0
             self._classical_register = 0
 
-            for operation in experiment.instructions[:nonunitary_start]:
+            for operation in instructions[:nonunitary_start]:
                 self._apply_op(operation, shotsPerLoop)
 
             preamble_classical_memory = self._classical_memory
@@ -501,7 +524,7 @@ class QasmSimulator(BackendV1):
                 self._classical_memory = preamble_classical_memory
                 self._classical_register = preamble_classical_register
 
-            for operation in experiment.instructions[nonunitary_start:]:
+            for operation in instructions[nonunitary_start:]:
                 self._apply_op(operation, shotsPerLoop)
 
             if len(self._sample_qubits) > 0:
@@ -540,11 +563,9 @@ class QasmSimulator(BackendV1):
         name = operation.name
 
         if name == 'id':
-            logger.info('Identity gates are ignored.')
             # Skip measurement logic
             return
         elif name == 'barrier':
-            logger.info('Barrier gates are ignored.')
             # Skip measurement logic
             return
 
