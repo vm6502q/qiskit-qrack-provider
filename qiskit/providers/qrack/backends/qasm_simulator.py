@@ -24,6 +24,7 @@ from ..qrackjob import QrackJob
 from ..qrackerror import QrackError
 from pyqrack import QrackSimulator, Pauli
 
+from qiskit.providers import BaseBackend
 from qiskit.providers.backend import BackendV1
 from qiskit.providers.options import Options
 from qiskit.result import Result
@@ -32,7 +33,7 @@ from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
 
 
-class QasmSimulator(BackendV1):
+class QasmSimulator(BaseBackend):
     """
     Contains an OpenCL based backend
     """
@@ -316,11 +317,12 @@ class QasmSimulator(BackendV1):
 
         configuration = configuration or BackendConfiguration.from_dict(self.DEFAULT_CONFIGURATION)
 
-        super().__init__(configuration=configuration, provider=provider)
-        self._number_of_qubits = None
-        self._number_of_cbits = None
+        self._number_of_qubits = 0
+        self._number_of_cbits = 0
         self._shots = 1
         self._memory = 0
+
+        super().__init__(configuration=configuration, provider=provider, **fields)
 
     @classmethod
     def _default_options(cls):
