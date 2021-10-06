@@ -4,31 +4,16 @@ Taken mostly from https://github.com/Qiskit/qiskit-qcgpu-provider/blob/master/qi
 """
 
 
-from concurrent import futures
-import logging
-import sys
-import functools
-
-from qiskit.providers import BaseJob, JobStatus, JobError
-from qiskit.qobj import validate_qobj_against_schema
-from qiskit.result import Result
-
-logger = logging.getLogger(__name__)
+from qiskit.providers.job import JobV1
+from qiskit.providers import JobStatus
 
 
-class QrackJob(BaseJob):
+class QrackJob(JobV1):
     """
     QrackJob class.
     This is a mocking futures class, used only 
     to fit the API.
-    Attributes:
-        _executor (futures.Executor): executor to handle asynchronous jobs
     """
-
-    if sys.platform in ['darwin', 'win32']:
-        _executor = futures.ThreadPoolExecutor()
-    else:
-        _executor = futures.ProcessPoolExecutor()
 
     def __init__(self, backend, job_id, val, qobj):
         super().__init__(backend, job_id)
@@ -75,7 +60,3 @@ class QrackJob(BaseJob):
             concurrent.futures.TimeoutError: if timeout occurred.
         """
         return JobStatus.DONE
-
-    def backend(self):
-        """Return the instance of the backend used for this job."""
-        return self._backend

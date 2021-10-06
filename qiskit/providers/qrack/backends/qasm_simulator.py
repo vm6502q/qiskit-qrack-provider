@@ -17,30 +17,21 @@ import uuid
 import time
 import numpy as np
 from collections import Counter
-import logging
-import os
-from math import log2
-from qiskit.util import local_hardware_info
 from qiskit.providers.models import BackendConfiguration
 
-from ..qrackerror import QrackError
 from ..version import __version__
 from ..qrackjob import QrackJob
 from ..qrackerror import QrackError
 from pyqrack import QrackSimulator, Pauli
 
-from qiskit.providers import BaseBackend
+from qiskit.providers.backend import BackendV1
+from qiskit.providers.options import Options
 from qiskit.result import Result
 
-logger = logging.getLogger(__name__)
 
-
-class QasmSimulator(BaseBackend):
-    """Contains an OpenCL based backend
-
-    **Backend options**: None
-    
-    (PyQrack does an excellent job of automatically selecting the best runtime options for performance, "transparently.")
+class QasmSimulator(BackendV1):
+    """
+    Contains an OpenCL based backend
     """
 
     DEFAULT_CONFIGURATION = {
@@ -51,17 +42,16 @@ class QasmSimulator(BaseBackend):
         'url': 'https://github.com/vm6502q/qiskit-qrack-provider',
         'simulator': True,
         'local': True,
-        'conditional': False,
         'open_pulse': False,
         'memory': True,
         'max_shots': 65536,
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
         'basis_gates': [
-            'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'cy', 'cz', 'ch', 'id', 'x', 'y', 'z', 'h',
-            'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'swap', 'iswap', 'ccx', 'cu1', 'cu2',
+            'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'cz', 'ch', 'id', 'x', 'sx', 'y', 'z', 'h',
+            'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'iswap', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
-            'reset', 'measure'
+            'multiplexer', 'reset', 'measure'
         ],
         'gates': [{
             'name': 'u1',
@@ -138,6 +128,12 @@ class QasmSimulator(BaseBackend):
             'conditional': True,
             'description': 'Single-qubit Pauli-X gate',
             'qasm_def': 'gate x a { U(pi,0,pi) a; }'
+        }, {
+            'name': 'sx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit square root of Pauli-X gate',
+            'qasm_def': 'gate sx a { rz(-pi/2) a; h a; rz(-pi/2); }'
         }, {
             'name': 'y',
             'parameters': [],
@@ -291,94 +287,127 @@ class QasmSimulator(BaseBackend):
         }]
     }
 
-    # TODO: Implement these __init__ options. (We only match the signature for any compatibility at all, for now.)
-    def __init__(self,
-                 configuration=None,
-                 provider=None,
-                 method=None,
-                 max_parallel_threads=-1,
-                 blocking_enable=False,
-                 blocking_ignore_diagonal=False,
-                 blocking_qubits=0):
-        configuration = configuration or BackendConfiguration.from_dict(
-            self.DEFAULT_CONFIGURATION)
-        super().__init__(configuration=configuration, provider=provider)
+    def __init__(self, configuration=None, provider=None, **fields):
+        """Initialize a backend class
 
-        self._configuration = configuration
+        Args:
+            configuration (BackendConfiguration): A backend configuration
+                object for the backend object.
+            provider (qiskit.providers.Provider): Optionally, the provider
+                object that this Backend comes from.
+            fields: kwargs for the values to use to override the default
+                options.
+        Raises:
+            AttributeError: if input field not a valid options
+
+        ..
+            This next bit is necessary just because autosummary generally won't summarise private
+            methods; changing that behaviour would have annoying knock-on effects through all the
+            rest of the documentation, so instead we just hard-code the automethod directive.
+
+        In addition to the public abstract methods, subclasses should also implement the following
+        private methods:
+
+        .. automethod:: _default_options
+        """
+
+        configuration = configuration or BackendConfiguration.from_dict(self.DEFAULT_CONFIGURATION)
+
+        super().__init__(configuration=configuration, provider=provider)
         self._number_of_qubits = None
         self._number_of_cbits = None
-        self._results = {}
-        self._shots = {}
+        self._shots = 1
+        self._memory = 0
 
-    def options(self):
-        """Return the current simulator options"""
-        #return self._options
-        return None
+    @classmethod
+    def _default_options(cls):
+        """Return the default options
 
-    def set_options(self, **backend_options):
-        """Set the simulator options"""
-        #for key, val in backend_options.items():
-        #    self._set_option(key, val)
+        This method will return a :class:`qiskit.providers.Options`
+        subclass object that will be used for the default options. These
+        should be the default parameters to use for the options of the
+        backend.
 
-    def clear_options(self):
-        """Reset the simulator options to default values."""
-        #self._custom_configuration = None
-        #self._custom_properties = None
-        #self._custom_defaults = None
-        #self._options = {}
-
-    #@profile
-    def run(self,
-            qobj,
-            backend_options=None,  # DEPRECATED
-            validate=False,
-            **run_options):
-        """Run qobj asynchronously.
-        Args:
-            qobj (Qobj): payload of the experiment
-            backend_options: (ignored)
         Returns:
-            QrackJob: derived from BaseJob
+            qiskit.providers.Options: A options object with
+                default values set
+        """
+        _def_opts = Options()
+        _def_opts.update_options(is_multi_device = True, is_schmidt_decompose = True, is_stabilizer_hybrid = True, is_1qb_fusion = True, is_cpu_gpu_hybrid = True)
+        return _def_opts
+
+    def run(self, run_input, **options):
+        """Run on the backend.
+
+        This method that will return a :class:`~qiskit.providers.Job` object
+        that run circuits. Depending on the backend this may be either an async
+        or sync call. It is the discretion of the provider to decide whether
+        running should  block until the execution is finished or not. The Job
+        class can handle either situation.
+
+        Args:
+            run_input (QuantumCircuit or Schedule or list): An individual or a
+                list of :class:`~qiskit.circuits.QuantumCircuit` or
+                :class:`~qiskit.pulse.Schedule` objects to run on the backend.
+                For legacy providers migrating to the new versioned providers,
+                provider interface a :class:`~qiskit.qobj.QasmQobj` or
+                :class:`~qiskit.qobj.PulseQobj` objects should probably be
+                supported too (but deprecated) for backwards compatibility. Be
+                sure to update the docstrings of subclasses implementing this
+                method to document that. New provider implementations should not
+                do this though as :mod:`qiskit.qobj` will be deprecated and
+                removed along with the legacy providers interface.
+            options: Any kwarg options to pass to the backend for running the
+                config. If a key is also present in the options
+                attribute/object then the expectation is that the value
+                specified will be used instead of what's set in the options
+                object.
+        Returns:
+            Job: The job object for the run
         """
 
         job_id = str(uuid.uuid4())
-        job = QrackJob(self, job_id, self._run_job(job_id, qobj), qobj)
+        job = QrackJob(self, job_id, self._run_job(job_id, run_input, **options), run_input)
         return job
-    #@profile
-    def _run_job(self, job_id, qobj):
-        """Run experiments in qobj
+
+    def _run_job(self, job_id, run_input, **options):
+        """Run experiments in run_input
         Args:
             job_id (str): unique id for the job.
-            qobj (Qobj): job description
+            run_input (QuantumCircuit or Schedule or list): job description
         Returns:
             Result: Result object
         """
-        self._shots = qobj.config.shots
-        self._memory = qobj.config.memory
-        self._qobj_config = qobj.config
+        if hasattr(run_input, 'config'):
+            self._shots = run_input.config.shots
+            self._memory = run_input.config.memory
+        else:
+            self._shots = 1
+            self._memory = 0
+
+        experiments = run_input.experiments if hasattr(run_input, 'config') else run_input
         results = []
 
         start = time.time()
-        for experiment in qobj.experiments:
+        for experiment in experiments:
             results.append(self.run_experiment(experiment))
         end = time.time()
 
         result = {
             'backend_name': self.name(),
             'backend_version': self._configuration.backend_version,
-            'qobj_id': qobj.qobj_id,
+            'qobj_id': run_input.qobj_id,
             'job_id': job_id,
             'results': results,
             'status': 'COMPLETED',
             'success': True,
             'time_taken': (end - start),
-            'header': qobj.header.to_dict(),
+            'header': run_input.header.to_dict(),
             'metadata': { 'measure_sampling' : self._sample_measure }
         }
 
         return Result.from_dict(result)
 
-    #@profile
     def run_experiment(self, experiment):
         """Run an experiment (circuit) and return a single experiment result.
         Args:
@@ -449,7 +478,7 @@ class QasmSimulator(BaseBackend):
         else:
             is_unitary_preamble = True
             self._sample_measure = True
-            self._sim = QrackSimulator(self._number_of_qubits)
+            self._sim = QrackSimulator(self._number_of_qubits, **options)
             self._classical_memory = 0
             self._classical_register = 0
 
@@ -464,11 +493,11 @@ class QasmSimulator(BaseBackend):
 
         for shot in range(shotLoopMax):
             if not is_unitary_preamble:
-                self._sim = QrackSimulator(self._number_of_qubits)
+                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
                 self._classical_memory = 0
                 self._classical_register = 0
             else:
-                self._sim = QrackSimulator(cloneSid = preamble_sim.sid)
+                self._sim = QrackSimulator(cloneSid = preamble_sim.sid, **options)
                 self._classical_memory = preamble_classical_memory
                 self._classical_register = preamble_classical_register
 
