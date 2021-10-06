@@ -29,7 +29,7 @@ from qiskit.providers.options import Options
 from qiskit.result import Result
 
 from qiskit.circuit.quantumcircuit import QuantumCircuit
-from qiskit.qobj.qasm_qobj import QasmQobjExperiment
+from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
 
 
 class QasmSimulator(BackendV1):
@@ -412,13 +412,13 @@ class QasmSimulator(BackendV1):
         result = {
             'backend_name': self.name(),
             'backend_version': self._configuration.backend_version,
-            'qobj_id': run_input.qobj_id,
+            'qobj_id': run_input.qobj_id if hasattr(run_input, 'config') else '',
             'job_id': job_id,
             'results': results,
             'status': 'COMPLETED',
             'success': True,
             'time_taken': (end - start),
-            'header': run_input.header.to_dict(),
+            'header': run_input.header.to_dict() if hasattr(run_input, 'config') else {},
             'metadata': { 'measure_sampling' : self._sample_measure }
         }
 
@@ -443,7 +443,17 @@ class QasmSimulator(BackendV1):
         elif isinstance(experiment, QuantumCircuit):
             self._number_of_qubits = len(experiment.qubits)
             self._number_of_cbits = len(experiment.clbits)
-            instructions = experiment._data
+            for datum in experiment._data:
+
+                qubits = []
+                for qubit in datum[1]:
+                    qubits.append(experiment.qubits.index(qubit))
+
+                clbits = []
+                for clbit in datum[2]:
+                    clbits.append(experiment.clbits.index(clbit))
+
+                instructions.append(QasmQobjInstruction(datum[0].name, qubits = qubits, memory = clbits, params = datum[0].params))
         else:
             raise QrackError('Unrecognized "run_input" argument specified for run().')
         self._sample_qubits = []
@@ -547,16 +557,28 @@ class QasmSimulator(BackendV1):
         if self._memory:
             data['memory'] = self.__memory
 
+        if isinstance(experiment, QasmQobjExperiment):
+            return {
+                'name': experiment.header.name,
+                'shots': self._shots,
+                'data': data,
+                'status': 'DONE',
+                'success': True,
+                'time_taken': (end - start),
+                'header': experiment.header.to_dict(),
+                'metadata': { 'measure_sampling' : self._sample_measure }
+            }
+
         return {
-            'name': experiment.header.name,
-            'shots': self._shots,
-            'data': data,
-            'status': 'DONE',
-            'success': True,
-            'time_taken': (end - start),
-            'header': experiment.header.to_dict(),
-            'metadata': { 'measure_sampling' : self._sample_measure }
-        }
+                'name': uuid.uuid4(),
+                'shots': self._shots,
+                'data': data,
+                'status': 'DONE',
+                'success': True,
+                'time_taken': (end - start),
+                'header': experiment.header,
+                'metadata': { 'measure_sampling' : self._sample_measure }
+            }
 
     #@profile
     def _apply_op(self, operation, shotsPerLoop):
