@@ -649,14 +649,11 @@ class QasmSimulator(BackendV1):
     def _apply_op(self, operation, shotsPerLoop):
         name = operation.name
 
-        if name == 'id':
-            # Skip measurement logic
-            return
-        elif name == 'barrier':
+        if (name == 'id') or (name == 'barrier'):
             # Skip measurement logic
             return
 
-        if (name != 'measure' or hasattr(operation, 'conditional')) and len(self._sample_qubits) > 0:
+        if (len(self._sample_qubits) > 0) and ((name != 'measure') or hasattr(operation, 'conditional')):
             if self._sample_measure:
                 self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, shotsPerLoop)
             else:
@@ -671,13 +668,13 @@ class QasmSimulator(BackendV1):
             if not conditional_bit_set:
                 return
         elif conditional is not None:
-            mask = int(operation.conditional.mask, 16)
+            mask = int(conditional.mask, 16)
             if mask > 0:
                 value = self._classical_memory & mask
                 while (mask & 0x1) == 0:
                     mask >>= 1
                     value >>= 1
-                if value != int(operation.conditional.val, 16):
+                if value != int(conditional.val, 16):
                     return
 
         if (name == 'u1') or (name == 'p'):
