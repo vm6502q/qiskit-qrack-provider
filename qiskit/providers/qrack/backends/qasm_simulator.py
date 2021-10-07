@@ -544,7 +544,7 @@ class QasmSimulator(BackendV1):
         did_measure = False
         is_initializing = True
         opcount = -1
-        nonunitary_start = 0
+        nonunitary_start = -1
 
         if self._shots != 1:
             for operation in instructions:
@@ -566,7 +566,7 @@ class QasmSimulator(BackendV1):
                 is_initializing = False
 
                 if operation.name == 'measure':
-                    if nonunitary_start == 0:
+                    if nonunitary_start == -1:
                         nonunitary_start = opcount
                     did_measure = True
                 elif did_measure:
@@ -574,6 +574,9 @@ class QasmSimulator(BackendV1):
                     shotsPerLoop = 1
                     self._sample_measure = False
                     break
+
+        if nonunitary_start == -1:
+            nonunitary_start = len(instructions)
 
         preamble_classical_memory = 0
         preamble_classical_register = 0
