@@ -533,7 +533,7 @@ class QasmSimulator(BackendV1):
         self._sample_qubits = []
         self._sample_clbits = []
         self._sample_cregbits = []
-        self.__memory = []
+        self._data = []
         self._sample_measure = True
 
         start = time.time()
@@ -609,7 +609,7 @@ class QasmSimulator(BackendV1):
 
             if len(self._sample_qubits) > 0:
                 if self._sample_measure:
-                    self.__memory = self._add_sample_measure(self._sample_qubits, self._sample_clbits, shotsPerLoop)
+                    self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, shotsPerLoop)
                 else:
                     self._add_qasm_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits)
                 self._sample_qubits = []
@@ -618,13 +618,13 @@ class QasmSimulator(BackendV1):
 
             if not self._sample_measure:
                 # Turn classical_memory (int) into bit string and pad zero for unused cmembits
-                self.__memory.append(hex(int(bin(self._classical_memory)[2:], 2)))
+                self._data.append(hex(int(bin(self._classical_memory)[2:], 2)))
 
         end = time.time()
 
-        data = { 'counts': dict(Counter(self.__memory)) }
+        data = { 'counts': dict(Counter(self._data)) }
         if isinstance(experiment, QasmQobjExperiment):
-            data['memory'] = self.__memory
+            data['memory'] = self._data
             data = QrackExperimentResultData(**data)
         else:
             data = pd.DataFrame(data=data)
@@ -798,7 +798,6 @@ class QasmSimulator(BackendV1):
             err_msg = '{0} encountered unrecognized operation "{1}"'
             raise QrackError(err_msg.format(backend, operation))
 
-    #@profile
     def _add_sample_measure(self, sample_qubits, sample_clbits, num_samples):
         """Generate data samples from current statevector.
         Taken almost straight from the terra source code.
