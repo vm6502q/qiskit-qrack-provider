@@ -553,7 +553,7 @@ class QasmSimulator(BackendV1):
                 if operation.name == 'id' or operation.name == 'barrier':
                     continue
 
-                if (operation.name == 'measure') or (operation.name == 'reset') or hasattr(operation, 'conditional'):
+                if (operation.name == 'measure') or (operation.name == 'reset'):
                     if is_initializing:
                         continue
                     if nonunitary_start == -1:
@@ -653,7 +653,7 @@ class QasmSimulator(BackendV1):
             # Skip measurement logic
             return
 
-        if (len(self._sample_qubits) > 0) and ((name != 'measure') or hasattr(operation, 'conditional')):
+        if (len(self._sample_qubits) > 0) and (name != 'measure'):
             if self._sample_measure:
                 self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, shotsPerLoop)
             else:
