@@ -553,27 +553,20 @@ class QasmSimulator(BackendV1):
                 if operation.name == 'id' or operation.name == 'barrier':
                     continue
 
-                if hasattr(operation, 'conditional') or operation.name == 'reset':
+                if (operation.name == 'measure') or (operation.name == 'reset') or hasattr(operation, 'conditional'):
                     if is_initializing:
                         continue
-                    if operation.name != 'reset':
+                    if nonunitary_start == -1:
                         nonunitary_start = opcount
+                    did_measure = True
+                    break
+                elif did_measure:
                     shotLoopMax = self._shots
                     shotsPerLoop = 1
                     self._sample_measure = False
                     break
 
                 is_initializing = False
-
-                if operation.name == 'measure':
-                    if nonunitary_start == -1:
-                        nonunitary_start = opcount
-                    did_measure = True
-                elif did_measure:
-                    shotLoopMax = self._shots
-                    shotsPerLoop = 1
-                    self._sample_measure = False
-                    break
 
         if nonunitary_start == -1:
             nonunitary_start = len(instructions)
@@ -665,7 +658,7 @@ class QasmSimulator(BackendV1):
 
         if (name != 'measure' or hasattr(operation, 'conditional')) and len(self._sample_qubits) > 0:
             if self._sample_measure:
-                self._data = self._add_sample_measure(self._sample_qubits, sample_clbits, sim, shotsPerLoop)
+                self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, shotsPerLoop)
             else:
                 self._add_qasm_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits)
             self._sample_qubits = []
