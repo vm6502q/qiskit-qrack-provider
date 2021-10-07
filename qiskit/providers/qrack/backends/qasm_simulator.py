@@ -574,12 +574,13 @@ class QasmSimulator(BackendV1):
         preamble_classical_register = 0
         preamble_sim = None
 
+        self._classical_memory = 0
+        self._classical_register = 0
+
         if self._sample_measure:
             nonunitary_start = 0
         else:
             self._sim = QrackSimulator(self._number_of_qubits, **options)
-            self._classical_memory = 0
-            self._classical_register = 0
 
             for operation in instructions[:nonunitary_start]:
                 self._apply_op(operation)
@@ -591,8 +592,6 @@ class QasmSimulator(BackendV1):
         for shot in range(shotLoopMax):
             if preamble_sim is None:
                 self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
-                self._classical_memory = 0
-                self._classical_register = 0
             else:
                 self._sim = QrackSimulator(cloneSid = preamble_sim.sid, **options)
                 self._classical_memory = preamble_classical_memory
@@ -603,9 +602,12 @@ class QasmSimulator(BackendV1):
 
             if (not self._sample_measure) and (len(self._sample_qubits) > 0):
                 self._data += [hex(int(bin(self._classical_memory)[2:], 2))]
+                self._sample_qubits = []
+                self._sample_clbits = []
+                self._sample_cregbits = []
 
-        if (self._sample_measure) and len(self._sample_qubits) > 0:
-            self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, [len(self._sample_clbits) * [-1]], self._shots)
+        if (self._sample_measure) and (len(self._sample_qubits) > 0):
+            self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, self._shots)
 
         data = { 'counts': dict(Counter(self._data)) }
         if isinstance(experiment, QasmQobjExperiment):
@@ -740,14 +742,15 @@ class QasmSimulator(BackendV1):
             self._sample_cregbits += cregbits
 
             if not self._sample_measure:
+
+                sample = self._sim.measure_pauli(len(qubits) * [Pauli.PauliZ], qubits)
+
                 for i in range(len(qubits)):
                     qubit = qubits[i]
                     clbit = clbits[i]
                     cregbit = cregbits[i]
 
-                    sample = self._sim.m(qubit)
-
-                    qubit_outcome = ((sample >> qubit) > 0)
+                    qubit_outcome = ((sample >> qubit) & 1)
                     bit = 1 << clbit
                     self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
 
@@ -795,7 +798,7 @@ class QasmSimulator(BackendV1):
             err_msg = '{0} encountered unrecognized operation "{1}"'
             raise QrackError(err_msg.format(backend, operation))
 
-    def _add_sample_measure(self, sample_qubits, sample_clbits, sample_cregbits, num_samples):
+    def _add_sample_measure(self, sample_qubits, sample_clbits, num_samples):
         """Generate data samples from current statevector.
         Taken almost straight from the terra source code.
         Args:
@@ -808,26 +811,17 @@ class QasmSimulator(BackendV1):
         # Get unique qubits that are actually measured
         measure_qubit = [qubit for qubit in sample_qubits]
         measure_clbit = [clbit for clbit in sample_clbits]
-        measure_cregbit = [clbit for clbit in sample_cregbits]
 
-        # If we only want one sample, it's faster for the backend to do it,
-        # without passing back the probabilities.
+        # If we only want one sample, we can use an optimized method.
         if num_samples == 1:
-            sample = self._sim.measure_pauli([Pauli.PauliZ] * len(measure_qubit), measure_qubit)
+            sample = self._sim.measure_pauli(len(measure_qubit) * [Pauli.PauliZ], measure_qubit)
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 clbit = measure_clbit[index]
-                cregbit = measure_cregbit[index]
 
-                qubit_outcome = (sample >> qubit) & 1
+                qubit_outcome = (sample >> index) & 1
                 bit = 1 << clbit
                 self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
-
-                if cregbit < 0:
-                    continue
-
-                regbit = 1 << cregbit
-                self._classical_register = (self._classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
 
             return [hex(int(bin(self._classical_memory)[2:], 2))]
 
