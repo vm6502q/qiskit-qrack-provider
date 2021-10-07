@@ -470,6 +470,8 @@ class QasmSimulator(BackendV1):
         Returns:
             Result: Result object
         """
+        start = time.time()
+
         self._data = data
         self._shots = shots
 
@@ -478,10 +480,8 @@ class QasmSimulator(BackendV1):
             experiments = [experiments]
         results = []
 
-        start = time.time()
         for experiment in experiments:
             results.append(self.run_experiment(experiment, **options))
-        end = time.time()
 
         return Result(
             backend_name = self.name(),
@@ -493,7 +493,7 @@ class QasmSimulator(BackendV1):
             date = datetime.now(),
             status = 'COMPLETED',
             header = qobj_header,
-            time_taken = (end - start)
+            time_taken = (time.time() - start)
         )
 
     def run_experiment(self, experiment, **options):
@@ -507,6 +507,8 @@ class QasmSimulator(BackendV1):
             QrackError: If the number of qubits is too large, or another
                 error occurs during execution.
         """
+        start = time.time()
+
         instructions = []
         if isinstance(experiment, QasmQobjExperiment):
             self._number_of_qubits = experiment.header.n_qubits
@@ -534,10 +536,8 @@ class QasmSimulator(BackendV1):
         self._sample_clbits = []
         self._sample_cregbits = []
         self._data = []
+
         self._sample_measure = True
-
-        start = time.time()
-
         shotsPerLoop = self._shots
         shotLoopMax = 1
 
@@ -546,56 +546,50 @@ class QasmSimulator(BackendV1):
         opcount = -1
         nonunitary_start = -1
 
-        if self._shots != 1:
-            for operation in instructions:
-                opcount = opcount + 1
+        for operation in instructions:
+            opcount = opcount + 1
 
-                if operation.name == 'id' or operation.name == 'barrier':
-                    continue
+            if operation.name == 'id' or operation.name == 'barrier':
+                continue
 
-                if (operation.name == 'measure') or (operation.name == 'reset'):
-                    if is_initializing:
-                        continue
-                    if nonunitary_start == -1:
-                        nonunitary_start = opcount
-                    did_measure = True
-                    break
-                elif did_measure:
-                    shotsPerLoop = 1
-                    shotLoopMax = self._shots
-                    self._sample_measure = False
-                    break
+            if is_initializing and ((operation.name == 'measure') or (operation.name == 'reset')):
+                continue
 
-                is_initializing = False
+            is_initializing = False
+
+            if (operation.name == 'measure') or ((not did_measure) and (operation.name == 'reset')):
+                did_measure = did_measure or (operation.name == 'measure')
+                if nonunitary_start == -1:
+                    nonunitary_start = opcount
+            elif nonunitary_start != -1:
+                shotsPerLoop = 1
+                shotLoopMax = self._shots
+                self._sample_measure = False
+                break
 
         if nonunitary_start == -1:
             nonunitary_start = len(instructions)
 
         preamble_classical_memory = 0
         preamble_classical_register = 0
-
-        is_unitary_preamble = False
+        preamble_sim = None
 
         if self._sample_measure:
             nonunitary_start = 0
         else:
-            is_unitary_preamble = True
-            self._sample_measure = True
             self._sim = QrackSimulator(self._number_of_qubits, **options)
             self._classical_memory = 0
             self._classical_register = 0
 
             for operation in instructions[:nonunitary_start]:
-                self._apply_op(operation, shotsPerLoop)
+                self._apply_op(operation)
 
             preamble_classical_memory = self._classical_memory
             preamble_classical_register = self._classical_register
-            self._sample_measure = False
-
-        preamble_sim = self._sim if is_unitary_preamble else None
+            preamble_sim = self._sim
 
         for shot in range(shotLoopMax):
-            if not is_unitary_preamble:
+            if preamble_sim is None:
                 self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
                 self._classical_memory = 0
                 self._classical_register = 0
@@ -605,18 +599,10 @@ class QasmSimulator(BackendV1):
                 self._classical_register = preamble_classical_register
 
             for operation in instructions[nonunitary_start:]:
-                self._apply_op(operation, shotsPerLoop)
+                self._apply_op(operation)
 
-            if len(self._sample_qubits) > 0:
-                if self._sample_measure:
-                    self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, shotsPerLoop)
-                else:
-                    self._add_qasm_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits)
-                self._sample_qubits = []
-                self._sample_clbits = []
-                self._sample_cregbits = []
-
-        end = time.time()
+            if self._sample_measure and (len(self._sample_qubits) > 0):
+                self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, [len(self._sample_clbits) * [-1]], shotsPerLoop)
 
         data = { 'counts': dict(Counter(self._data)) }
         if isinstance(experiment, QasmQobjExperiment):
@@ -638,22 +624,18 @@ class QasmSimulator(BackendV1):
             success = True,
             header = experiment.header if isinstance(experiment, QasmQobjExperiment) else QrackExperimentResultHeader(name = experiment.name),
             meta_data = metadata,
-            time_taken = (end - start)
+            time_taken = (time.time() - start)
         )
 
-    #@profile
-    def _apply_op(self, operation, shotsPerLoop):
+    def _apply_op(self, operation):
         name = operation.name
 
         if (name == 'id') or (name == 'barrier'):
             # Skip measurement logic
             return
 
-        if (len(self._sample_qubits) > 0) and (name != 'measure'):
-            if self._sample_measure:
-                self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, shotsPerLoop)
-            else:
-                self._add_qasm_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits)
+        if (not self._sample_measure) and (name != 'measure') and (len(self._sample_qubits) > 0):
+            self._data += self._add_sample_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits, 1)
             self._sample_qubits = []
             self._sample_clbits = []
             self._sample_cregbits = []
@@ -794,7 +776,7 @@ class QasmSimulator(BackendV1):
             err_msg = '{0} encountered unrecognized operation "{1}"'
             raise QrackError(err_msg.format(backend, operation))
 
-    def _add_sample_measure(self, sample_qubits, sample_clbits, num_samples):
+    def _add_sample_measure(self, sample_qubits, sample_clbits, sample_cregbits, num_samples):
         """Generate data samples from current statevector.
         Taken almost straight from the terra source code.
         Args:
@@ -809,21 +791,30 @@ class QasmSimulator(BackendV1):
         # Get unique qubits that are actually measured
         measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
         measure_clbit = [clbit for sublist in sample_clbits for clbit in sublist]
+        measure_cregbit = [clbit for sublist in sample_cregbits for clbit in sublist]
 
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
         if num_samples == 1:
             sample = self._sim.measure_pauli([Pauli.PauliZ] * len(measure_qubit), measure_qubit)
             classical_state = self._classical_memory
+            classical_register = self._classical_register
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
                 cbit = measure_clbit[index]
+                cregbit = measure_cregbit[index]
                 qubit_outcome = (sample >> qubit) & 1
                 bit = 1 << cbit
                 classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
+                if cregbit >= 0:
+                    regbit = 1 << cregbit
+                    classical_register = \
+                        (classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
             outKey = bin(classical_state)[2:]
-            data += [hex(int(outKey, 2))]
+            data = [hex(int(outKey, 2))]
             self._classical_memory = classical_state
+            self._classical_register = classical_register
+
             return data
 
         # Sample and convert to bit-strings
@@ -842,36 +833,6 @@ class QasmSimulator(BackendV1):
             data.append(hex(int(outKey, 2)))
 
         return data
-
-    #@profile
-    def _add_qasm_measure(self, sample_qubits, sample_clbits, sample_cregbits=None):
-        """Apply a measure instruction to a qubit.
-        Args:
-            qubit (int): qubit is the qubit measured.
-            cmembit (int): is the classical memory bit to store outcome in.
-            cregbit (int, optional): is the classical register bit to store outcome in.
-        """
-
-        measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
-        measure_clbit = [clbit for sublist in sample_clbits for clbit in sublist]
-        measure_cregbit = [clbit for sublist in sample_cregbits for clbit in sublist]
-
-        sample = self._sim.measure_pauli([Pauli.PauliZ] * len(measure_qubit), measure_qubit)
-        classical_state = self._classical_memory
-        classical_register = self._classical_register
-        for index in range(len(measure_qubit)):
-            qubit = measure_qubit[index]
-            cbit = measure_clbit[index]
-            cregbit = measure_cregbit[index]
-            qubit_outcome = (sample >> qubit) & 1
-            bit = 1 << cbit
-            classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            if cregbit >= 0:
-                regbit = 1 << cregbit
-                classical_register = \
-                    (classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
-        self._classical_memory = classical_state
-        self._classical_register = classical_register
 
     @staticmethod
     def name():
