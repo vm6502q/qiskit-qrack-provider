@@ -391,7 +391,7 @@ class QasmSimulator(BackendV1):
         configuration = configuration or BackendConfiguration.from_dict(self.DEFAULT_CONFIGURATION)
 
         self._number_of_qubits = 0
-        self._number_of_cbits = 0
+        self._number_of_clbits = 0
         self._shots = 1
         self._data = []
 
@@ -512,11 +512,11 @@ class QasmSimulator(BackendV1):
         instructions = []
         if isinstance(experiment, QasmQobjExperiment):
             self._number_of_qubits = experiment.header.n_qubits
-            self._number_of_cbits = experiment.header.memory_slots
+            self._number_of_clbits = experiment.header.memory_slots
             instructions = experiment.instructions
         elif isinstance(experiment, QuantumCircuit):
             self._number_of_qubits = len(experiment.qubits)
-            self._number_of_cbits = len(experiment.clbits)
+            self._number_of_clbits = len(experiment.clbits)
             for datum in experiment._data:
 
                 qubits = []
@@ -557,11 +557,11 @@ class QasmSimulator(BackendV1):
 
             is_initializing = False
 
-            if (operation.name == 'measure') or ((not did_measure) and (operation.name == 'reset')):
-                did_measure = did_measure or (operation.name == 'measure')
+            if (operation.name == 'measure') or (operation.name == 'reset'):
                 if nonunitary_start == -1:
                     nonunitary_start = opcount
-            elif nonunitary_start != -1:
+
+            if (nonunitary_start != -1) and (operation.name != 'measure'):
                 shotsPerLoop = 1
                 shotLoopMax = self._shots
                 self._sample_measure = False
@@ -602,13 +602,10 @@ class QasmSimulator(BackendV1):
                 self._apply_op(operation)
 
             if (not self._sample_measure) and (len(self._sample_qubits) > 0):
-                self._data += self._add_sample_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits, 1)
-                self._sample_qubits = []
-                self._sample_clbits = []
-                self._sample_cregbits = []
+                self._data += [hex(int(bin(self._classical_memory)[2:], 2))]
 
-        if len(self._sample_qubits) > 0:
-            self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, [len(self._sample_clbits) * [-1]], shotsPerLoop)
+        if (self._sample_measure) and len(self._sample_qubits) > 0:
+            self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, [len(self._sample_clbits) * [-1]], self._shots)
 
         data = { 'counts': dict(Counter(self._data)) }
         if isinstance(experiment, QasmQobjExperiment):
@@ -734,10 +731,32 @@ class QasmSimulator(BackendV1):
             if self._sim.m(operation.qubits[0]):
                 self._sim.x(operation.qubits[0])
         elif name == 'measure':
+            qubits = operation.qubits
+            clbits = operation.memory
             cregbits = operation.register if hasattr(operation, 'register') else len(operation.qubits) * [-1]
-            self._sample_qubits += operation.qubits
-            self._sample_clbits += operation.memory
+
+            self._sample_qubits += qubits
+            self._sample_clbits += clbits
             self._sample_cregbits += cregbits
+
+            if not self._sample_measure:
+                for i in range(len(qubits)):
+                    qubit = qubits[i]
+                    clbit = clbits[i]
+                    cregbit = cregbits[i]
+
+                    sample = self._sim.m(qubit)
+
+                    qubit_outcome = ((sample >> qubit) > 0)
+                    bit = 1 << clbit
+                    self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
+
+                    if cregbit < 0:
+                        continue
+
+                    regbit = 1 << cregbit
+                    self._classical_register = (self._classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
+
         elif name == 'bfunc':
             mask = int(operation.mask, 16)
             relation = operation.relation
@@ -795,40 +814,36 @@ class QasmSimulator(BackendV1):
         # without passing back the probabilities.
         if num_samples == 1:
             sample = self._sim.measure_pauli([Pauli.PauliZ] * len(measure_qubit), measure_qubit)
-            classical_state = self._classical_memory
-            classical_register = self._classical_register
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
-                cbit = measure_clbit[index]
+                clbit = measure_clbit[index]
                 cregbit = measure_cregbit[index]
-                qubit_outcome = (sample >> qubit) & 1
-                bit = 1 << cbit
-                classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-                if cregbit >= 0:
-                    regbit = 1 << cregbit
-                    classical_register = \
-                        (classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
-            outKey = bin(classical_state)[2:]
-            self._classical_memory = classical_state
-            self._classical_register = classical_register
 
-            return [hex(int(outKey, 2))]
+                qubit_outcome = (sample >> qubit) & 1
+                bit = 1 << clbit
+                self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
+
+                if cregbit < 0:
+                    continue
+
+                regbit = 1 << cregbit
+                self._classical_register = (self._classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
+
+            return [hex(int(bin(self._classical_memory)[2:], 2))]
 
         # Sample and convert to bit-strings
         data = []
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
-        classical_state = self._classical_memory
-        for key in measure_results:
-            sample = key
-            classical_state = self._classical_memory
+        for sample in measure_results:
             for index in range(len(measure_qubit)):
                 qubit = measure_qubit[index]
-                cbit = measure_clbit[index]
+                clbit = measure_clbit[index]
+
                 qubit_outcome = (sample >> index) & 1
-                bit = 1 << cbit
-                classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            outKey = bin(classical_state)[2:]
-            data.append(hex(int(outKey, 2)))
+                bit = 1 << clbit
+                self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
+
+            data.append(hex(int(bin(self._classical_memory)[2:], 2)))
 
         return data
 
