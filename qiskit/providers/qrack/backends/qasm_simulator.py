@@ -569,35 +569,17 @@ class QasmSimulator(BackendV1):
 
         if nonunitary_start == -1:
             nonunitary_start = len(instructions)
-
-        preamble_classical_memory = 0
-        preamble_classical_register = 0
-        preamble_sim = None
+        #TODO: Fix unitary preamble
 
         self._classical_memory = 0
         self._classical_register = 0
 
-        if self._sample_measure:
-            nonunitary_start = 0
-        else:
-            self._sim = QrackSimulator(self._number_of_qubits, **options)
-
-            for operation in instructions[:nonunitary_start]:
-                self._apply_op(operation)
-
-            preamble_classical_memory = self._classical_memory
-            preamble_classical_register = self._classical_register
-            preamble_sim = self._sim
-
         for shot in range(shotLoopMax):
-            if preamble_sim is None:
-                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
-            else:
-                self._sim = QrackSimulator(cloneSid = preamble_sim.sid, **options)
-                self._classical_memory = preamble_classical_memory
-                self._classical_register = preamble_classical_register
+            self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+            self._classical_memory = 0
+            self._classical_register = 0
 
-            for operation in instructions[nonunitary_start:]:
+            for operation in instructions:
                 self._apply_op(operation)
 
             if (not self._sample_measure) and (len(self._sample_qubits) > 0):
@@ -730,8 +712,11 @@ class QasmSimulator(BackendV1):
         elif name == 'mcswap':
             self._sim.cswap(operation.qubits[:-2], operation.qubits[-2], operation.qubits[-1])
         elif name == 'reset':
-            if self._sim.m(operation.qubits[0]):
-                self._sim.x(operation.qubits[0])
+            qubits = operation.qubits
+            sample = self._sim.measure_pauli(len(qubits) * [Pauli.PauliZ], qubits)
+            for index in range(len(qubits)):
+                if ((sample >> index) & 1) > 0:
+                    self._sim.x(qubits[index])
         elif name == 'measure':
             qubits = operation.qubits
             clbits = operation.memory
