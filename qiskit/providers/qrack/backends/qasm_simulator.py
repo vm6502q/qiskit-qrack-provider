@@ -605,7 +605,7 @@ class QasmSimulator(BackendV1):
                 self._classical_register = preamble_classical_register
 
             for operation in instructions[nonunitary_start:]:
-                self._apply_op(operation, 1)
+                self._apply_op(operation, shotsPerLoop)
 
             if len(self._sample_qubits) > 0:
                 if self._sample_measure:
