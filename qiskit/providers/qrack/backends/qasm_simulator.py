@@ -561,8 +561,8 @@ class QasmSimulator(BackendV1):
                     did_measure = True
                     break
                 elif did_measure:
-                    shotLoopMax = self._shots
                     shotsPerLoop = 1
+                    shotLoopMax = self._shots
                     self._sample_measure = False
                     break
 
@@ -605,7 +605,7 @@ class QasmSimulator(BackendV1):
                 self._classical_register = preamble_classical_register
 
             for operation in instructions[nonunitary_start:]:
-                self._apply_op(operation, shotsPerLoop)
+                self._apply_op(operation, 1)
 
             if len(self._sample_qubits) > 0:
                 if self._sample_measure:
@@ -615,10 +615,6 @@ class QasmSimulator(BackendV1):
                 self._sample_qubits = []
                 self._sample_clbits = []
                 self._sample_cregbits = []
-
-            if not self._sample_measure:
-                # Turn classical_memory (int) into bit string and pad zero for unused cmembits
-                self._data.append(hex(int(bin(self._classical_memory)[2:], 2)))
 
         end = time.time()
 
