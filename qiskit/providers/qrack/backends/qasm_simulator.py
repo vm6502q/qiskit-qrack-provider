@@ -601,8 +601,14 @@ class QasmSimulator(BackendV1):
             for operation in instructions[nonunitary_start:]:
                 self._apply_op(operation)
 
-            if self._sample_measure and (len(self._sample_qubits) > 0):
-                self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, [len(self._sample_clbits) * [-1]], shotsPerLoop)
+            if (not self._sample_measure) and (len(self._sample_qubits) > 0):
+                self._data += self._add_sample_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits, 1)
+                self._sample_qubits = []
+                self._sample_clbits = []
+                self._sample_cregbits = []
+
+        if len(self._sample_qubits) > 0:
+            self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, [len(self._sample_clbits) * [-1]], shotsPerLoop)
 
         data = { 'counts': dict(Counter(self._data)) }
         if isinstance(experiment, QasmQobjExperiment):
@@ -633,12 +639,6 @@ class QasmSimulator(BackendV1):
         if (name == 'id') or (name == 'barrier'):
             # Skip measurement logic
             return
-
-        if (not self._sample_measure) and (name != 'measure') and (len(self._sample_qubits) > 0):
-            self._data += self._add_sample_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits, 1)
-            self._sample_qubits = []
-            self._sample_clbits = []
-            self._sample_cregbits = []
 
         conditional = getattr(operation, 'conditional', None)
         if isinstance(conditional, int):
@@ -735,9 +735,9 @@ class QasmSimulator(BackendV1):
                 self._sim.x(operation.qubits[0])
         elif name == 'measure':
             cregbits = operation.register if hasattr(operation, 'register') else len(operation.qubits) * [-1]
-            self._sample_qubits.append(operation.qubits)
-            self._sample_clbits.append(operation.memory)
-            self._sample_cregbits.append(cregbits)
+            self._sample_qubits += operation.qubits
+            self._sample_clbits += operation.memory
+            self._sample_cregbits += cregbits
         elif name == 'bfunc':
             mask = int(operation.mask, 16)
             relation = operation.relation
@@ -786,12 +786,10 @@ class QasmSimulator(BackendV1):
         Returns:
             list: A list of data values in hex format.
         """
-        data = []
-
         # Get unique qubits that are actually measured
-        measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
-        measure_clbit = [clbit for sublist in sample_clbits for clbit in sublist]
-        measure_cregbit = [clbit for sublist in sample_cregbits for clbit in sublist]
+        measure_qubit = [qubit for qubit in sample_qubits]
+        measure_clbit = [clbit for clbit in sample_clbits]
+        measure_cregbit = [clbit for clbit in sample_cregbits]
 
         # If we only want one sample, it's faster for the backend to do it,
         # without passing back the probabilities.
@@ -811,13 +809,13 @@ class QasmSimulator(BackendV1):
                     classical_register = \
                         (classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
             outKey = bin(classical_state)[2:]
-            data = [hex(int(outKey, 2))]
             self._classical_memory = classical_state
             self._classical_register = classical_register
 
-            return data
+            return [hex(int(outKey, 2))]
 
         # Sample and convert to bit-strings
+        data = []
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
         classical_state = self._classical_memory
         for key in measure_results:
