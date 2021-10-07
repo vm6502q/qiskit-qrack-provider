@@ -819,7 +819,7 @@ class QasmSimulator(BackendV1):
                 qubit = measure_qubit[index]
                 clbit = measure_clbit[index]
 
-                qubit_outcome = (sample >> index) & 1
+                qubit_outcome = (sample >> qubit) & 1
                 bit = 1 << clbit
                 self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
 
@@ -833,7 +833,7 @@ class QasmSimulator(BackendV1):
                 qubit = measure_qubit[index]
                 clbit = measure_clbit[index]
 
-                qubit_outcome = (sample >> index) & 1
+                qubit_outcome = (sample >> qubit) & 1
                 bit = 1 << clbit
                 self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
 
