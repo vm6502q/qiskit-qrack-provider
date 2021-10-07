@@ -745,15 +745,13 @@ class QasmSimulator(BackendV1):
 
                 sample = self._sim.measure_pauli(len(qubits) * [Pauli.PauliZ], qubits)
 
-                for i in range(len(qubits)):
-                    qubit = qubits[i]
-                    clbit = clbits[i]
-                    cregbit = cregbits[i]
+                for index in range(len(qubits)):
+                    qubit_outcome = ((sample >> index) & 1)
+                    clbit = clbits[index]
+                    clmask = 1 << clbit
+                    self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
 
-                    qubit_outcome = ((sample >> qubit) & 1)
-                    bit = 1 << clbit
-                    self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
-
+                    cregbit = cregbits[index]
                     if cregbit < 0:
                         continue
 
@@ -816,12 +814,10 @@ class QasmSimulator(BackendV1):
         if num_samples == 1:
             sample = self._sim.measure_pauli(len(measure_qubit) * [Pauli.PauliZ], measure_qubit)
             for index in range(len(measure_qubit)):
-                qubit = measure_qubit[index]
+                qubit_outcome = ((sample >> index) & 1)
                 clbit = measure_clbit[index]
-
-                qubit_outcome = (sample >> qubit) & 1
-                bit = 1 << clbit
-                self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
+                clmask = 1 << clbit
+                self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
 
             return [hex(int(bin(self._classical_memory)[2:], 2))]
 
@@ -830,12 +826,10 @@ class QasmSimulator(BackendV1):
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
         for sample in measure_results:
             for index in range(len(measure_qubit)):
-                qubit = measure_qubit[index]
+                qubit_outcome = ((sample >> index) & 1)
                 clbit = measure_clbit[index]
-
-                qubit_outcome = (sample >> qubit) & 1
-                bit = 1 << clbit
-                self._classical_memory = (self._classical_memory & (~bit)) | (qubit_outcome << clbit)
+                clmask = 1 << clbit
+                self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
 
             data.append(hex(int(bin(self._classical_memory)[2:], 2)))
 
