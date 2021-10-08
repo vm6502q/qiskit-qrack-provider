@@ -35,6 +35,14 @@ from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
 from qiskit.circuit.classicalregister import Clbit
 
+class QrackOptions:
+    def __init__(self, data):
+        self.data = data
+
+    def update_config(self, **kwargs):
+        for kwarg in kwargs:
+            self.data[kwarg[0]] = kwarg[1]
+
 class QrackQasmQobjInstructionConditional:
     def __init__(self, mask, val):
         self.mask = mask
@@ -401,8 +409,6 @@ class QasmSimulator(BackendV1):
         self._shots = 1
         self._data = []
 
-        self._options = self._default_options()
-
         super().__init__(configuration=configuration, provider=provider, **fields)
 
     @classmethod
@@ -418,9 +424,7 @@ class QasmSimulator(BackendV1):
             qiskit.providers.Options: A options object with
                 default values set
         """
-        _def_opts = Options()
-        _def_opts.update_options(**cls.DEFAULT_OPTIONS)
-        return _def_opts
+        return QrackOptions(cls.DEFAULT_OPTIONS)
 
     def run(self, run_input, **options):
         """Run on the backend.
@@ -452,15 +456,15 @@ class QasmSimulator(BackendV1):
             Job: The job object for the run
         """
         qrack_options = {
-            'isMultiDevice': options.is_multi_device if hasattr(options, 'is_multi_device') else self._options.get('is_multi_device'),
-            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
-            'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
-            'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.get('is_1qb_fusion'),
-            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid')
+            'isMultiDevice': options.is_multi_device if hasattr(options, 'is_multi_device') else self._options.data['is_multi_device'],
+            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.data['is_schmidt_decompose'],
+            'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.data['is_stabilizer_hybrid'],
+            'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.data['is_1qb_fusion'],
+            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.data['is_cpu_gpu_hybrid']
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
-        shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
+        shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.data['shots'])
         qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
         qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
         job_id = str(uuid.uuid4())
