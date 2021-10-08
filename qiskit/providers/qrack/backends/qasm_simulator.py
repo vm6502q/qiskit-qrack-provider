@@ -27,7 +27,6 @@ from ..qrackerror import QrackError
 from pyqrack import QrackSimulator, Pauli
 
 from qiskit.providers.backend import BackendV1
-from qiskit.providers.options import Options
 from qiskit.result import Result
 
 from qiskit.circuit.gate import Gate
@@ -424,6 +423,8 @@ class QasmSimulator(BackendV1):
             qiskit.providers.Options: A options object with
                 default values set
         """
+        # WARNING: The above prototype for return type doesn't work in BackEndV1 in Qiskit v0.30.0.
+        # We're resorting to duck typing.
         return QrackOptions(cls.DEFAULT_OPTIONS)
 
     def run(self, run_input, **options):
