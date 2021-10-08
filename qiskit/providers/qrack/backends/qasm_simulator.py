@@ -473,7 +473,7 @@ class QasmSimulator(BackendV1):
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
-        shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.data['shots'])
+        shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
         qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
         qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
         job_id = str(uuid.uuid4())
