@@ -401,9 +401,15 @@ class QasmSimulator(BackendV1):
         self._number_of_qubits = 0
         self._number_of_clbits = 0
         self._shots = 1
-        self._data = []
 
-        super().__init__(configuration=configuration, provider=provider, **fields)
+        self._configuration = configuration
+        self._options = self._default_options()
+        self._provider = provider
+        if fields:
+            for field in fields:
+                if  field not in self.DEFAULT_OPTIONS:
+                    raise AttributeError("Options field %s is not valid for this backend" % field)
+            self._options.update_options(**fields)
 
     @classmethod
     def _default_options(cls):
