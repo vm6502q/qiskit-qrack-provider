@@ -5,6 +5,7 @@ from distutils.core import setup
 
 requirements = [
     "numpy>=1.13"
+    "pyqrack>=0.7.2"
 ]
 
 # Handle version.
