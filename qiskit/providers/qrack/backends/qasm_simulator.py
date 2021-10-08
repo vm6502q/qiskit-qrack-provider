@@ -575,11 +575,10 @@ class QasmSimulator(BackendV1):
         shotLoopMax = 1
 
         is_initializing = True
-        opcount = -1
         boundary_start = -1
 
-        for operation in instructions:
-            opcount = opcount + 1
+        for opcount in range(len(instructions)):
+            operation = instructions[opcount]
 
             if operation.name == 'id' or operation.name == 'barrier':
                 continue
@@ -599,14 +598,39 @@ class QasmSimulator(BackendV1):
                 self._sample_measure = False
                 break
 
-        #TODO: Fix unitary preamble
+        preamble_memory = 0
+        preamble_register = 0
+        preamble_sim = None
 
-        for shot in range(shotLoopMax):
+        if self._sample_measure or boundary_start <= 0:
+            boundary_start = 0
+            self._sample_measure = True
+            shotsPerLoop = self._shots
+            shotLoopMax = 1
+        else:
+            boundary_start -= 1
             self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
             self._classical_memory = 0
             self._classical_register = 0
 
-            for operation in instructions:
+            for operation in instructions[:boundary_start]:
+                self._apply_op(operation)
+
+            preamble_memory = self._classical_memory
+            preamble_register = self._classical_register
+            preamble_sim = self._sim
+
+        for shot in range(shotLoopMax):
+            if preamble_sim is None:
+                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._classical_memory = 0
+                self._classical_register = 0
+            else:
+                self._sim = QrackSimulator(cloneSid = preamble_sim.sid)
+                self._classical_memory = preamble_memory
+                self._classical_register = preamble_register
+
+            for operation in instructions[boundary_start:]:
                 self._apply_op(operation)
 
             if (not self._sample_measure) and (len(self._sample_qubits) > 0):
