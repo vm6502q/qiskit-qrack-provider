@@ -24,7 +24,7 @@ from test.terra.reference.ref_snapshot_expval import (
     snapshot_expval_circuits, snapshot_expval_counts, snapshot_expval_labels,
     snapshot_expval_pre_meas_values, snapshot_expval_circuit_parameterized,
     snapshot_expval_final_statevecs)
-from qiskit.providers.qrack import QasmSimulator, StatevectorSimulator
+from qiskit.providers.qrack import QasmSimulator
 
 
 class TestParameterizedQobj(common.QiskitAerTestCase):

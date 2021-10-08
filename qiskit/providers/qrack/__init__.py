@@ -19,7 +19,7 @@ if platform.system() == "Darwin":
     np.dot(np.zeros(100), np.zeros(100))
 # ... ¯\_(ツ)_/¯
 
-"""Aer Backends."""
+"""Qrack Backends."""
 
 from .qrackprovider import QrackProvider
 from .qrackjob import QrackJob

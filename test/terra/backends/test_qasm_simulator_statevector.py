@@ -31,8 +31,8 @@ from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonClifford
 from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsMinimalBasis
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmUnitaryGateTests
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmDiagonalGateTests
-from test.terra.backends.qasm_simulator.qasm_initialize import QasmInitializeTests
-from test.terra.backends.qasm_simulator.qasm_multiplexer import QasmMultiplexerTests
+#from test.terra.backends.qasm_simulator.qasm_initialize import QasmInitializeTests
+#from test.terra.backends.qasm_simulator.qasm_multiplexer import QasmMultiplexerTests
 from test.terra.backends.qasm_simulator.qasm_standard_gates import QasmStandardGateStatevectorTests
 # Conditional instruction tests
 from test.terra.backends.qasm_simulator.qasm_conditional import QasmConditionalGateTests
@@ -60,24 +60,27 @@ from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTest
 #from test.terra.backends.qasm_simulator.qasm_thread_management import QasmThreadManagementTests
 from test.terra.backends.qasm_simulator.qasm_fusion import QasmFusionTests
 from test.terra.backends.qasm_simulator.qasm_delay_measure import QasmDelayMeasureTests
-from test.terra.backends.qasm_simulator.qasm_truncate import QasmQubitsTruncateTests
+#from test.terra.backends.qasm_simulator.qasm_truncate import QasmQubitsTruncateTests
 from test.terra.backends.qasm_simulator.qasm_basics import QasmBasicsTests
 
 
 class StatevectorTests(
         #QasmMethodTests,
         QasmMeasureTests, QasmMultiQubitMeasureTests,
-        QasmResetTests, QasmInitializeTests, QasmConditionalGateTests,
+        QasmResetTests,
+        #QasmInitializeTests,
+        QasmConditionalGateTests,
         #QasmConditionalUnitaryTests, QasmConditionalKrausTests,
         QasmCliffordTests, QasmCliffordTestsWaltzBasis,
         QasmCliffordTestsMinimalBasis, QasmNonCliffordTestsTGate,
         QasmNonCliffordTestsCCXGate, QasmNonCliffordTestsCGates,
         QasmNonCliffordTestsWaltzBasis, QasmNonCliffordTestsMinimalBasis,
-        QasmMultiplexerTests, QasmAlgorithmTests, QasmAlgorithmTestsWaltzBasis,
+        #QasmMultiplexerTests,
+        QasmAlgorithmTests, QasmAlgorithmTestsWaltzBasis,
         QasmAlgorithmTestsMinimalBasis, QasmUnitaryGateTests, QasmDiagonalGateTests,
         #QasmReadoutNoiseTests, QasmPauliNoiseTests, QasmThreadManagementTests,
-        QasmFusionTests, QasmDelayMeasureTests, QasmQubitsTruncateTests,
-        #QasmResetNoiseTests, QasmKrausNoiseTests,
+        QasmFusionTests, QasmDelayMeasureTests,
+        #QasmQubitsTruncateTests, QasmResetNoiseTests, QasmKrausNoiseTests,
         QasmBasicsTests,
         #QasmSnapshotStatevectorTests, QasmSnapshotDensityMatrixTests,
         #QasmSnapshotProbabilitiesTests, QasmSnapshotExpValPauliTests,
@@ -98,28 +101,28 @@ class TestQasmSimulatorStatevector(common.QiskitAerTestCase, StatevectorTests):
     }
 
 
-@requires_method("qasm_simulator", "statevector_gpu")
-class TestQasmSimulatorStatevectorThrustGPU(common.QiskitAerTestCase,
-                                            StatevectorTests):
-    """QasmSimulator statevector_gpu method tests."""
+#@requires_method("qasm_simulator", "statevector_gpu")
+#class TestQasmSimulatorStatevectorThrustGPU(common.QiskitAerTestCase,
+#                                            StatevectorTests):
+#    """QasmSimulator statevector_gpu method tests."""
+#
+#    BACKEND_OPTS = {
+#        "seed_simulator": 271828,
+#        "method": "statevector_gpu",
+#        "max_parallel_threads": 1
+#    }
 
-    BACKEND_OPTS = {
-        "seed_simulator": 271828,
-        "method": "statevector_gpu",
-        "max_parallel_threads": 1
-    }
 
-
-@requires_method("qasm_simulator", "statevector_thrust")
-class TestQasmSimulatorStatevectorThrustCPU(common.QiskitAerTestCase,
-                                            StatevectorTests):
-    """QasmSimulator statevector_thrust method tests."""
-
-    BACKEND_OPTS = {
-        "seed_simulator": 271828,
-        "method": "statevector_thrust",
-        "max_parallel_threads": 1
-    }
+#@requires_method("qasm_simulator", "statevector_thrust")
+#class TestQasmSimulatorStatevectorThrustCPU(common.QiskitAerTestCase,
+#                                            StatevectorTests):
+#    """QasmSimulator statevector_thrust method tests."""
+#
+#    BACKEND_OPTS = {
+#        "seed_simulator": 271828,
+#        "method": "statevector_thrust",
+#        "max_parallel_threads": 1
+#    }
 
 
 if __name__ == '__main__':

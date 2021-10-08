@@ -31,8 +31,8 @@ from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonClifford
 from test.terra.backends.qasm_simulator.qasm_noncliffords import QasmNonCliffordTestsMinimalBasis
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmUnitaryGateTests
 from test.terra.backends.qasm_simulator.qasm_unitary_gate import QasmDiagonalGateTests
-from test.terra.backends.qasm_simulator.qasm_initialize import QasmInitializeTests
-from test.terra.backends.qasm_simulator.qasm_multiplexer import QasmMultiplexerTests
+#from test.terra.backends.qasm_simulator.qasm_initialize import QasmInitializeTests
+#from test.terra.backends.qasm_simulator.qasm_multiplexer import QasmMultiplexerTests
 from test.terra.backends.qasm_simulator.qasm_standard_gates import QasmStandardGateStatevectorTests
 from test.terra.backends.qasm_simulator.qasm_standard_gates import QasmStandardGateDensityMatrixTests
 # Conditional instruction tests
@@ -61,7 +61,7 @@ from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTest
 #from test.terra.backends.qasm_simulator.qasm_thread_management import QasmThreadManagementTests
 from test.terra.backends.qasm_simulator.qasm_fusion import QasmFusionTests
 from test.terra.backends.qasm_simulator.qasm_delay_measure import QasmDelayMeasureTests
-from test.terra.backends.qasm_simulator.qasm_truncate import QasmQubitsTruncateTests
+#from test.terra.backends.qasm_simulator.qasm_truncate import QasmQubitsTruncateTests
 from test.terra.backends.qasm_simulator.qasm_basics import QasmBasicsTests
 
 
@@ -70,7 +70,7 @@ class TestQasmSimulator(common.QiskitAerTestCase,
                         QasmMeasureTests,
                         QasmMultiQubitMeasureTests,
                         QasmResetTests,
-                        QasmInitializeTests,
+                        #QasmInitializeTests,
                         QasmConditionalGateTests,
                         #QasmConditionalUnitaryTests,
                         #QasmConditionalKrausTests,
@@ -82,7 +82,7 @@ class TestQasmSimulator(common.QiskitAerTestCase,
                         QasmNonCliffordTestsCGates,
                         QasmNonCliffordTestsWaltzBasis,
                         QasmNonCliffordTestsMinimalBasis,
-                        QasmMultiplexerTests,
+                        #QasmMultiplexerTests,
                         QasmAlgorithmTests,
                         QasmAlgorithmTestsWaltzBasis,
                         QasmAlgorithmTestsMinimalBasis,
@@ -93,7 +93,7 @@ class TestQasmSimulator(common.QiskitAerTestCase,
                         #QasmThreadManagementTests,
                         QasmFusionTests,
                         QasmDelayMeasureTests,
-                        QasmQubitsTruncateTests,
+                        #QasmQubitsTruncateTests,
                         #QasmResetNoiseTests,
                         #QasmKrausNoiseTests,
                         QasmBasicsTests,

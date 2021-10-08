@@ -16,92 +16,87 @@
 import uuid
 import time
 import numpy as np
+import pandas as pd
+from datetime import datetime
 from collections import Counter
-import logging
-import os
-from math import log2
-from qiskit.util import local_hardware_info
 from qiskit.providers.models import BackendConfiguration
-from .qrack_controller_wrapper import qrack_controller_factory
-from ..qrackerror import QrackError
-from ..version import __version__
 
+from ..version import __version__
 from ..qrackjob import QrackJob
 from ..qrackerror import QrackError
+from pyqrack import QrackSimulator, Pauli
 
-from qiskit.providers import BaseBackend
+from qiskit.providers.backend import BackendV1
+from qiskit.providers.options import Options
 from qiskit.result import Result
 
-logger = logging.getLogger(__name__)
+from qiskit.circuit.gate import Gate
+from qiskit.circuit.quantumcircuit import QuantumCircuit
+from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
+from qiskit.circuit.classicalregister import Clbit
+
+class QrackQasmQobjInstructionConditional:
+    def __init__(self, mask, val):
+        self.mask = mask
+        self.val = val
+
+class QrackExperimentResultHeader:
+    def __init__(self, name):
+        self.name = name
 
 
-class QasmSimulator(BaseBackend):
-    """Contains an OpenCL based backend
+class QrackExperimentResultData:
+    def __init__(self, counts, memory):
+        self.counts = counts
+        self.memory = memory
 
-    **Backend options**
+    def to_dict(self):
+        return { 'counts': self.counts, 'memory': self.memory }
 
-    The following backend options may be used with in the
-    ``backend_options`` kwarg for :meth:`QasmSimulator.run` or
-    ``qiskit.execute``:
 
-    * ``"normalize"`` (bool): Keep track of the total global probability
-      normalization, and correct toward exactly 1. (Also turns on
-      "zero_threshold". With "zero_threshold">0 "schmidt_decompose"=True,
-      this can actually improve execution time, for opportune circuits.)
+class QrackExperimentResult:
+    def __init__(self, shots, data, status, success, header, meta_data = None, time_taken = None):
+        self.shots = shots
+        self.data = data
+        self.status = status
+        self.success = success
+        self.header = header
+        self.meta_data = meta_data,
+        self.time_taken = time_taken
 
-    * ``"zero_threshold"`` (double): Sets the threshold for truncating
-      small values to zero in the simulation, gate-to-gate. (Only used
-      if "normalize" is enabled. Default value: Qrack default)
 
-    * ``"schmidt_decompose"`` (bool): If true, enable "QUnit" layer of
-      Qrack, including Schmidt decomposition optimizations.
-
-    * ``"paging"`` (bool): If true, enable "QPager" layer of Qrack.
-
-    * ``"stabilizer"`` (bool): If true, enable Qrack "QStabilizerHybrid"
-      layer of Qrack. (This can be enabled with universal gate simulations.)
-
-    * ``"opencl"`` (bool): If true, use the OpenCL engine of Qrack
-      ("QEngineOCL") as the base "Schroedinger method" simulator.
-      If OpenCL is not available, simulation will fall back to CPU.
-
-    * ``"opencl_device_id"`` (int): (If OpenCL is enabled,) choose
-      the OpenCl device to simulate on, (indexed by order of device
-      discovery on OpenCL load/compilation). "-1" indicates to use
-      the Qrack default device, (the last discovered, which tends to
-      be a non-CPU accelerator, on common personal hardware systems.)
-      If "opencl-multi" is active, set the default device index.
-
-    * ``"opencl-multi"`` (bool): (If OpenCL and Schmidt decomposition
-      are enabled,) distribute Schmidt-decomposed sub-engines among
-      all available OpenCL devices.
+class QasmSimulator(BackendV1):
+    """
+    Contains an OpenCL based backend
     """
 
+    DEFAULT_OPTIONS = {
+        'method': 'automatic',
+        'shots': 1024,
+        'is_multi_device': True,
+        'is_schmidt_decompose': True,
+        'is_stabilizer_hybrid': True,
+        'is_1qb_fusion': True,
+        'is_cpu_gpu_hybrid': True
+    }
+
     DEFAULT_CONFIGURATION = {
-        'backend_name': 'qasm_simulator',
+        'backend_name': 'statevector_simulator',
         'backend_version': __version__,
         'n_qubits': 64,
         'conditional': True,
         'url': 'https://github.com/vm6502q/qiskit-qrack-provider',
         'simulator': True,
         'local': True,
-        'conditional': False,
         'open_pulse': False,
         'memory': True,
         'max_shots': 65536,
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
-        'normalize': False,
-        'zero_threshold': -999.0,
-        'schmidt_decompose': True,
-        'paging': False,
-        'stabilizer': True,
-        'opencl': True,
-        'opencl_device_id': -1,
-        'opencl_multi': False,
         'basis_gates': [
-            'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'cz', 'ch', 'id', 'x', 'sx', 'y', 'z', 'h',
-            'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
+            'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'csx', 'csxdg', 'cz', 'ch', 'cp', 'dcx',
+            'id', 'x', 'sx', 'sxdg', 'y', 'z', 'h', 'p',
+            'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'iswap', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
             'multiplexer', 'reset', 'measure'
         ],
@@ -157,6 +152,18 @@ class QasmSimulator(BaseBackend):
             'description': 'Two-qubit Controlled-NOT gate',
             'qasm_def': 'gate cx c,t { CX c,t; }'
         }, {
+            'name': 'csx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit Controlled square root of Pauli-X gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'csxdg',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit Controlled inverse square root of Pauli-X gate',
+            'qasm_def': 'TODO'
+        }, {
             'name': 'cz',
             'parameters': [],
             'conditional': True,
@@ -167,6 +174,18 @@ class QasmSimulator(BaseBackend):
             'parameters': [],
             'conditional': True,
             'description': 'Two-qubit Controlled-H gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'cp',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Controlled-Phase gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'dcx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Double-CNOT gate',
             'qasm_def': 'TODO'
         }, {
             'name': 'id',
@@ -187,6 +206,12 @@ class QasmSimulator(BaseBackend):
             'description': 'Single-qubit square root of Pauli-X gate',
             'qasm_def': 'gate sx a { rz(-pi/2) a; h a; rz(-pi/2); }'
         }, {
+            'name': 'sxdg',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit inverse square root of Pauli-X gate',
+            'qasm_def': 'TODO'
+        }, {
             'name': 'y',
             'parameters': [],
             'conditional': True,
@@ -203,6 +228,12 @@ class QasmSimulator(BaseBackend):
             'parameters': [],
             'conditional': True,
             'description': 'Single-qubit Hadamard gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'p',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Phase gate',
             'qasm_def': 'TODO'
         }, {
             'name': 'rx',
@@ -253,6 +284,12 @@ class QasmSimulator(BaseBackend):
             'description': 'Two-qubit SWAP gate',
             'qasm_def': 'TODO'
         }, {
+            'name': 'iswap',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Two-qubit ISWAP gate',
+            'qasm_def': 'TODO'
+        }, {
             'name': 'ccx',
             'parameters': [],
             'conditional': True,
@@ -264,13 +301,6 @@ class QasmSimulator(BaseBackend):
             'conditional': True,
             'description': 'Three-qubit Fredkin (controlled-SWAP) gate',
             'qasm_def': 'TODO'
-        }, {
-            'name': 'initialize',
-            'parameters': ['vector'],
-            'conditional': False,
-            'description': 'N-qubit state initialize. '
-                           'Resets qubits then sets statevector to the parameter vector.',
-            'qasm_def': 'initialize(vector) q1, q2,...'
         }, {
             'name': 'cu1',
             'parameters': ['lam'],
@@ -332,14 +362,6 @@ class QasmSimulator(BaseBackend):
             'description': 'N-qubit multi-controlled-SWAP gate',
             'qasm_def': 'TODO'
         }, {
-            'name': 'multiplexer',
-            'parameters': ['mat1', 'mat2', '...'],
-            'conditional': True,
-            'description': 'N-qubit multi-plexer gate. '
-                           'The input parameters are the gates for each value.'
-                           'WARNING: Qrack currently only supports single-qubit-target multiplexer gates',
-            'qasm_def': 'TODO'
-        }, {
             'name': 'reset',
             'parameters': [],
             'conditional': True,
@@ -348,98 +370,139 @@ class QasmSimulator(BaseBackend):
         }]
     }
 
-    # TODO: Implement these __init__ options. (We only match the signature for any compatibility at all, for now.)
-    def __init__(self,
-                 configuration=None,
-                 provider=None,
-                 seed_simulator=-1,
-                 method=None,
-                 max_parallel_threads=-1,
-                 blocking_enable=False,
-                 blocking_ignore_diagonal=False,
-                 blocking_qubits=0):
-        configuration = configuration or BackendConfiguration.from_dict(
-            self.DEFAULT_CONFIGURATION)
-        super().__init__(configuration=configuration, provider=provider)
+    def __init__(self, configuration=None, provider=None, **fields):
+        """Initialize a backend class
 
-        self._configuration = configuration
-        self._number_of_qubits = None
-        self._number_of_cbits = None
-        self._results = {}
-        self._shots = {}
-        self._local_random = np.random.RandomState()
-        self._chop_threshold = 15  # chop to 10^-15
-        
-    def options(self):
-        """Return the current simulator options"""
-        #return self._options
-        return None
-
-    def set_options(self, **backend_options):
-        """Set the simulator options"""
-        #for key, val in backend_options.items():
-        #    self._set_option(key, val)
-
-    def clear_options(self):
-        """Reset the simulator options to default values."""
-        #self._custom_configuration = None
-        #self._custom_properties = None
-        #self._custom_defaults = None
-        #self._options = {}
-
-    #@profile
-    def run(self,
-            qobj,
-            backend_options=None,  # DEPRECATED
-            validate=False,
-            **run_options):
-        """Run qobj asynchronously.
         Args:
-            qobj (Qobj): payload of the experiment
-            backend_options: (ignored)
-        Returns:
-            QrackJob: derived from BaseJob
+            configuration (BackendConfiguration): A backend configuration
+                object for the backend object.
+            provider (qiskit.providers.Provider): Optionally, the provider
+                object that this Backend comes from.
+            fields: kwargs for the values to use to override the default
+                options.
+        Raises:
+            AttributeError: if input field not a valid options
+
+        ..
+            This next bit is necessary just because autosummary generally won't summarise private
+            methods; changing that behaviour would have annoying knock-on effects through all the
+            rest of the documentation, so instead we just hard-code the automethod directive.
+
+        In addition to the public abstract methods, subclasses should also implement the following
+        private methods:
+
+        .. automethod:: _default_options
         """
 
+        configuration = configuration or BackendConfiguration.from_dict(self.DEFAULT_CONFIGURATION)
+
+        self._number_of_qubits = 0
+        self._number_of_clbits = 0
+        self._shots = 1
+        self._data = []
+
+        self._options = self._default_options()
+
+        super().__init__(configuration=configuration, provider=provider, **fields)
+
+    @classmethod
+    def _default_options(cls):
+        """Return the default options
+
+        This method will return a :class:`qiskit.providers.Options`
+        subclass object that will be used for the default options. These
+        should be the default parameters to use for the options of the
+        backend.
+
+        Returns:
+            qiskit.providers.Options: A options object with
+                default values set
+        """
+        _def_opts = Options()
+        _def_opts.update_options(**cls.DEFAULT_OPTIONS)
+        return _def_opts
+
+    def run(self, run_input, **options):
+        """Run on the backend.
+
+        This method that will return a :class:`~qiskit.providers.Job` object
+        that run circuits. Depending on the backend this may be either an async
+        or sync call. It is the discretion of the provider to decide whether
+        running should  block until the execution is finished or not. The Job
+        class can handle either situation.
+
+        Args:
+            run_input (QuantumCircuit or Schedule or list): An individual or a
+                list of :class:`~qiskit.circuits.QuantumCircuit` or
+                :class:`~qiskit.pulse.Schedule` objects to run on the backend.
+                For legacy providers migrating to the new versioned providers,
+                provider interface a :class:`~qiskit.qobj.QasmQobj` or
+                :class:`~qiskit.qobj.PulseQobj` objects should probably be
+                supported too (but deprecated) for backwards compatibility. Be
+                sure to update the docstrings of subclasses implementing this
+                method to document that. New provider implementations should not
+                do this though as :mod:`qiskit.qobj` will be deprecated and
+                removed along with the legacy providers interface.
+            options: Any kwarg options to pass to the backend for running the
+                config. If a key is also present in the options
+                attribute/object then the expectation is that the value
+                specified will be used instead of what's set in the options
+                object.
+        Returns:
+            Job: The job object for the run
+        """
+        qrack_options = {
+            'isMultiDevice': options.is_multi_device if hasattr(options, 'is_multi_device') else self._options.get('is_multi_device'),
+            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
+            'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
+            'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.get('is_1qb_fusion'),
+            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid')
+        }
+
+        data = run_input.config.memory if hasattr(run_input, 'config') else []
+        shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
+        qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
+        qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
         job_id = str(uuid.uuid4())
-        job = QrackJob(self, job_id, self._run_job(job_id, qobj), qobj)
+
+        job = QrackJob(self, job_id, self._run_job(job_id, run_input, data, shots, qobj_id, qobj_header, **qrack_options), run_input)
         return job
-    #@profile
-    def _run_job(self, job_id, qobj):
-        """Run experiments in qobj
+
+    def _run_job(self, job_id, run_input, data, shots, qobj_id, qobj_header, **options):
+        """Run experiments in run_input
         Args:
             job_id (str): unique id for the job.
-            qobj (Qobj): job description
+            run_input (QuantumCircuit or Schedule or list): job description
         Returns:
             Result: Result object
         """
-        self._shots = qobj.config.shots
-        self._memory = qobj.config.memory
-        self._qobj_config = qobj.config
+        start = time.time()
+
+        self._data = data
+        self._shots = shots
+
+        experiments = run_input.experiments if hasattr(run_input, 'config') else run_input
+        if isinstance(experiments, QuantumCircuit):
+            experiments = [experiments]
         results = []
 
-        start = time.time()
-        for experiment in qobj.experiments:
-            results.append(self.run_experiment(experiment))
-        end = time.time()
+        for experiment in experiments:
+            results.append(self.run_experiment(experiment, **options))
 
-        result = {
-            'backend_name': self.name(),
-            'backend_version': self._configuration.backend_version,
-            'qobj_id': qobj.qobj_id,
-            'job_id': job_id,
-            'results': results,
-            'status': 'COMPLETED',
-            'success': True,
-            'time_taken': (end - start),
-            'header': qobj.header.to_dict(),
-            'metadata': { 'measure_sampling' : self._sample_measure }
-        }
+        return Result(
+            backend_name = self.name(),
+            backend_version = self._configuration.backend_version,
+            qobj_id = qobj_id,
+            job_id = job_id,
+            success = True,
+            results = results,
+            date = datetime.now(),
+            status = 'COMPLETED',
+            header = qobj_header,
+            time_taken = (time.time() - start)
+        )
 
-        return Result.from_dict(result)
-
-    #@profile
-    def run_experiment(self, experiment):
+    def run_experiment(self, experiment, **options):
         """Run an experiment (circuit) and return a single experiment result.
         Args:
             experiment (QobjExperiment): experiment from qobj experiments list
@@ -450,182 +513,134 @@ class QasmSimulator(BaseBackend):
             QrackError: If the number of qubits is too large, or another
                 error occurs during execution.
         """
-        self._number_of_qubits = experiment.header.n_qubits
-        self._number_of_cbits = experiment.header.memory_slots
+        start = time.time()
+
+        instructions = []
+        if isinstance(experiment, QasmQobjExperiment):
+            self._number_of_qubits = experiment.header.n_qubits
+            self._number_of_clbits = experiment.header.memory_slots
+            instructions = experiment.instructions
+        elif isinstance(experiment, QuantumCircuit):
+            self._number_of_qubits = len(experiment.qubits)
+            self._number_of_clbits = len(experiment.clbits)
+            for datum in experiment._data:
+                qubits = []
+                for qubit in datum[1]:
+                    qubits.append(experiment.qubits.index(qubit))
+
+                clbits = []
+                for clbit in datum[2]:
+                    clbits.append(experiment.clbits.index(clbit))
+
+                conditional = None
+                condition = datum[0].condition
+                if condition is not None:
+                    if isinstance(condition[0], Clbit):
+                        conditional = experiment.clbits.index(condition[0])
+                    else:
+                        creg_index = experiment.cregs.index(condition[0])
+                        size = experiment.cregs[creg_index].size
+                        offset = 0
+                        for i in range(creg_index):
+                            offset += len(experiment.cregs[i])
+                        mask = ((1 << offset) - 1) ^ ((1 << (offset + size)) - 1)
+                        val = condition[1]
+                        conditional = offset if (size == 1) else QrackQasmQobjInstructionConditional(mask, val)
+
+                instructions.append(QasmQobjInstruction(
+                    datum[0].name,
+                    qubits = qubits,
+                    memory = clbits,
+                    condition=condition,
+                    conditional=conditional,
+                    params = datum[0].params
+                ))
+        else:
+            raise QrackError('Unrecognized "run_input" argument specified for run().')
+
         self._sample_qubits = []
         self._sample_clbits = []
         self._sample_cregbits = []
-        self.__memory = []
+        self._data = []
+
         self._sample_measure = True
-
-        if hasattr(experiment.config, 'seed'):
-            seed = experiment.config.seed
-        elif hasattr(self._qobj_config, 'seed'):
-            seed = self._qobj_config.seed
-        else:
-            # For compatibility on Windows force dyte to be int32
-            # and set the maximum value to be (2 ** 31) - 1
-            seed = np.random.randint(2147483647, dtype='int32')
-        self._local_random.seed(seed)
-
-        start = time.time()
-
         shotsPerLoop = self._shots
         shotLoopMax = 1
 
         did_measure = False
         is_initializing = True
         opcount = -1
-        nonunitary_start = 0
+        nonunitary_start = -1
 
-        if self._shots != 1:
-            for operation in experiment.instructions:
-                opcount = opcount + 1
+        for operation in instructions:
+            opcount = opcount + 1
 
-                if operation.name == 'id' or operation.name == 'barrier':
-                    continue
+            if operation.name == 'id' or operation.name == 'barrier':
+                continue
 
-                if hasattr(operation, 'conditional') or operation.name == 'reset' or operation.name == 'initialize':
-                    if is_initializing:
-                        continue
-                    if operation.name != 'reset':
-                        nonunitary_start = opcount
-                    shotLoopMax = self._shots
-                    shotsPerLoop = 1
-                    self._sample_measure = False
-                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," "initialize," and conditionals, setting shots=1, and/or only measuring at the end of the circuit.')
-                    break
+            if is_initializing and ((operation.name == 'measure') or (operation.name == 'reset')):
+                continue
 
-                is_initializing = False
+            is_initializing = False
 
-                if operation.name == 'measure':
-                    if nonunitary_start == 0:
-                        nonunitary_start = opcount
-                    did_measure = True
-                elif did_measure:
-                    shotLoopMax = self._shots
-                    shotsPerLoop = 1
-                    self._sample_measure = False
-                    logger.info('Cannot sample; must repeat circuit per shot. If possible, consider removing "reset," "initialize," and conditionals, setting shots=1, and/or only measuring at the end of the circuit.')
-                    break
+            if (operation.name == 'measure') or (operation.name == 'reset'):
+                if nonunitary_start == -1:
+                    nonunitary_start = opcount
 
-        preamble_classical_memory = 0
-        preamble_classical_register = 0
+            if (nonunitary_start != -1) and (operation.name != 'measure'):
+                shotsPerLoop = 1
+                shotLoopMax = self._shots
+                self._sample_measure = False
+                break
 
-        is_unitary_preamble = False
+        #TODO: Fix unitary preamble
 
-        if self._sample_measure:
-            nonunitary_start = 0
-        else:
-            is_unitary_preamble = True
-            self._sample_measure = True
-            try:
-                self._sim = qrack_controller_factory()
-                self._sim.initialize_qreg(self._configuration.opencl,
-                                          self._configuration.schmidt_decompose,
-                                          self._configuration.paging,
-                                          self._configuration.stabilizer,
-                                          self._number_of_qubits,
-                                          self._configuration.opencl_device_id,
-                                          self._configuration.opencl_multi,
-                                          self._configuration.normalize,
-                                          self._configuration.zero_threshold)
-            except OverflowError:
-                raise QrackError('too many qubits')
-
+        for shot in range(shotLoopMax):
+            self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
             self._classical_memory = 0
             self._classical_register = 0
 
-            for operation in experiment.instructions[:nonunitary_start]:
-                self._apply_op(operation, shotsPerLoop)
+            for operation in instructions:
+                self._apply_op(operation)
 
-            preamble_classical_memory = self._classical_memory
-            preamble_classical_register = self._classical_register
-            self._sample_measure = False
-
-        preamble_sim = self._sim if is_unitary_preamble else None
-
-        for shot in range(shotLoopMax):
-            if not is_unitary_preamble:
-                try:
-                    self._sim = qrack_controller_factory()
-                    self._sim.initialize_qreg(self._configuration.opencl,
-                                              self._configuration.schmidt_decompose,
-                                              self._configuration.paging,
-                                              self._configuration.stabilizer,
-                                              self._number_of_qubits,
-                                              self._configuration.opencl_device_id,
-                                              self._configuration.opencl_multi,
-                                              self._configuration.normalize,
-                                              self._configuration.zero_threshold)
-                except OverflowError:
-                    raise QrackError('too many qubits')
-                self._classical_memory = 0
-                self._classical_register = 0
-            else:
-                self._sim = preamble_sim.clone()
-                self._classical_memory = preamble_classical_memory
-                self._classical_register = preamble_classical_register
-
-            for operation in experiment.instructions[nonunitary_start:]:
-                self._apply_op(operation, shotsPerLoop)
-
-            if len(self._sample_qubits) > 0:
-                if self._sample_measure:
-                    self.__memory = self._add_sample_measure(self._sample_qubits, self._sample_clbits, shotsPerLoop)
-                else:
-                    self._add_qasm_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits)
+            if (not self._sample_measure) and (len(self._sample_qubits) > 0):
+                self._data += [hex(int(bin(self._classical_memory)[2:], 2))]
                 self._sample_qubits = []
                 self._sample_clbits = []
                 self._sample_cregbits = []
 
-            if not self._sample_measure:
-                # Turn classical_memory (int) into bit string and pad zero for unused cmembits
-                self.__memory.append(hex(int(bin(self._classical_memory)[2:], 2)))
+        if (self._sample_measure) and (len(self._sample_qubits) > 0):
+            self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, self._shots)
 
-        end = time.time()
+        data = { 'counts': dict(Counter(self._data)) }
+        if isinstance(experiment, QasmQobjExperiment):
+            data['memory'] = self._data
+            data = QrackExperimentResultData(**data)
+        else:
+            data = pd.DataFrame(data=data)
 
-        # amps = self._sim.amplitudes().round(self._chop_threshold)
-        # amps = np.stack((amps.real, amps.imag), axis=-1)
+        metadata = {}
+        if isinstance(experiment, QuantumCircuit) and experiment.metadata is not None:
+            metadata = experiment.metadata
 
-        data = {'counts': dict(Counter(self.__memory))}
+        metadata['measure_sampling'] = self._sample_measure
 
-        if self._memory:
-            data['memory'] = self.__memory
+        return QrackExperimentResult(
+            shots = self._shots,
+            data = data,
+            status = 'DONE',
+            success = True,
+            header = experiment.header if isinstance(experiment, QasmQobjExperiment) else QrackExperimentResultHeader(name = experiment.name),
+            meta_data = metadata,
+            time_taken = (time.time() - start)
+        )
 
-        return {
-            'name': experiment.header.name,
-            'shots': self._shots,
-            'data': data,
-            'seed': seed,
-            'status': 'DONE',
-            'success': True,
-            'time_taken': (end - start),
-            'header': experiment.header.to_dict(),
-            'metadata': { 'measure_sampling' : self._sample_measure }
-        }
-
-    #@profile
-    def _apply_op(self, operation, shotsPerLoop):
+    def _apply_op(self, operation):
         name = operation.name
 
-        if name == 'id':
-            logger.info('Identity gates are ignored.')
+        if (name == 'id') or (name == 'barrier'):
             # Skip measurement logic
             return
-        elif name == 'barrier':
-            logger.info('Barrier gates are ignored.')
-            # Skip measurement logic
-            return
-
-        if (name != 'measure' or hasattr(operation, 'conditional')) and len(self._sample_qubits) > 0:
-            if self._sample_measure:
-                self._memory = self._add_sample_measure(self._sample_qubits, sample_clbits, sim, shotsPerLoop)
-            else:
-                self._add_qasm_measure(self._sample_qubits, self._sample_clbits, self._sample_cregbits)
-            self._sample_qubits = []
-            self._sample_clbits = []
-            self._sample_cregbits = []
 
         conditional = getattr(operation, 'conditional', None)
         if isinstance(conditional, int):
@@ -633,97 +648,122 @@ class QasmSimulator(BaseBackend):
             if not conditional_bit_set:
                 return
         elif conditional is not None:
-            mask = int(operation.conditional.mask, 16)
+            mask = int(conditional.mask, 16)
             if mask > 0:
                 value = self._classical_memory & mask
                 while (mask & 0x1) == 0:
                     mask >>= 1
                     value >>= 1
-                if value != int(operation.conditional.val, 16):
+                if value != int(conditional.val, 16):
                     return
 
         if (name == 'u1') or (name == 'p'):
-            self._sim.u1(operation.qubits, operation.params)
+            self._sim.u(operation.qubits[0], 0, 0, operation.params[0])
         elif name == 'u2':
-            self._sim.u2(operation.qubits, operation.params)
+            self._sim.u(operation.qubits[0], np.pi / 2, operation.params[0], operation.params[1])
         elif (name == 'u3') or (name == 'u'):
-            self._sim.u(operation.qubits, operation.params)
+            self._sim.u(operation.qubits[0], operation.params[0], operation.params[1], operation.params[2])
         elif name == 'r':
-            self._sim.u(operation.qubits, [operation.params[0], operation.params[1] - np.pi/2, -operation.params[1] + np.pi/2])
-        elif name == 'unitary':
-            if (len(operation.qubits) != len(operation.params)) or (len(operation.params) != 2):
-                raise QrackError('Invalid unitary instruction. Qrack only supports single qubit targets for "unitary."')
-            for qbi in range(len(operation.qubits)):
-                self._sim.unitary1qb([operation.qubits[qbi]], operation.params[qbi])
+            self._sim.u(operation.qubits[0], operation.params[0], operation.params[1] - np.pi/2, -operation.params[1] + np.pi/2)
         elif name == 'cx':
-            self._sim.cx(operation.qubits)
+            self._sim.mcx(operation.qubits[0:1], operation.qubits[1])
+        elif name == 'csx':
+            self._sim.mcmtrx(operation.qubits[0:1], [(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation.qubits[1])
+        elif name == 'csxdg':
+            self._sim.mcmtrx(operation.qubits[0:1], [(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], operation.qubits[1])
+        elif name == 'cy':
+            self._sim.mcy(operation.qubits[0:1], operation.qubits[1])
         elif name == 'cz':
-            self._sim.cz(operation.qubits)
+            self._sim.mcz(operation.qubits[0:1], operation.qubits[1])
         elif name == 'ch':
-            self._sim.ch(operation.qubits)
+            self._sim.mch(operation.qubits[0:1], operation.qubits[1])
+        elif name == 'cp':
+            self._sim.mcmtrx(operation.qubits[0:1], [1, 0, 0, np.exp(1j * operation.params[0])], operation.qubits[0])
+        elif name == 'dcx':
+            self._sim.mcx(operation.qubits[0:1], operation.qubits[1])
+            self._sim.mcx(operation.qubits[1:2], operation.qubits[0])
         elif name == 'x':
-            self._sim.x(operation.qubits)
-        elif name == 'sx':
-            self._sim.sx(operation.qubits)
+            self._sim.x(operation.qubits[0])
         elif name == 'y':
-            self._sim.y(operation.qubits)
+            self._sim.y(operation.qubits[0])
         elif name == 'z':
-            self._sim.z(operation.qubits)
+            self._sim.z(operation.qubits[0])
         elif name == 'h':
-            self._sim.h(operation.qubits)
+            self._sim.h(operation.qubits[0])
+        elif name == 'p':
+            self._sim.mtrx([1, 0, 0, np.exp(1j * operation.params[0])], operation.qubits[0])
         elif name == 'rx':
-            self._sim.rx(operation.qubits, operation.params)
+            self._sim.r(Pauli.PauliX, operation.params[0], operation.qubits[0])
         elif name == 'ry':
-            self._sim.ry(operation.qubits, operation.params)
+            self._sim.r(Pauli.PauliY, operation.params[0], operation.qubits[0])
         elif name == 'rz':
-            self._sim.rz(operation.qubits, operation.params)
+            self._sim.r(Pauli.PauliZ, operation.params[0], operation.qubits[0])
         elif name == 's':
-            self._sim.s(operation.qubits)
+            self._sim.s(operation.qubits[0])
         elif name == 'sdg':
-            self._sim.sdg(operation.qubits)
+            self._sim.adjs(operation.qubits[0])
         elif name == 't':
-            self._sim.t(operation.qubits)
+            self._sim.t(operation.qubits[0])
         elif name == 'tdg':
-            self._sim.tdg(operation.qubits)
+            self._sim.adjt(operation.qubits[0])
+        elif name == 'sx':
+            self._sim.mtrx([(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation.qubits[0])
+        elif name == 'sxdg':
+            self._sim.mtrx([(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], operation.qubits[0])
         elif name == 'swap':
             self._sim.swap(operation.qubits[0], operation.qubits[1])
+        elif name == 'iswap':
+            self._sim.iswap(operation.qubits[0], operation.qubits[1])
         elif name == 'ccx':
-            self._sim.cx(operation.qubits)
+            self._sim.mcx(operation.qubits[0:2], operation.qubits[2])
         elif name == 'cu1':
-            self._sim.cu1(operation.qubits, operation.params)
+            self._sim.mcu(operation.qubits[0:1], operation.qubits[1], 0, 0, operation.params[0])
         elif name == 'cu2':
-            self._sim.cu2(operation.qubits, operation.params)
+            self._sim.mcu(operation.qubits[0:1], operation.qubits[1], np.pi / 2, operation.params[0], operation.params[1])
         elif name == 'cu3':
-            self._sim.cu(operation.qubits, operation.params)
+            self._sim.mcu(operation.qubits[0:1], operation.qubits[1], operation.params[0], operation.params[1], operation.params[2])
         elif name == 'cswap':
-            self._sim.cswap(operation.qubits)
+            self._sim.cswap(operation.qubits[0:1], operation.qubits[1], operation.qubits[2])
         elif name == 'mcx':
-            self._sim.cx(operation.qubits)
+            self._sim.mcx(operation.qubits[0:-1], operation.qubits[-1])
         elif name == 'mcy':
-            self._sim.cy(operation.qubits)
+            self._sim.mcy(operation.qubits[0:-1], operation.qubits[-1])
         elif name == 'mcz':
-            self._sim.cz(operation.qubits)
-        elif name == 'initialize':
-            self._sim.initialize(operation.qubits, operation.params)
-        elif name == 'cu1':
-            self._sim.cu1(operation.qubits, operation.params)
-        elif name == 'cu2':
-            self._sim.cu2(operation.qubits, operation.params)
-        elif name == 'cu3':
-            self._sim.cu(operation.qubits, operation.params)
+            self._sim.mcz(operation.qubits[0:-1], operation.qubits[-1])
         elif name == 'mcswap':
-            self._sim.cswap(operation.qubits)
-        elif name == 'multiplexer':
-            if (len(operation.params) != 1 << (len(operation.qubits) - 1)) or (len(operation.params[0]) != 2):
-                raise QrackError('Invalid multiplexer instruction. Qrack only supports single qubit targets for multiplexers.')
-            self._sim.multiplexer(operation.qubits, len(operation.qubits) - 1, operation.params)
+            self._sim.cswap(operation.qubits[:-2], operation.qubits[-2], operation.qubits[-1])
         elif name == 'reset':
-            self._sim.reset(operation.qubits[0])
+            qubits = operation.qubits
+            sample = self._sim.measure_pauli(len(qubits) * [Pauli.PauliZ], qubits)
+            for index in range(len(qubits)):
+                if ((sample >> index) & 1) > 0:
+                    self._sim.x(qubits[index])
         elif name == 'measure':
+            qubits = operation.qubits
+            clbits = operation.memory
             cregbits = operation.register if hasattr(operation, 'register') else len(operation.qubits) * [-1]
-            self._sample_qubits.append(operation.qubits)
-            self._sample_clbits.append(operation.memory)
-            self._sample_cregbits.append(cregbits)
+
+            self._sample_qubits += qubits
+            self._sample_clbits += clbits
+            self._sample_cregbits += cregbits
+
+            if not self._sample_measure:
+
+                sample = self._sim.measure_pauli(len(qubits) * [Pauli.PauliZ], qubits)
+
+                for index in range(len(qubits)):
+                    qubit_outcome = ((sample >> index) & 1)
+                    clbit = clbits[index]
+                    clmask = 1 << clbit
+                    self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
+
+                    cregbit = cregbits[index]
+                    if cregbit < 0:
+                        cregbit = clbit
+
+                    regbit = 1 << cregbit
+                    self._classical_register = (self._classical_register & (~regbit)) | (qubit_outcome << cregbit)
+
         elif name == 'bfunc':
             mask = int(operation.mask, 16)
             relation = operation.relation
@@ -762,85 +802,44 @@ class QasmSimulator(BaseBackend):
             err_msg = '{0} encountered unrecognized operation "{1}"'
             raise QrackError(err_msg.format(backend, operation))
 
-    #@profile
     def _add_sample_measure(self, sample_qubits, sample_clbits, num_samples):
-        """Generate memory samples from current statevector.
+        """Generate data samples from current statevector.
         Taken almost straight from the terra source code.
         Args:
             measure_params (list): List of (qubit, clbit) values for
                                    measure instructions to sample.
-            num_samples (int): The number of memory samples to generate.
+            num_samples (int): The number of data samples to generate.
         Returns:
-            list: A list of memory values in hex format.
+            list: A list of data values in hex format.
         """
-        memory = []
-
         # Get unique qubits that are actually measured
-        measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
-        measure_clbit = [clbit for sublist in sample_clbits for clbit in sublist]
+        measure_qubit = [qubit for qubit in sample_qubits]
+        measure_clbit = [clbit for clbit in sample_clbits]
 
-        # If we only want one sample, it's faster for the backend to do it,
-        # without passing back the probabilities.
+        # If we only want one sample, we can use an optimized method.
         if num_samples == 1:
-            sample = self._sim.measure(measure_qubit)
-            classical_state = self._classical_memory
+            sample = self._sim.measure_pauli(len(measure_qubit) * [Pauli.PauliZ], measure_qubit)
             for index in range(len(measure_qubit)):
-                qubit = measure_qubit[index]
-                cbit = measure_clbit[index]
-                qubit_outcome = (sample >> qubit) & 1
-                bit = 1 << cbit
-                classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            outKey = bin(classical_state)[2:]
-            memory += [hex(int(outKey, 2))]
-            self._classical_memory = classical_state
-            return memory
+                qubit_outcome = ((sample >> index) & 1)
+                clbit = measure_clbit[index]
+                clmask = 1 << clbit
+                self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
+
+            return [hex(int(bin(self._classical_memory)[2:], 2))]
 
         # Sample and convert to bit-strings
+        data = []
         measure_results = self._sim.measure_shots(measure_qubit, num_samples)
-        classical_state = self._classical_memory
-        for key, value in measure_results.items():
-            sample = key
-            classical_state = self._classical_memory
+        for sample in measure_results:
             for index in range(len(measure_qubit)):
-                qubit = measure_qubit[index]
-                cbit = measure_clbit[index]
-                qubit_outcome = (sample >> index) & 1
-                bit = 1 << cbit
-                classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            outKey = bin(classical_state)[2:]
-            memory += value * [hex(int(outKey, 2))]
+                qubit_outcome = ((sample >> index) & 1)
+                clbit = measure_clbit[index]
+                clmask = 1 << clbit
+                self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
 
-        return memory
+            data.append(hex(int(bin(self._classical_memory)[2:], 2)))
 
-    #@profile
-    def _add_qasm_measure(self, sample_qubits, sample_clbits, sample_cregbits=None):
-        """Apply a measure instruction to a qubit.
-        Args:
-            qubit (int): qubit is the qubit measured.
-            cmembit (int): is the classical memory bit to store outcome in.
-            cregbit (int, optional): is the classical register bit to store outcome in.
-        """
-
-        measure_qubit = [qubit for sublist in sample_qubits for qubit in sublist]
-        measure_clbit = [clbit for sublist in sample_clbits for clbit in sublist]
-        measure_cregbit = [clbit for sublist in sample_cregbits for clbit in sublist]
-
-        sample = self._sim.measure(measure_qubit)
-        classical_state = self._classical_memory
-        classical_register = self._classical_register
-        for index in range(len(measure_qubit)):
-            qubit = measure_qubit[index]
-            cbit = measure_clbit[index]
-            cregbit = measure_cregbit[index]
-            qubit_outcome = (sample >> qubit) & 1
-            bit = 1 << cbit
-            classical_state = (classical_state & (~bit)) | (qubit_outcome << cbit)
-            if cregbit >= 0:
-                regbit = 1 << cregbit
-                classical_register = \
-                    (classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
-        self._classical_memory = classical_state
-        self._classical_register = classical_register
+        return data
 
     @staticmethod
     def name():

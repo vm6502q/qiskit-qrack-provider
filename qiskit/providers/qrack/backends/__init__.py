@@ -10,6 +10,5 @@
 
 """Qrack Backends."""
 
-from .statevector_simulator import StatevectorSimulator
 from .qasm_simulator import QasmSimulator
 

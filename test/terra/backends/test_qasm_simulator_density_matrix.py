@@ -85,31 +85,31 @@ class TestQasmSimulatorDensityMatrix(common.QiskitAerTestCase,
     """QasmSimulator density_matrix method tests."""
     BACKEND_OPTS = {
         "seed_simulator": 314159,
-        "method": "density_matrix",
+        "method": "automatic",
         "max_parallel_threads": 1
     }
 
 
-@requires_method("qasm_simulator", "density_matrix_gpu")
-class TestQasmSimulatorDensityMatrixThrustGPU(common.QiskitAerTestCase,
-                                              DensityMatrixTests):
-    """QasmSimulator density_matrix_gpu method tests."""
-    BACKEND_OPTS = {
-        "seed_simulator": 314159,
-        "method": "density_matrix_gpu",
-        "max_parallel_threads": 1
-    }
+#@requires_method("qasm_simulator", "density_matrix_gpu")
+#class TestQasmSimulatorDensityMatrixThrustGPU(common.QiskitAerTestCase,
+#                                              DensityMatrixTests):
+#    """QasmSimulator density_matrix_gpu method tests."""
+#    BACKEND_OPTS = {
+#        "seed_simulator": 314159,
+#        "method": "density_matrix_gpu",
+#        "max_parallel_threads": 1
+#    }
 
 
-@requires_method("qasm_simulator", "density_matrix_thrust")
-class TestQasmSimulatorDensityMatrixThrustCPU(common.QiskitAerTestCase,
-                                              DensityMatrixTests):
-    """QasmSimulator density_matrix_thrust method tests."""
-    BACKEND_OPTS = {
-        "seed_simulator": 314159,
-        "method": "density_matrix_thrust",
-        "max_parallel_threads": 1
-    }
+#@requires_method("qasm_simulator", "density_matrix_thrust")
+#class TestQasmSimulatorDensityMatrixThrustCPU(common.QiskitAerTestCase,
+#                                              DensityMatrixTests):
+#    """QasmSimulator density_matrix_thrust method tests."""
+#    BACKEND_OPTS = {
+#        "seed_simulator": 314159,
+#        "method": "density_matrix_thrust",
+#        "max_parallel_threads": 1
+#    }
 
 
 if __name__ == '__main__':

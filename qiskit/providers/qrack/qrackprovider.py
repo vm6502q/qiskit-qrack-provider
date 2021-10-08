@@ -14,24 +14,20 @@
 
 """Provider for Qrack backends."""
 
-from qiskit.providers import BaseProvider
+from qiskit.providers.provider import ProviderV1
 from qiskit.providers.providerutils import filter_backends
 
-from .backends import QasmSimulator, StatevectorSimulator
+from .backends import QasmSimulator
 
 
-class QrackProvider(BaseProvider):
+class QrackProvider(ProviderV1):
     """Provider for Qrack backends."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(args, kwargs)
+    def __init__(self):
+        super().__init__()
 
-        # Populate the list of Aer simulator providers.
-        self._backends = [QasmSimulator(provider=self),
-                          StatevectorSimulator(provider=self)]
-
-    def get_backend(self, name=None, **kwargs):
-        return super().get_backend(name=name, **kwargs)
+        # Populate the list of Qrack simulator providers.
+        self._backends = [QasmSimulator(configuration=None, provider=self)]
 
     def backends(self, name=None, filters=None, **kwargs):
         # pylint: disable=arguments-differ
