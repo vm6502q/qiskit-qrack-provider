@@ -28,25 +28,12 @@ from pyqrack import QrackSimulator, Pauli
 
 from qiskit.providers.backend import BackendV1
 from qiskit.result import Result
+from qiskit.providers.options import Options
 
 from qiskit.circuit.gate import Gate
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
 from qiskit.circuit.classicalregister import Clbit
-
-
-class QrackOptions:
-    def __init__(self, data):
-        self.data = data
-
-    def get(self, field, default=None):
-        return self.data.get(field, default)
-
-    def update_options(self, **kwargs):
-        self.data.update(kwargs)
-
-    def update_config(self, **kwargs):
-        self.update_options(**kwargs)
 
 
 class QrackQasmQobjInstructionConditional:
@@ -433,7 +420,9 @@ class QasmSimulator(BackendV1):
         """
         # WARNING: The above prototype for return type doesn't work in BackEndV1 in Qiskit v0.30.0.
         # We're resorting to duck typing.
-        return QrackOptions(cls.DEFAULT_OPTIONS)
+        _def_opts = Options()
+        _def_opts.update_options(**cls.DEFAULT_OPTIONS)
+        return _def_opts
 
     def run(self, run_input, **options):
         """Run on the backend.
@@ -473,15 +462,15 @@ class QasmSimulator(BackendV1):
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
-        shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
+        self._shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
         qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
         qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
         job_id = str(uuid.uuid4())
 
-        job = QrackJob(self, job_id, self._run_job(job_id, run_input, data, shots, qobj_id, qobj_header, **qrack_options), run_input)
+        job = QrackJob(self, job_id, self._run_job(job_id, run_input, data, qobj_id, qobj_header, **qrack_options), run_input)
         return job
 
-    def _run_job(self, job_id, run_input, data, shots, qobj_id, qobj_header, **options):
+    def _run_job(self, job_id, run_input, data, qobj_id, qobj_header, **options):
         """Run experiments in run_input
         Args:
             job_id (str): unique id for the job.
@@ -492,7 +481,6 @@ class QasmSimulator(BackendV1):
         start = time.time()
 
         self._data = data
-        self._shots = shots
 
         experiments = run_input.experiments if hasattr(run_input, 'config') else run_input
         if isinstance(experiments, QuantumCircuit):
@@ -580,10 +568,9 @@ class QasmSimulator(BackendV1):
         shotsPerLoop = self._shots
         shotLoopMax = 1
 
-        did_measure = False
         is_initializing = True
         opcount = -1
-        nonunitary_start = -1
+        boundary_start = -1
 
         for operation in instructions:
             opcount = opcount + 1
@@ -597,10 +584,10 @@ class QasmSimulator(BackendV1):
             is_initializing = False
 
             if (operation.name == 'measure') or (operation.name == 'reset'):
-                if nonunitary_start == -1:
-                    nonunitary_start = opcount
+                if boundary_start == -1:
+                    boundary_start = opcount
 
-            if (nonunitary_start != -1) and (operation.name != 'measure'):
+            if (boundary_start != -1) and (operation.name != 'measure'):
                 shotsPerLoop = 1
                 shotLoopMax = self._shots
                 self._sample_measure = False
