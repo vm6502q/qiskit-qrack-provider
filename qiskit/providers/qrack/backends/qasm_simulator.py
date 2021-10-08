@@ -47,10 +47,12 @@ class QrackOptions:
     def update_config(self, **kwargs):
         self.update_options(**kwargs)
 
+
 class QrackQasmQobjInstructionConditional:
     def __init__(self, mask, val):
         self.mask = mask
         self.val = val
+
 
 class QrackExperimentResultHeader:
     def __init__(self, name):
