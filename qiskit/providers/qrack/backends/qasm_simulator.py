@@ -33,6 +33,12 @@ from qiskit.result import Result
 from qiskit.circuit.gate import Gate
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
+from qiskit.circuit.classicalregister import Clbit
+
+class QrackQasmQobjInstructionConditional:
+    def __init__(self, mask, val):
+        self.mask = mask
+        self.val = val
 
 class QrackExperimentResultHeader:
     def __init__(self, name):
@@ -518,17 +524,37 @@ class QasmSimulator(BackendV1):
             self._number_of_qubits = len(experiment.qubits)
             self._number_of_clbits = len(experiment.clbits)
             for datum in experiment._data:
-
                 qubits = []
                 for qubit in datum[1]:
                     qubits.append(experiment.qubits.index(qubit))
-                register = range(len(qubits))
 
                 clbits = []
                 for clbit in datum[2]:
                     clbits.append(experiment.clbits.index(clbit))
 
-                instructions.append(QasmQobjInstruction(datum[0].name, qubits = qubits, register = register, memory = clbits, params = datum[0].params))
+                conditional = None
+                condition = datum[0].condition
+                if condition is not None:
+                    if isinstance(condition[0], Clbit):
+                        conditional = experiment.clbits.index(condition[0])
+                    else:
+                        creg_index = experiment.cregs.index(condition[0])
+                        size = experiment.cregs[creg_index].size
+                        offset = 0
+                        for i in range(creg_index):
+                            offset += len(experiment.cregs[i])
+                        mask = ((1 << offset) - 1) ^ ((1 << (offset + size)) - 1)
+                        val = condition[1]
+                        conditional = offset if (size == 1) else QrackQasmQobjInstructionConditional(mask, val)
+
+                instructions.append(QasmQobjInstruction(
+                    datum[0].name,
+                    qubits = qubits,
+                    memory = clbits,
+                    condition=condition,
+                    conditional=conditional,
+                    params = datum[0].params
+                ))
         else:
             raise QrackError('Unrecognized "run_input" argument specified for run().')
 
@@ -567,12 +593,7 @@ class QasmSimulator(BackendV1):
                 self._sample_measure = False
                 break
 
-        if nonunitary_start == -1:
-            nonunitary_start = len(instructions)
         #TODO: Fix unitary preamble
-
-        self._classical_memory = 0
-        self._classical_register = 0
 
         for shot in range(shotLoopMax):
             self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
@@ -738,10 +759,10 @@ class QasmSimulator(BackendV1):
 
                     cregbit = cregbits[index]
                     if cregbit < 0:
-                        continue
+                        cregbit = clbit
 
                     regbit = 1 << cregbit
-                    self._classical_register = (self._classical_register & (~regbit)) | (int(qubit_outcome) << cregbit)
+                    self._classical_register = (self._classical_register & (~regbit)) | (qubit_outcome << cregbit)
 
         elif name == 'bfunc':
             mask = int(operation.mask, 16)
