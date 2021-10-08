@@ -609,16 +609,17 @@ class QasmSimulator(BackendV1):
             shotLoopMax = 1
         else:
             boundary_start -= 1
-            self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
-            self._classical_memory = 0
-            self._classical_register = 0
+            if boundary_start > 0:
+                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._classical_memory = 0
+                self._classical_register = 0
 
-            for operation in instructions[:boundary_start]:
-                self._apply_op(operation)
+                for operation in instructions[:boundary_start]:
+                    self._apply_op(operation)
 
-            preamble_memory = self._classical_memory
-            preamble_register = self._classical_register
-            preamble_sim = self._sim
+                preamble_memory = self._classical_memory
+                preamble_register = self._classical_register
+                preamble_sim = self._sim
 
         for shot in range(shotLoopMax):
             if preamble_sim is None:
