@@ -47,7 +47,7 @@ class QiskitAerTestCase(QiskitTestCase):
 
     def setUp(self):
         super().setUp()
-        self.useFixture(fixtures.Timeout(120, gentle=False))
+        # self.useFixture(fixtures.Timeout(120, gentle=False))
 
     @classmethod
     def setUpClass(cls):
