@@ -767,10 +767,9 @@ class QasmSimulator(BackendV1):
             self._sim.cswap(operation.qubits[:-2], operation.qubits[-2], operation.qubits[-1])
         elif name == 'reset':
             qubits = operation.qubits
-            sample = self._sim.measure_pauli(len(qubits) * [Pauli.PauliZ], qubits)
-            for index in range(len(qubits)):
-                if ((sample >> index) & 1) > 0:
-                    self._sim.x(qubits[index])
+            for qubit in qubits:
+                if self._sim.m(qubit):
+                    self._sim.x(qubit)
         elif name == 'measure':
             qubits = operation.qubits
             clbits = operation.memory
@@ -782,15 +781,8 @@ class QasmSimulator(BackendV1):
 
             if (not self._sample_measure) or (self._shots == 1):
 
-                sample = 0
-                if not self._is_schmidt_decompose:
-                    sample = self._sim.measure_pauli(len(qubits) * [Pauli.PauliZ], qubits)
-
                 for index in range(len(qubits)):
-                    if self._is_schmidt_decompose:
-                        qubit_outcome = self._sim.m(qubits[index])
-                    else:
-                        qubit_outcome = ((sample >> index) & 1)
+                    qubit_outcome = self._sim.m(qubits[index])
 
                     clbit = clbits[index]
                     clmask = 1 << clbit
@@ -854,17 +846,6 @@ class QasmSimulator(BackendV1):
         # Get unique qubits that are actually measured
         measure_qubit = [qubit for qubit in sample_qubits]
         measure_clbit = [clbit for clbit in sample_clbits]
-
-        # If we only want one sample, we can use an optimized method.
-        if num_samples == 1:
-            sample = self._sim.measure_pauli(len(measure_qubit) * [Pauli.PauliZ], measure_qubit)
-            for index in range(len(measure_qubit)):
-                qubit_outcome = ((sample >> index) & 1)
-                clbit = measure_clbit[index]
-                clmask = 1 << clbit
-                self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
-
-            return [hex(int(bin(self._classical_memory)[2:], 2))]
 
         # Sample and convert to bit-strings
         data = []
