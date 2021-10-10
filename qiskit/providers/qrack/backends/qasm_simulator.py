@@ -473,6 +473,8 @@ class QasmSimulator(BackendV1):
         qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
         job_id = str(uuid.uuid4())
 
+        self._is_schmidt_decompose = qrack_options['isSchmidtDecompose']
+
         job = QrackJob(self, job_id, self._run_job(job_id, run_input, data, qobj_id, qobj_header, **qrack_options), run_input)
         return job
 
@@ -779,8 +781,17 @@ class QasmSimulator(BackendV1):
             self._sample_cregbits += cregbits
 
             if (not self._sample_measure) or (self._shots == 1):
+
+                sample = 0
+                if not self._is_schmidt_decompose:
+                    sample = self._sim.measure_pauli(len(qubits) * [Pauli.PauliZ], qubits)
+
                 for index in range(len(qubits)):
-                    qubit_outcome = self._sim.m(qubits[index])
+                    if self._is_schmidt_decompose:
+                        qubit_outcome = self._sim.m(qubits[index])
+                    else:
+                        qubit_outcome = ((sample >> index) & 1)
+
                     clbit = clbits[index]
                     clmask = 1 << clbit
                     self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
