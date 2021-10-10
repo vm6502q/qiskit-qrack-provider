@@ -636,13 +636,13 @@ class QasmSimulator(BackendV1):
             for operation in instructions[boundary_start:]:
                 self._apply_op(operation)
 
-            if ((not self._sample_measure) or self._shots == 1) and (len(self._sample_qubits) > 0):
+            if not self._sample_measure and (len(self._sample_qubits) > 0):
                 self._data += [hex(int(bin(self._classical_memory)[2:], 2))]
                 self._sample_qubits = []
                 self._sample_clbits = []
                 self._sample_cregbits = []
 
-        if (self._sample_measure) and (self._shots != 1) and (len(self._sample_qubits) > 0):
+        if self._sample_measure and (len(self._sample_qubits) > 0):
             self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, self._shots)
 
         data = { 'counts': dict(Counter(self._data)) }
@@ -779,8 +779,7 @@ class QasmSimulator(BackendV1):
             self._sample_clbits += clbits
             self._sample_cregbits += cregbits
 
-            if (not self._sample_measure) or (self._shots == 1):
-
+            if not self._sample_measure:
                 for index in range(len(qubits)):
                     qubit_outcome = self._sim.m(qubits[index])
 
