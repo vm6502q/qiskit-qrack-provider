@@ -784,7 +784,7 @@ class QasmSimulator(BackendV1):
 
                 sample = 0
                 if not self._is_schmidt_decompose:
-                    sample = self._sim.measure_pauli(len(qubits) * [Pauli.PauliZ], qubits)
+                    sample = self._sim.measure_shots(qubits, 1)[0]
 
                 for index in range(len(qubits)):
                     if self._is_schmidt_decompose:
