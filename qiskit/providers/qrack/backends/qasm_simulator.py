@@ -96,9 +96,9 @@ class QasmSimulator(BackendV1):
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
         'basis_gates': [
-            'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'csx', 'csxdg', 'cz', 'ch', 'cp', 'dcx',
-            'id', 'x', 'sx', 'sxdg', 'y', 'z', 'h', 'p',
-            'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg', 'iswap', 'swap', 'ccx', 'initialize', 'cu1', 'cu2',
+            'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'csx', 'csxdg', 'cy', 'cz', 'ch', 'cp', 'dcx',
+            'id', 'x', 'sx', 'sxdg', 'y', 'z', 'h', 'p', 'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg',
+            'iswap', 'swap', 'ccx', 'ccy', 'ccz', 'initialize', 'cu1', 'cu2',
             'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
             'multiplexer', 'reset', 'measure'
         ],
@@ -749,6 +749,10 @@ class QasmSimulator(BackendV1):
             self._sim.iswap(operation.qubits[0], operation.qubits[1])
         elif name == 'ccx':
             self._sim.mcx(operation.qubits[0:2], operation.qubits[2])
+        elif name == 'ccy':
+            self._sim.mcy(operation.qubits[0:2], operation.qubits[2])
+        elif name == 'ccz':
+            self._sim.mcz(operation.qubits[0:2], operation.qubits[2])
         elif name == 'cu1':
             self._sim.mcu(operation.qubits[0:1], operation.qubits[1], 0, 0, operation.params[0])
         elif name == 'cu2':
