@@ -97,7 +97,7 @@ class QasmSimulator(BackendV1):
         'coupling_map': None,
         'basis_gates': [
             'id', 'u', 'x', 'y', 'z', 'h', 's', 't', 'sdg', 'tdg',
-            'swap', 'iswap', 'cp', 'cx', 'cy', 'cz', 'ccx', 'ccy', 'ccz',
+            'swap', 'iswap', 'cx', 'cy', 'cz', 'ccx', 'ccy', 'ccz',
             'mcx', 'mcy', 'mcz',
             'reset', 'measure'
         ],
