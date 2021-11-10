@@ -78,6 +78,8 @@ class QasmSimulator(BackendV1):
         'is_multi_device': True,
         'is_schmidt_decompose': True,
         'is_stabilizer_hybrid': True,
+        'is_binary_decision_tree': False,
+        'is_paged': True,
         'is_1qb_fusion': True,
         'is_cpu_gpu_hybrid': True
     }
@@ -98,9 +100,9 @@ class QasmSimulator(BackendV1):
         'basis_gates': [
             'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'csx', 'csxdg', 'cy', 'cz', 'ch', 'cp', 'dcx',
             'id', 'x', 'sx', 'sxdg', 'y', 'z', 'h', 'p', 'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg',
-            'iswap', 'swap', 'ccx', 'ccy', 'ccz', 'initialize', 'cu1', 'cu2',
-            'cu3', 'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
-            'multiplexer', 'reset', 'measure'
+            'iswap', 'swap', 'ccx', 'ccy', 'ccz', 'cu1', 'cu2', 'cu3',
+            'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
+            'multiplexer', 'reset', 'measure', 'initialize'
         ],
         'gates': [{
             'name': 'u1',
@@ -463,6 +465,8 @@ class QasmSimulator(BackendV1):
             'isMultiDevice': options.is_multi_device if hasattr(options, 'is_multi_device') else self._options.get('is_multi_device'),
             'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
             'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
+            'isBinaryDecisionTree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
+            'isPaged': options.is_paged if hasattr(options, 'is_paged') else self._options.get('is_paged'),
             'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.get('is_1qb_fusion'),
             'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid')
         }
@@ -472,8 +476,6 @@ class QasmSimulator(BackendV1):
         qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
         qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
         job_id = str(uuid.uuid4())
-
-        self._is_schmidt_decompose = qrack_options['isSchmidtDecompose']
 
         job = QrackJob(self, job_id, self._run_job(job_id, run_input, data, qobj_id, qobj_header, **qrack_options), run_input)
         return job
