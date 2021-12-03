@@ -4,12 +4,12 @@ import os
 from distutils.core import setup
 
 requirements = [
-    "numpy>=1.13.0",
-    "pyqrack>=0.7.3"
+    'numpy>=1.16.3',
+    'pyqrack>=0.7.3'
 ]
 
 # Handle version.
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 
 # Read long description from README.
 README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
