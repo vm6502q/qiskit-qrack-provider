@@ -854,7 +854,17 @@ class QasmSimulator(BackendV1):
 
         # Sample and convert to bit-strings
         data = []
-        measure_results = self._sim.measure_shots(measure_qubit, num_samples)
+        if num_samples == 1:
+            sample = self._sim.m_all()
+            result = 0
+            for index in range(len(measure_qubit)):
+                qubit = measure_qubit[index]
+                qubit_outcome = ((sample >> qubit) & 1)
+                result |= qubit_outcome << index
+            measure_results = [result]
+        else:
+            measure_results = self._sim.measure_shots(measure_qubit, num_samples)
+
         for sample in measure_results:
             for index in range(len(measure_qubit)):
                 qubit_outcome = ((sample >> index) & 1)
