@@ -9,7 +9,7 @@ requirements = [
 ]
 
 # Handle version.
-VERSION = "0.1.4"
+VERSION = "0.1.5"
 
 # Read long description from README.
 README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
