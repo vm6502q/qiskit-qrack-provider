@@ -75,7 +75,7 @@ class QasmSimulator(BackendV1):
     DEFAULT_OPTIONS = {
         'method': 'automatic',
         'shots': 1024,
-        'is_multi_device': True,
+        'is_schmidt_decompose_multi': True,
         'is_schmidt_decompose': True,
         'is_stabilizer_hybrid': True,
         'is_binary_decision_tree': False,
@@ -462,7 +462,7 @@ class QasmSimulator(BackendV1):
             Job: The job object for the run
         """
         qrack_options = {
-            'isMultiDevice': options.is_multi_device if hasattr(options, 'is_multi_device') else self._options.get('is_multi_device'),
+            'isSchmidtDecomposeMulti': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
             'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
             'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
             'isBinaryDecisionTree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
