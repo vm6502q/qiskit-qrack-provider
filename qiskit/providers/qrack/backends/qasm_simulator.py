@@ -81,7 +81,8 @@ class QasmSimulator(BackendV1):
         'is_binary_decision_tree': False,
         'is_paged': True,
         'is_1qb_fusion': True,
-        'is_cpu_gpu_hybrid': True
+        'is_cpu_gpu_hybrid': True,
+        'is_host_pointer': False,
     }
 
     DEFAULT_CONFIGURATION = {
@@ -468,7 +469,8 @@ class QasmSimulator(BackendV1):
             'isBinaryDecisionTree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
             'isPaged': options.is_paged if hasattr(options, 'is_paged') else self._options.get('is_paged'),
             'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.get('is_1qb_fusion'),
-            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid')
+            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
+            'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
