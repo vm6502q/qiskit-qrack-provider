@@ -621,7 +621,7 @@ class QasmSimulator(BackendV1):
         else:
             boundary_start -= 1
             if boundary_start > 0:
-                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._sim = QrackSimulator(qubitCount = self._number_of_qubits - self._number_of_magic_qubits, **options)
                 self._classical_memory = 0
                 self._classical_register = 0
 
