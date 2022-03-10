@@ -75,6 +75,7 @@ class QasmSimulator(BackendV1):
     DEFAULT_OPTIONS = {
         'method': 'automatic',
         'shots': 1024,
+        'magic_qubits': -1,
         'is_schmidt_decompose_multi': True,
         'is_schmidt_decompose': True,
         'is_stabilizer_hybrid': True,
@@ -402,6 +403,7 @@ class QasmSimulator(BackendV1):
         configuration = configuration or BackendConfiguration.from_dict(self.DEFAULT_CONFIGURATION)
 
         self._number_of_qubits = 0
+        self._number_of_magic_qubits = 0
         self._number_of_clbits = 0
         self._shots = 1
 
@@ -462,6 +464,8 @@ class QasmSimulator(BackendV1):
         Returns:
             Job: The job object for the run
         """
+        self._number_of_magic_qubits = options['magic_qubits'] if 'magic_qubits' in options else (run_input.config.magic_qubits if hasattr(run_input, 'config') else self._options.get('magic_qubits'))
+
         qrack_options = {
             'isSchmidtDecomposeMulti': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
             'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
@@ -471,6 +475,7 @@ class QasmSimulator(BackendV1):
             'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.get('is_1qb_fusion'),
             'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
             'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
+            'stabilizerQubitCount': self._number_of_magic_qubits
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
