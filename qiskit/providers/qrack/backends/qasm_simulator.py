@@ -464,7 +464,7 @@ class QasmSimulator(BackendV1):
         Returns:
             Job: The job object for the run
         """
-        self._number_of_magic_qubits = options['magic_qubits'] if 'magic_qubits' in options else (run_input.config.magic_qubits if hasattr(run_input, 'config') else self._options.get('magic_qubits'))
+        self._number_of_magic_qubits = options['magic_qubits'] if 'magic_qubits' in options else self._options.get('magic_qubits')
 
         qrack_options = {
             'isSchmidtDecomposeMulti': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
