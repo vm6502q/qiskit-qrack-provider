@@ -75,7 +75,7 @@ class QasmSimulator(BackendV1):
     DEFAULT_OPTIONS = {
         'method': 'automatic',
         'shots': 1024,
-        'magic_qubits': -1,
+        'stabilizer_qubit_count': -1,
         'is_schmidt_decompose_multi': True,
         'is_schmidt_decompose': True,
         'is_stabilizer_hybrid': True,
@@ -402,8 +402,8 @@ class QasmSimulator(BackendV1):
 
         configuration = configuration or BackendConfiguration.from_dict(self.DEFAULT_CONFIGURATION)
 
-        self._number_of_qubits = 0
         self._number_of_magic_qubits = 0
+        self._number_of_stabilizer_qubits = 0
         self._number_of_clbits = 0
         self._shots = 1
 
@@ -464,7 +464,8 @@ class QasmSimulator(BackendV1):
         Returns:
             Job: The job object for the run
         """
-        self._number_of_magic_qubits = options['magic_qubits'] if 'magic_qubits' in options else self._options.get('magic_qubits')
+
+        self._number_of_stabilizer_qubits = options['stabilizer_qubit_count'] if 'stabilizer_qubit_count' in options else self._options.get('stabilizer_qubit_count')
 
         qrack_options = {
             'isSchmidtDecomposeMulti': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
@@ -475,7 +476,7 @@ class QasmSimulator(BackendV1):
             'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.get('is_1qb_fusion'),
             'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
             'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
-            'stabilizerQubitCount': self._number_of_magic_qubits
+            'stabilizerQubitCount': self._number_of_stabilizer_qubits
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
@@ -535,11 +536,15 @@ class QasmSimulator(BackendV1):
 
         instructions = []
         if isinstance(experiment, QasmQobjExperiment):
-            self._number_of_qubits = experiment.header.n_qubits
+            self._number_of_magic_qubits = experiment.header.n_qubits
+            if self._number_of_stabilizer_qubits > 0:
+                self._number_of_magic_qubits = self._number_of_magic_qubits - self._number_of_stabilizer_qubits
             self._number_of_clbits = experiment.header.memory_slots
             instructions = experiment.instructions
         elif isinstance(experiment, QuantumCircuit):
-            self._number_of_qubits = len(experiment.qubits)
+            self._number_of_magic_qubits = len(experiment.qubits)
+            if self._number_of_stabilizer_qubits > 0:
+                self._number_of_magic_qubits = self._number_of_magic_qubits - self._number_of_stabilizer_qubits
             self._number_of_clbits = len(experiment.clbits)
             for datum in experiment._data:
                 qubits = []
@@ -621,7 +626,7 @@ class QasmSimulator(BackendV1):
         else:
             boundary_start -= 1
             if boundary_start > 0:
-                self._sim = QrackSimulator(qubitCount = self._number_of_qubits - self._number_of_magic_qubits, **options)
+                self._sim = QrackSimulator(qubitCount = self._number_of_magic_qubits, **options)
                 self._classical_memory = 0
                 self._classical_register = 0
 
@@ -634,7 +639,7 @@ class QasmSimulator(BackendV1):
 
         for shot in range(shotLoopMax):
             if preamble_sim is None:
-                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._sim = QrackSimulator(qubitCount = self._number_of_magic_qubits, **options)
                 self._classical_memory = 0
                 self._classical_register = 0
             else:
