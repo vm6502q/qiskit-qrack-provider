@@ -11,4 +11,4 @@
 """Qrack Backends."""
 
 from .qasm_simulator import QasmSimulator
-
+from .extended_stabilizer import ExtendedStabilizer
