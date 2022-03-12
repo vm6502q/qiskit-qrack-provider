@@ -420,7 +420,11 @@ class ExtendedStabilizer(BackendV1):
         else:
             boundary_start -= 1
             if boundary_start > 0:
-                self._sim = QrackSimulator(qubitCount = self._number_of_magic_qubits, **options)
+                self._sim = QrackSimulator(
+                    qubitCount = self._number_of_magic_qubits,
+                    stabilizerQubitCount = self._number_of_stabilizer_qubits,
+                    **options
+                )
                 self._classical_memory = 0
                 self._classical_register = 0
 
@@ -433,7 +437,11 @@ class ExtendedStabilizer(BackendV1):
 
         for shot in range(shotLoopMax):
             if preamble_sim is None:
-                self._sim = QrackSimulator(qubitCount = self._number_of_magic_qubits, **options)
+                self._sim = QrackSimulator(
+                    qubitCount = self._number_of_magic_qubits,
+                    stabilizerQubitCount = self._number_of_stabilizer_qubits,
+                    **options
+                )
                 self._classical_memory = 0
                 self._classical_register = 0
             else:
