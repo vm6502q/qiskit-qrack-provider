@@ -260,14 +260,14 @@ class ExtendedStabilizer(BackendV1):
         """
 
         qrack_options = {
-            'isSchmidtDecomposeMulti': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
-            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
-            'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
-            'isBinaryDecisionTree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
-            'isPaged': options.is_paged if hasattr(options, 'is_paged') else self._options.get('is_paged'),
-            'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.get('is_1qb_fusion'),
-            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
-            'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer')
+            'isSchmidtDecomposeMulti': False,
+            'isSchmidtDecompose': False,
+            'isStabilizerHybrid': False,
+            'isBinaryDecisionTree': True,
+            'isPaged': False,
+            'is1QbFusion': False,
+            'isCpuGpuHybrid': False,
+            'isHostPointer': False
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
