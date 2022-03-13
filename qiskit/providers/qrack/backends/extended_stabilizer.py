@@ -93,6 +93,7 @@ class ExtendedStabilizer(BackendV1):
         'coupling_map': None,
         'basis_gates': [
             'id', 'x', 'y', 'z,', 'h', 's', 'sdg', 't', 'tdg', 'cx', 'cy', 'cz',
+            'u1', 'u2', 'u3', 'u', 'p', 'r', 'rx', 'ry', 'rz',
             'iswap', 'swap', 'reset', 'measure'
         ],
         'gates': [{
@@ -148,6 +149,69 @@ class ExtendedStabilizer(BackendV1):
             'parameters': [],
             'conditional': True,
             'description': 'Single-qubit T (phase) adjoint gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'u1',
+            'parameters': ['lam'],
+            'conditional': True,
+            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
+            'qasm_def': 'gate u1(lam) q { U(0,0,lam) q; }'
+        }, {
+            'name': 'u2',
+            'parameters': ['phi', 'lam'],
+            'conditional': True,
+            'description':
+            'Single-qubit gate [[1, -exp(1j*lam)], [exp(1j*phi), exp(1j*(phi+lam))]]/sqrt(2)',
+            'qasm_def': 'gate u2(phi,lam) q { U(pi/2,phi,lam) q; }'
+        }, {
+            'name':
+            'u3',
+            'parameters': ['theta', 'phi', 'lam'],
+            'conditional':
+            True,
+            'description':
+            'Single-qubit gate with three rotation angles',
+            'qasm_def':
+            'gate u3(theta,phi,lam) q { U(theta,phi,lam) q; }'
+        }, {
+            'name':
+            'u',
+            'parameters': ['theta', 'phi', 'lam'],
+            'conditional':
+            True,
+            'description':
+            'Single-qubit gate with three rotation angles',
+            'qasm_def':
+            'gate u(theta,phi,lam) q { U(theta,phi,lam) q; }'
+        }, {
+            'name': 'p',
+            'parameters': ['theta', 'phi'],
+            'conditional': True,
+            'description': 'Single-qubit gate [[cos(theta), -1j*exp(-1j*phi)], [sin(theta), -1j*exp(1j *phi)*sin(theta), cos(theta)]]',
+            'qasm_def': 'gate r(theta, phi) q { U(theta, phi - pi/2, -phi + pi/2) q;}'
+        }, {
+            'name': 'r',
+            'parameters': ['lam'],
+            'conditional': True,
+            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
+            'qasm_def': 'gate p(lam) q { U(0,0,lam) q; }'
+        }, {
+            'name': 'rx',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-X axis rotation gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'ry',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-Y axis rotation gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'rz',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-Z axis rotation gate',
             'qasm_def': 'TODO'
         }, {
             'name': 'swap',
@@ -500,7 +564,21 @@ class ExtendedStabilizer(BackendV1):
                 if value != int(conditional.val, 16):
                     return
 
-        if name == 'x':
+        if (name == 'u1') or (name == 'p'):
+            self._sim.u(operation.qubits[0], 0, 0, operation.params[0])
+        elif name == 'u2':
+            self._sim.u(operation.qubits[0], np.pi / 2, operation.params[0], operation.params[1])
+        elif (name == 'u3') or (name == 'u'):
+            self._sim.u(operation.qubits[0], operation.params[0], operation.params[1], operation.params[2])
+        elif name == 'r':
+            self._sim.u(operation.qubits[0], operation.params[0], operation.params[1] - np.pi/2, -operation.params[1] + np.pi/2)
+        elif name == 'rx':
+            self._sim.r(Pauli.PauliX, operation.params[0], operation.qubits[0])
+        elif name == 'ry':
+            self._sim.r(Pauli.PauliY, operation.params[0], operation.qubits[0])
+        elif name == 'rz':
+            self._sim.r(Pauli.PauliZ, operation.params[0], operation.qubits[0])
+        elif name == 'x':
             self._sim.x(operation.qubits[0])
         elif name == 'y':
             self._sim.y(operation.qubits[0])

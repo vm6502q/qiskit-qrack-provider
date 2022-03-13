@@ -101,7 +101,7 @@ class QasmSimulator(BackendV1):
         'coupling_map': None,
         'basis_gates': [
             'u1', 'u2', 'u3', 'u', 'p', 'r', 'cx', 'csx', 'csxdg', 'cy', 'cz', 'ch', 'cp', 'dcx',
-            'id', 'x', 'sx', 'sxdg', 'y', 'z', 'h', 'p', 'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg',
+            'id', 'x', 'sx', 'sxdg', 'y', 'z', 'h', 'rx', 'ry', 'rz', 's', 'sdg', 't', 'tdg',
             'iswap', 'swap', 'ccx', 'ccy', 'ccz', 'cu1', 'cu2', 'cu3',
             'cswap', 'mcx', 'mcy', 'mcz', 'mcu1', 'mcu2', 'mcu3', 'mcswap',
             'multiplexer', 'reset', 'measure', 'initialize'
@@ -234,12 +234,6 @@ class QasmSimulator(BackendV1):
             'parameters': [],
             'conditional': True,
             'description': 'Single-qubit Hadamard gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'p',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Phase gate',
             'qasm_def': 'TODO'
         }, {
             'name': 'rx',
@@ -737,8 +731,6 @@ class QasmSimulator(BackendV1):
             self._sim.z(operation.qubits[0])
         elif name == 'h':
             self._sim.h(operation.qubits[0])
-        elif name == 'p':
-            self._sim.mtrx([1, 0, 0, np.exp(1j * operation.params[0])], operation.qubits[0])
         elif name == 'rx':
             self._sim.r(Pauli.PauliX, operation.params[0], operation.qubits[0])
         elif name == 'ry':
