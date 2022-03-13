@@ -75,7 +75,7 @@ class ExtendedStabilizer(BackendV1):
     DEFAULT_OPTIONS = {
         'method': 'automatic',
         'shots': 1024,
-        'magic_qubit_count': 1
+        'stabilizer_qubit_count': -1
     }
 
     DEFAULT_CONFIGURATION = {
@@ -92,8 +92,8 @@ class ExtendedStabilizer(BackendV1):
         'description': 'Qrack\'s novel extended stabilizer simulator',
         'coupling_map': None,
         'basis_gates': [
-            'id', 'x', 'y', 'z,' 'h', 's', 'sdg' 't', 'tdg' 'cx', 'cy', 'cz',
-            'iswap', 'swap', 'reset', 'measure', 'initialize'
+            'id', 'x', 'y', 'z,', 'h', 's', 'sdg', 't', 'tdg', 'cx', 'cy', 'cz',
+            'iswap', 'swap', 'reset', 'measure'
         ],
         'gates': [{
         'name': 'id',
@@ -196,7 +196,7 @@ class ExtendedStabilizer(BackendV1):
 
         configuration = configuration or BackendConfiguration.from_dict(self.DEFAULT_CONFIGURATION)
 
-        self._number_of_magic_qubits = 0
+        self._number_of_qubits = 0
         self._number_of_stabilizer_qubits = 0
         self._number_of_clbits = 0
         self._shots = 1
@@ -271,7 +271,7 @@ class ExtendedStabilizer(BackendV1):
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
-        self._number_of_magic_qubits = options['magic_qubit_count'] if 'magic_qubit_count' in options else self._options.get('magic_qubit_count')
+        self._number_of_stabilizer_qubits = options['stabilizer_qubit_count'] if 'stabilizer_qubit_count' in options else self._options.get('stabilizer_qubit_count')
         self._shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
         qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
         qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
@@ -328,17 +328,11 @@ class ExtendedStabilizer(BackendV1):
 
         instructions = []
         if isinstance(experiment, QasmQobjExperiment):
-            self._number_of_stabilizer_qubits = experiment.header.n_qubits - self._number_of_magic_qubits
-            if self._number_of_stabilizer_qubits < 0:
-                self._number_of_stabilizer_qubits = 0
-                self._number_of_magic_qubits = experiment.header.n_qubits
+            self._number_of_qubits = experiment.header.n_qubits
             self._number_of_clbits = experiment.header.memory_slots
             instructions = experiment.instructions
         elif isinstance(experiment, QuantumCircuit):
-            self._number_of_stabilizer_qubits = len(experiment.qubits) - self._number_of_magic_qubits
-            if self._number_of_stabilizer_qubits < 0:
-                self._number_of_stabilizer_qubits = 0
-                self._number_of_magic_qubits = len(experiment.qubits)
+            self._number_of_qubits = len(experiment.qubits)
             self._number_of_clbits = len(experiment.clbits)
             for datum in experiment._data:
                 qubits = []
@@ -421,7 +415,7 @@ class ExtendedStabilizer(BackendV1):
             boundary_start -= 1
             if boundary_start > 0:
                 self._sim = QrackSimulator(
-                    qubitCount = self._number_of_magic_qubits,
+                    qubitCount = self._number_of_qubits,
                     stabilizerQubitCount = self._number_of_stabilizer_qubits,
                     **options
                 )
@@ -438,7 +432,7 @@ class ExtendedStabilizer(BackendV1):
         for shot in range(shotLoopMax):
             if preamble_sim is None:
                 self._sim = QrackSimulator(
-                    qubitCount = self._number_of_magic_qubits,
+                    qubitCount = self._number_of_qubits,
                     stabilizerQubitCount = self._number_of_stabilizer_qubits,
                     **options
                 )
