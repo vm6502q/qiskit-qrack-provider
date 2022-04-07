@@ -80,7 +80,7 @@ class QasmSimulator(BackendV1):
         'is_stabilizer_hybrid': True,
         'is_binary_decision_tree': False,
         'is_paged': True,
-        'is_1qb_fusion': True,
+        'is_1qb_fusion': False,
         'is_cpu_gpu_hybrid': True,
         'is_host_pointer': False,
     }
