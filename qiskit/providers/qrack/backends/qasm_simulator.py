@@ -41,10 +41,25 @@ class QrackQasmQobjInstructionConditional:
         self.mask = mask
         self.val = val
 
+    def to_dict(self):
+        return vars(self)
+
+
+class QrackExperimentHeader(dict):
+    def __init__(self, a_dict=None):
+        dict.__init__(self)
+        for key, value in a_dict.items():
+            self[key] = value
+
+    def to_dict(self):
+        return self
 
 class QrackExperimentResultHeader:
     def __init__(self, name):
         self.name = name
+
+    def to_dict(self):
+        return vars(self)
 
 
 class QrackExperimentResultData:
@@ -53,7 +68,7 @@ class QrackExperimentResultData:
         self.memory = memory
 
     def to_dict(self):
-        return { 'counts': self.counts, 'memory': self.memory }
+        return vars(self)
 
 
 class QrackExperimentResult:
@@ -65,6 +80,9 @@ class QrackExperimentResult:
         self.header = header
         self.meta_data = meta_data,
         self.time_taken = time_taken
+
+    def to_dict(self):
+        return vars(self)
 
 
 class QasmSimulator(BackendV1):
@@ -540,7 +558,7 @@ class QasmSimulator(BackendV1):
             results = results,
             date = datetime.now(),
             status = 'COMPLETED',
-            header = qobj_header,
+            header = QrackExperimentHeader(qobj_header),
             time_taken = (time.time() - start)
         )
 
