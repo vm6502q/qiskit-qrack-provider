@@ -558,7 +558,7 @@ class QasmSimulator(BackendV1):
             results = results,
             date = datetime.now(),
             status = 'COMPLETED',
-            header = QrackExperimentHeader(qobj_header),
+            header = QrackExperimentHeader(qobj_header) if type(qobj_header) is dict else qobj_header,
             time_taken = (time.time() - start)
         )
 
@@ -704,7 +704,7 @@ class QasmSimulator(BackendV1):
             data = pd.DataFrame(data=data)
 
         metadata = {}
-        if isinstance(experiment, QuantumCircuit) and experiment.metadata is not None:
+        if isinstance(experiment, QuantumCircuit) and hasattr(experiment, 'metadata'):
             metadata = experiment.metadata
 
         metadata['measure_sampling'] = self._sample_measure
