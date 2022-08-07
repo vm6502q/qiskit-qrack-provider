@@ -17,7 +17,7 @@
 from qiskit.providers.provider import ProviderV1
 from qiskit.providers.providerutils import filter_backends
 
-from .backends import QasmSimulator
+from .backends import QasmSimulator, NoisyCliffordTSimulator
 
 
 class QrackProvider(ProviderV1):
@@ -27,7 +27,10 @@ class QrackProvider(ProviderV1):
         super().__init__()
 
         # Populate the list of Qrack simulator providers.
-        self._backends = [QasmSimulator(configuration=None, provider=self)]
+        self._backends = [
+            QasmSimulator(configuration=None, provider=self),
+            NoisyCliffordTSimulator(configuration=None, provider=self)
+        ]
 
     def backends(self, name=None, filters=None, **kwargs):
         # pylint: disable=arguments-differ

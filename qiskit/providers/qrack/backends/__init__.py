@@ -11,3 +11,4 @@
 """Qrack Backends."""
 
 from .qasm_simulator import QasmSimulator
+from .noisy_clifford_t_simulator import NoisyCliffordTSimulator
