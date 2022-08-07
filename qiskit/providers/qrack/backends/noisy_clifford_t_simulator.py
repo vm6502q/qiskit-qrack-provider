@@ -547,11 +547,11 @@ class NoisyCliffordTSimulator(BackendV1):
         # Divert variational phase gates to Clifford, when possible.
         if name == 'rz' or name == 'u1' or name == 'p':
             angle = operation.params[0]
-            while angle < 0:
+            while angle < 0.:
                 angle = angle + 2. * math.pi
-            while angle > 2 * math.pi:
+            while angle >= 2. * math.pi:
                 angle = angle - 2. * math.pi
-            if math.is_close(angle, 0):
+            if math.is_close(angle, 0.):
                 return
             if math.is_close(angle, math.pi):
                 name = 'z'
