@@ -551,13 +551,13 @@ class NoisyCliffordTSimulator(BackendV1):
                 angle = angle + 2. * math.pi
             while angle >= 2. * math.pi:
                 angle = angle - 2. * math.pi
-            if math.is_close(angle, 0.):
+            if math.isclose(angle, 0.):
                 return
-            if math.is_close(angle, math.pi):
+            if math.isclose(angle, math.pi):
                 name = 'z'
-            elif math.is_close(angle, math.pi / 2.):
+            elif math.isclose(angle, math.pi / 2.):
                 name = 's'
-            elif math.is_close(angle, -math.pi / 2.):
+            elif math.isclose(angle, -math.pi / 2.):
                 name = 'sdg'
 
         if (name == 'id') or (name == 'barrier'):
