@@ -515,23 +515,20 @@ class NoisyCliffordTSimulator(BackendV1):
         if (lam <= 0.):
             return
 
-        # Random azimuth around Z axis of measurement,
-        # which effectively randomizes depolarization orientation in X-Y plane
+        # Original qubit, Z->X basis
+        self._sim.h(qubit)
+        # Random azimuth around Z axis of measurement
         angleZ = random.uniform(0., 4. * math.pi)
-        # Total depolarization magnitude angle,
-        # where use of hyperbolic trig. is based on empirical exploratory work
-        lamAngle = math.asinh(2 * lam)
-
-        # Azimuth
         self._sim.r(Pauli.PauliZ, angleZ, qubit)
-        # Depolarization magnitude
+        # Total depolarization magnitude angle
+        lamAngle = 2 * math.asin(lam)
         self._sim.r(Pauli.PauliY, lamAngle, qubit)
 
         # Allocate an ancilla
         ancilla = self._sim.num_qubits()
         self._sim.allocate_qubit(ancilla)
         # Partially entangle with the ancilla
-        self._sim.mcx([qubit], ancilla)
+        self._sim.mcr(Pauli.PauliY, lamAngle, [qubit], ancilla)
         # Partially collapse the original state
         self._sim.m(ancilla)
         # The ancilla is fully separable, after measurement.
@@ -540,6 +537,7 @@ class NoisyCliffordTSimulator(BackendV1):
         # Uncompute
         self._sim.r(Pauli.PauliY, -lamAngle, qubit)
         self._sim.r(Pauli.PauliZ, -angleZ, qubit)
+        self._sim.h(qubit)
 
     def _apply_op(self, operation, noise):
         name = operation.name
