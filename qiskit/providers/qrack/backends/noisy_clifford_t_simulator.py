@@ -120,7 +120,7 @@ class NoisyCliffordTSimulator(BackendV1):
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
         'basis_gates': [
-            'id', 'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 't', 'tdg',
+            'id', 'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 't', 'tdg', 'rz', 'u1', 'p'
             'cx', 'cy', 'cz', 'swap', 'iswap', 'reset', 'measure', 'barrier'
         ],
         'gates': [{
@@ -189,6 +189,24 @@ class NoisyCliffordTSimulator(BackendV1):
             'conditional': True,
             'description': 'Single-qubit adjoint T gate',
             'qasm_def': 'TODO'
+        }, {
+            'name': 'rz',
+            'parameters': [],
+            'conditional': True,
+            'description': 'Single-qubit Pauli-Z axis rotation gate',
+            'qasm_def': 'TODO'
+        }, {
+            'name': 'u1',
+            'parameters': ['lam'],
+            'conditional': True,
+            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
+            'qasm_def': 'gate u1(lam) q { U(0,0,lam) q; }'
+        }, {
+            'name': 'p',
+            'parameters': ['theta', 'phi'],
+            'conditional': True,
+            'description': 'Single-qubit gate [[cos(theta), -1j*exp(-1j*phi)], [sin(theta), -1j*exp(1j *phi)*sin(theta), cos(theta)]]',
+            'qasm_def': 'gate r(theta, phi) q { U(theta, phi - pi/2, -phi + pi/2) q;}'
         }, {
             'name': 'cx',
             'parameters': [],
@@ -526,6 +544,22 @@ class NoisyCliffordTSimulator(BackendV1):
     def _apply_op(self, operation, noise):
         name = operation.name
 
+        # Divert variational phase gates to Clifford, when possible.
+        if name == 'rz' or name == 'u1' or name == 'p':
+            angle = operation.params[0]
+            while angle < 0:
+                angle = angle + 2. * math.pi
+            while angle > 2 * math.pi:
+                angle = angle - 2. * math.pi
+            if math.is_close(angle, 0):
+                return
+            if math.is_close(angle, math.pi):
+                name = 'z'
+            elif math.is_close(angle, math.pi / 2.):
+                name = 's'
+            elif math.is_close(angle, -math.pi / 2.):
+                name = 'sdg'
+
         if (name == 'id') or (name == 'barrier'):
             # Skip measurement logic
             return
@@ -566,6 +600,12 @@ class NoisyCliffordTSimulator(BackendV1):
             self.inject_depolarizing_1qb_noise(operation.qubits[0], noise)
         elif name == 'tdg':
             self._sim.adjt(operation.qubits[0])
+            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise)
+        elif name == 'rz':
+            self._sim.r(Pauli.PauliZ, operation.params[0], operation.qubits[0])
+            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise)
+        elif (name == 'u1') or (name == 'p'):
+            self._sim.u(operation.qubits[0], 0, 0, operation.params[0])
             self.inject_depolarizing_1qb_noise(operation.qubits[0], noise)
         elif name == 'cx':
             self._sim.mcx(operation.qubits[0:1], operation.qubits[1])
