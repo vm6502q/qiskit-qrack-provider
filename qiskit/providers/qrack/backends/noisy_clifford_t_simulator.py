@@ -525,7 +525,7 @@ class NoisyCliffordTSimulator(BackendV1):
         ancilla = self._sim.num_qubits()
         self._sim.allocate_qubit(ancilla)
         # Partially entangle with the ancilla
-        lamAngle = 2. * math.asin(lam)
+        lamAngle = 2. * math.asin(lam ** (1/4))
         self._sim.mcr(Pauli.PauliY, lamAngle, [qubit], ancilla)
         # Partially collapse the original state
         self._sim.m(ancilla)
