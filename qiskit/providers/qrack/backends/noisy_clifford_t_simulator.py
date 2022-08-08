@@ -536,6 +536,9 @@ class NoisyCliffordTSimulator(BackendV1):
         self._sim.r(Pauli.PauliZ, -angleZ, qubit)
         self._sim.h(qubit)
 
+        # The original qubit might be below separability threshold.
+        simulator.try_separate_1qb(qubit)
+
     def _apply_op(self, operation, noise):
         name = operation.name
 
