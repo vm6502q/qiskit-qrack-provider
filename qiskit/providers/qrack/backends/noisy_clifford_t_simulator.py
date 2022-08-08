@@ -96,6 +96,7 @@ class NoisyCliffordTSimulator(BackendV1):
         'method': 'automatic',
         'shots': 1024,
         'noise': 0.0004,
+        'is_strong_simulation': False,
         'is_schmidt_decompose_multi': True,
         'is_schmidt_decompose': True,
         'is_stabilizer_hybrid': True,
@@ -358,6 +359,7 @@ class NoisyCliffordTSimulator(BackendV1):
         }
 
         # In the ideal, if the user isn't demanding a specific separability threshold, this is a well-motivated choice.
+        is_strong_simulation = options.noise if hasattr(options, 'is_strong_simulation') else self._options.get('is_strong_simulation')
         noise = options.noise if hasattr(options, 'noise') else self._options.get('noise')
         self._reset_separability_threshold = False
         if "QRACK_QUNIT_SEPARABILITY_THRESHOLD" not in os.environ:
@@ -370,10 +372,10 @@ class NoisyCliffordTSimulator(BackendV1):
         qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
         job_id = str(uuid.uuid4())
 
-        job = QrackJob(self, job_id, self._run_job(job_id, run_input, data, qobj_id, qobj_header, noise, **qrack_options), run_input)
+        job = QrackJob(self, job_id, self._run_job(job_id, run_input, data, qobj_id, qobj_header, noise, is_strong_simulation, **qrack_options), run_input)
         return job
 
-    def _run_job(self, job_id, run_input, data, qobj_id, qobj_header, noise, **options):
+    def _run_job(self, job_id, run_input, data, qobj_id, qobj_header, noise, is_strong_simulation, **options):
         """Run experiments in run_input
         Args:
             job_id (str): unique id for the job.
@@ -391,7 +393,7 @@ class NoisyCliffordTSimulator(BackendV1):
         results = []
 
         for experiment in experiments:
-            results.append(self.run_experiment(experiment, noise, **options))
+            results.append(self.run_experiment(experiment, noise, is_strong_simulation, **options))
 
         if self._reset_separability_threshold:
             # If the separability threshold is auto-default, clear its automatically assigned environment variable.
@@ -410,7 +412,7 @@ class NoisyCliffordTSimulator(BackendV1):
             time_taken = (time.time() - start)
         )
 
-    def run_experiment(self, experiment, noise, **options):
+    def run_experiment(self, experiment, noise, is_strong_simulation, **options):
         """Run an experiment (circuit) and return a single experiment result.
         Args:
             experiment (QobjExperiment): experiment from qobj experiments list
@@ -471,24 +473,92 @@ class NoisyCliffordTSimulator(BackendV1):
         self._sample_cregbits = []
         self._data = []
 
+        self._sample_measure = True
         shotsPerLoop = self._shots
         shotLoopMax = 1
 
         is_initializing = True
+        boundary_start = -1
+
+        for opcount in range(len(instructions)):
+            operation = instructions[opcount]
+
+            if operation.name == 'id' or operation.name == 'barrier':
+                continue
+
+            if is_initializing and ((operation.name == 'measure') or (operation.name == 'reset')):
+                continue
+
+            is_initializing = False
+
+            if (noise > 0) and (not is_strong_simulation) :
+                if (operation.name == 't') or (operation.name == 'tdg'):
+                    if boundary_start == -1:
+                        boundary_start = opcount
+                elif (operation.name == 'rz') or (operation.name == 'u1') or (operation.name == 'p'):
+                    angle = operation.params[0]
+                    while angle < 0.:
+                        angle = angle + 2. * math.pi
+                    while angle >= 2. * math.pi:
+                        angle = angle - 2. * math.pi
+                    if not (math.isclose(angle, 0.) or math.isclose(angle, math.pi) or math.isclose(angle, math.pi / 2.) or math.isclose(angle, -math.pi / 2.)):
+                        if boundary_start == -1:
+                            boundary_start = opcount
+
+            if (operation.name == 'measure') or (operation.name == 'reset'):
+                if boundary_start == -1:
+                    boundary_start = opcount
+
+            if (boundary_start != -1) and (operation.name != 'measure'):
+                shotsPerLoop = 1
+                shotLoopMax = self._shots
+                self._sample_measure = False
+                break
+
+        preamble_memory = 0
+        preamble_register = 0
+        preamble_sim = None
+
+        if self._sample_measure or boundary_start <= 0:
+            boundary_start = 0
+            self._sample_measure = True
+            shotsPerLoop = self._shots
+            shotLoopMax = 1
+        else:
+            boundary_start -= 1
+            if boundary_start > 0:
+                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._classical_memory = 0
+                self._classical_register = 0
+
+                for operation in instructions[:boundary_start]:
+                    self._apply_op(operation, noise, is_strong_simulation)
+
+                preamble_memory = self._classical_memory
+                preamble_register = self._classical_register
+                preamble_sim = self._sim
 
         for shot in range(shotLoopMax):
-            self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
-            self._classical_memory = 0
-            self._classical_register = 0
+            if preamble_sim is None:
+                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._classical_memory = 0
+                self._classical_register = 0
+            else:
+                self._sim = QrackSimulator(cloneSid = preamble_sim.sid)
+                self._classical_memory = preamble_memory
+                self._classical_register = preamble_register
 
-            for operation in instructions:
-                self._apply_op(operation, noise)
+            for operation in instructions[boundary_start:]:
+                self._apply_op(operation, noise, is_strong_simulation)
 
-            if len(self._sample_qubits) > 0:
+            if not self._sample_measure and (len(self._sample_qubits) > 0):
                 self._data += [hex(int(bin(self._classical_memory)[2:], 2))]
                 self._sample_qubits = []
                 self._sample_clbits = []
                 self._sample_cregbits = []
+
+        if self._sample_measure and (len(self._sample_qubits) > 0):
+            self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, self._shots)
 
         data = { 'counts': dict(Counter(self._data)) }
         if isinstance(experiment, QasmQobjExperiment):
@@ -497,9 +567,10 @@ class NoisyCliffordTSimulator(BackendV1):
         else:
             data = pd.DataFrame(data=data)
 
-        metadata = { 'measure_sampling': False }
+        metadata = { 'measure_sampling': self._sample_measure }
         if isinstance(experiment, QuantumCircuit) and hasattr(experiment, 'metadata'):
             metadata = experiment.metadata
+            metadata['measure_sampling'] = self._sample_measure
 
         return QrackExperimentResult(
             shots = self._shots,
@@ -511,7 +582,7 @@ class NoisyCliffordTSimulator(BackendV1):
             time_taken = (time.time() - start)
         )
 
-    def inject_depolarizing_1qb_noise(self, qubit, lam):
+    def inject_depolarizing_1qb_noise(self, qubit, lam, is_strong_simulation=False):
         if (lam <= 0.):
             return
 
@@ -527,19 +598,22 @@ class NoisyCliffordTSimulator(BackendV1):
         # Partially entangle with the ancilla
         lamAngle = 2. * math.asin(lam ** (1/4))
         self._sim.mcr(Pauli.PauliY, lamAngle, [qubit], ancilla)
-        # Partially collapse the original state
-        self._sim.m(ancilla)
-        # The ancilla is fully separable, after measurement.
-        self._sim.release(ancilla)
+
+        if not is_strong_simulation:
+            # Partially collapse the original state
+            self._sim.m(ancilla)
+            # The ancilla is fully separable, after measurement.
+            self._sim.release(ancilla)
 
         # Uncompute
         self._sim.r(Pauli.PauliZ, -angleZ, qubit)
         self._sim.h(qubit)
 
-        # The original qubit might be below separability threshold.
-        self._sim.try_separate_1qb(qubit)
+        if not is_strong_simulation:
+            # The original qubit might be below separability threshold.
+            self._sim.try_separate_1qb(qubit)
 
-    def _apply_op(self, operation, noise):
+    def _apply_op(self, operation, noise, is_strong_simulation):
         name = operation.name
 
         # Divert variational phase gates to Clifford, when possible.
@@ -596,16 +670,16 @@ class NoisyCliffordTSimulator(BackendV1):
         # See https://arxiv.org/abs/1810.03176 for suggestion of only non-Clifford noise.
         elif name == 't':
             self._sim.t(operation.qubits[0])
-            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise)
+            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise, is_strong_simulation)
         elif name == 'tdg':
             self._sim.adjt(operation.qubits[0])
-            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise)
+            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise, is_strong_simulation)
         elif name == 'rz':
             self._sim.r(Pauli.PauliZ, operation.params[0], operation.qubits[0])
-            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise)
+            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise, is_strong_simulation)
         elif (name == 'u1') or (name == 'p'):
             self._sim.u(operation.qubits[0], 0, 0, operation.params[0])
-            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise)
+            self.inject_depolarizing_1qb_noise(operation.qubits[0], noise, is_strong_simulation)
         elif name == 'cx':
             self._sim.mcx(operation.qubits[0:1], operation.qubits[1])
         elif name == 'cy':
@@ -630,19 +704,20 @@ class NoisyCliffordTSimulator(BackendV1):
             self._sample_clbits += clbits
             self._sample_cregbits += cregbits
 
-            for index in range(len(qubits)):
-                qubit_outcome = self._sim.m(qubits[index])
+            if not self._sample_measure:
+                for index in range(len(qubits)):
+                    qubit_outcome = self._sim.m(qubits[index])
 
-                clbit = clbits[index]
-                clmask = 1 << clbit
-                self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
+                    clbit = clbits[index]
+                    clmask = 1 << clbit
+                    self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
 
-                cregbit = cregbits[index]
-                if cregbit < 0:
-                    cregbit = clbit
+                    cregbit = cregbits[index]
+                    if cregbit < 0:
+                        cregbit = clbit
 
-                regbit = 1 << cregbit
-                self._classical_register = (self._classical_register & (~regbit)) | (qubit_outcome << cregbit)
+                    regbit = 1 << cregbit
+                    self._classical_register = (self._classical_register & (~regbit)) | (qubit_outcome << cregbit)
 
         elif name == 'bfunc':
             mask = int(operation.mask, 16)
@@ -681,6 +756,44 @@ class NoisyCliffordTSimulator(BackendV1):
             backend = self.name()
             err_msg = '{0} encountered unrecognized operation "{1}"'
             raise QrackError(err_msg.format(backend, operation))
+
+    def _add_sample_measure(self, sample_qubits, sample_clbits, num_samples):
+        """Generate data samples from current statevector.
+        Taken almost straight from the terra source code.
+        Args:
+            measure_params (list): List of (qubit, clbit) values for
+                                   measure instructions to sample.
+            num_samples (int): The number of data samples to generate.
+        Returns:
+            list: A list of data values in hex format.
+        """
+        # Get unique qubits that are actually measured
+        measure_qubit = [qubit for qubit in sample_qubits]
+        measure_clbit = [clbit for clbit in sample_clbits]
+
+        # Sample and convert to bit-strings
+        data = []
+        if num_samples == 1:
+            sample = self._sim.m_all()
+            result = 0
+            for index in range(len(measure_qubit)):
+                qubit = measure_qubit[index]
+                qubit_outcome = ((sample >> qubit) & 1)
+                result |= qubit_outcome << index
+            measure_results = [result]
+        else:
+            measure_results = self._sim.measure_shots(measure_qubit, num_samples)
+
+        for sample in measure_results:
+            for index in range(len(measure_qubit)):
+                qubit_outcome = ((sample >> index) & 1)
+                clbit = measure_clbit[index]
+                clmask = 1 << clbit
+                self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
+
+            data.append(hex(int(bin(self._classical_memory)[2:], 2)))
+
+        return data
 
     @staticmethod
     def name():
