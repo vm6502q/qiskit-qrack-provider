@@ -590,6 +590,7 @@ class NoisyCliffordTSimulator(BackendV1):
             self._sim.mtrx([(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation.qubits[0])
         elif name == 'sxdg':
             self._sim.mtrx([(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], operation.qubits[0])
+        # See https://arxiv.org/abs/1810.03176 for suggestion of only non-Clifford noise.
         elif name == 't':
             self._sim.t(operation.qubits[0])
             self.inject_depolarizing_1qb_noise(operation.qubits[0], noise)
