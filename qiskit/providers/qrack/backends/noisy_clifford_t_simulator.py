@@ -95,7 +95,7 @@ class NoisyCliffordTSimulator(BackendV1):
     DEFAULT_OPTIONS = {
         'method': 'automatic',
         'shots': 1024,
-        'noise': 0.0004,
+        'noise': 0.0001,
         'is_strong_simulation': False,
         'is_schmidt_decompose_multi': True,
         'is_schmidt_decompose': True,
@@ -588,9 +588,6 @@ class NoisyCliffordTSimulator(BackendV1):
 
         # Original qubit, Z->X basis
         self._sim.h(qubit)
-        # Random azimuth around Z axis of measurement
-        angleZ = random.uniform(0., 4. * math.pi)
-        self._sim.r(Pauli.PauliZ, angleZ, qubit)
 
         # Allocate an ancilla
         ancilla = self._sim.num_qubits()
@@ -606,7 +603,6 @@ class NoisyCliffordTSimulator(BackendV1):
             self._sim.release(ancilla)
 
         # Uncompute
-        self._sim.r(Pauli.PauliZ, -angleZ, qubit)
         self._sim.h(qubit)
 
         if not is_strong_simulation:
