@@ -491,7 +491,7 @@ class NoisyCliffordTSimulator(BackendV1):
 
             is_initializing = False
 
-            if (noise > 0) and (not is_strong_simulation) :
+            if (noise > 0) and (not is_strong_simulation):
                 if (operation.name == 't') or (operation.name == 'tdg'):
                     if boundary_start == -1:
                         boundary_start = opcount
