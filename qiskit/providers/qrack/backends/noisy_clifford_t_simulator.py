@@ -497,9 +497,9 @@ class NoisyCliffordTSimulator(BackendV1):
                         boundary_start = opcount
                 elif (operation.name == 'rz') or (operation.name == 'u1') or (operation.name == 'p'):
                     angle = operation.params[0]
-                    while angle < 0.:
+                    while float(angle) < 0.:
                         angle = angle + 2. * math.pi
-                    while angle >= 2. * math.pi:
+                    while float(angle) >= 2. * math.pi:
                         angle = angle - 2. * math.pi
                     if not (math.isclose(angle, 0.) or math.isclose(angle, math.pi) or math.isclose(angle, math.pi / 2.) or math.isclose(angle, -math.pi / 2.)):
                         if boundary_start == -1:
@@ -615,9 +615,9 @@ class NoisyCliffordTSimulator(BackendV1):
         # Divert variational phase gates to Clifford, when possible.
         if name == 'rz' or name == 'u1' or name == 'p':
             angle = operation.params[0]
-            while angle < 0.:
+            while float(angle) < 0.:
                 angle = angle + 2. * math.pi
-            while angle >= 2. * math.pi:
+            while float(angle) >= 2. * math.pi:
                 angle = angle - 2. * math.pi
             if math.isclose(angle, 0.):
                 return
