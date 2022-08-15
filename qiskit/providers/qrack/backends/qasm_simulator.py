@@ -703,11 +703,10 @@ class QasmSimulator(BackendV1):
         else:
             data = pd.DataFrame(data=data)
 
-        metadata = {}
-        if isinstance(experiment, QuantumCircuit) and hasattr(experiment, 'metadata'):
+        metadata = { 'measure_sampling': self._sample_measure }
+        if isinstance(experiment, QuantumCircuit) and hasattr(experiment, 'metadata') and experiment.metadata:
             metadata = experiment.metadata
-
-        metadata['measure_sampling'] = self._sample_measure
+            metadata['measure_sampling'] = self._sample_measure
 
         return QrackExperimentResult(
             shots = self._shots,

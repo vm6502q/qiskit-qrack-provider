@@ -568,7 +568,7 @@ class NoisyCliffordTSimulator(BackendV1):
             data = pd.DataFrame(data=data)
 
         metadata = { 'measure_sampling': self._sample_measure }
-        if isinstance(experiment, QuantumCircuit) and hasattr(experiment, 'metadata'):
+        if isinstance(experiment, QuantumCircuit) and hasattr(experiment, 'metadata') and experiment.metadata:
             metadata = experiment.metadata
             metadata['measure_sampling'] = self._sample_measure
 
