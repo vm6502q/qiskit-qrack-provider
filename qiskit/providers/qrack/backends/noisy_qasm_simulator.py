@@ -560,6 +560,10 @@ class NoisyQasmSimulator(BackendV1):
         for experiment in experiments:
             results.append(self.run_experiment(experiment, noise, **options))
 
+        if self._reset_separability_threshold:
+            # If the separability threshold is auto-default, clear its automatically assigned environment variable.
+            del os.environ["QRACK_QUNIT_SEPARABILITY_THRESHOLD"]
+
         return Result(
             backend_name = self.name(),
             backend_version = self._configuration.backend_version,
