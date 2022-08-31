@@ -17,7 +17,7 @@
 from qiskit.providers.provider import ProviderV1
 from qiskit.providers.providerutils import filter_backends
 
-from .backends import QasmSimulator, NoisyCliffordTSimulator
+from .backends import QasmSimulator, NoisyCliffordTSimulator, NoisyQasmSimulator
 
 
 class QrackProvider(ProviderV1):
@@ -29,7 +29,8 @@ class QrackProvider(ProviderV1):
         # Populate the list of Qrack simulator providers.
         self._backends = [
             QasmSimulator(configuration=None, provider=self),
-            NoisyCliffordTSimulator(configuration=None, provider=self)
+            NoisyCliffordTSimulator(configuration=None, provider=self),
+            NoisyQasmSimulator(configuration=None, provider=self)
         ]
 
     def backends(self, name=None, filters=None, **kwargs):

@@ -12,3 +12,4 @@
 
 from .qasm_simulator import QasmSimulator
 from .noisy_clifford_t_simulator import NoisyCliffordTSimulator
+from .noisy_qasm_simulator import NoisyQasmSimulator
