@@ -712,7 +712,7 @@ class NoisyQasmSimulator(BackendV1):
                 if value != int(conditional.val, 16):
                     return
 
-        if (name != 'reset') and (name != 'measure') and len(operation.qubits) > 1:
+        if (name != 'reset') and (name != 'measure') and (name != 'swap') and len(operation.qubits) > 1:
             for q in operation.qubits:
                 self._inject_1qb_u3_noise(q, noise)
 
