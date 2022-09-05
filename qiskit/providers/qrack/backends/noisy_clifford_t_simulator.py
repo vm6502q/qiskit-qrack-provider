@@ -102,7 +102,6 @@ class NoisyCliffordTSimulator(BackendV1):
         'is_stabilizer_hybrid': True,
         'is_binary_decision_tree': False,
         'is_paged': True,
-        'is_1qb_fusion': False,
         'is_cpu_gpu_hybrid': True,
         'is_host_pointer': False,
     }
@@ -353,7 +352,6 @@ class NoisyCliffordTSimulator(BackendV1):
             'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
             'isBinaryDecisionTree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
             'isPaged': options.is_paged if hasattr(options, 'is_paged') else self._options.get('is_paged'),
-            'is1QbFusion': options.is_1qb_fusion if hasattr(options, 'is_1qb_fusion') else self._options.get('is_1qb_fusion'),
             'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
             'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
         }
