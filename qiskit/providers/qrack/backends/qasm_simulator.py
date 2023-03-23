@@ -787,7 +787,7 @@ class QasmSimulator(BackendV1):
         elif name == 'ch':
             self._sim.mch(operation.qubits[0:1], operation.qubits[1])
         elif name == 'cp':
-            self._sim.mcmtrx(operation.qubits[0:1], [1, 0, 0, np.exp(1j * operation.params[0])], operation.qubits[0])
+            self._sim.mcmtrx(operation.qubits[0:1], [1, 0, 0, np.exp(1j * operation.params[0])], operation.qubits[1])
         elif name == 'csx':
             self._sim.mcmtrx(operation.qubits[0:1], [(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation.qubits[1])
         elif name == 'csxdg':
