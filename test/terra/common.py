@@ -31,7 +31,7 @@ from qiskit.quantum_info import Operator, Statevector
 from qiskit.quantum_info.operators.predicates import matrix_equal
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
 from qiskit.providers.aer import __path__ as main_path
-from qiskit.test import QiskitTestCase
+from qiskit.test.base import FullQiskitTestCase
 
 
 class Path(Enum):
@@ -42,36 +42,43 @@ class Path(Enum):
     EXAMPLES = os.path.join(MAIN, '../examples')
 
 
-class QiskitAerTestCase(QiskitTestCase):
+class QiskitAerTestCase(FullQiskitTestCase):
     """Helper class that contains common functionality."""
 
     def setUp(self):
         super().setUp()
-        # self.useFixture(fixtures.Timeout(120, gentle=False))
+        self.useFixture(fixtures.Timeout(120, gentle=False))
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
+        allow_DeprecationWarning_modules = [
+            "cvxpy",
+        ]
+        # for mod in allow_DeprecationWarning_modules:
+        #     warnings.filterwarnings("default", category=DeprecationWarning, module=mod)
+
         cls.moduleName = os.path.splitext(inspect.getfile(cls))[0]
         cls.log = logging.getLogger(cls.__name__)
 
         # Set logging to file and stdout if the LOG_LEVEL environment variable
         # is set.
-        if os.getenv('LOG_LEVEL'):
+        if os.getenv("LOG_LEVEL"):
             # Set up formatter.
-            log_fmt = ('{}.%(funcName)s:%(levelname)s:%(asctime)s:'
-                       ' %(message)s'.format(cls.__name__))
+            log_fmt = "{}.%(funcName)s:%(levelname)s:%(asctime)s:" " %(message)s".format(
+                cls.__name__
+            )
             formatter = logging.Formatter(log_fmt)
 
             # Set up the file handler.
-            log_file_name = '%s.log' % cls.moduleName
+            log_file_name = "%s.log" % cls.moduleName
             file_handler = logging.FileHandler(log_file_name)
             file_handler.setFormatter(formatter)
             cls.log.addHandler(file_handler)
 
             # Set the logging level from the environment variable, defaulting
             # to INFO if it is not a valid level.
-            level = logging._nameToLevel.get(os.getenv('LOG_LEVEL'),
-                                             logging.INFO)
+            level = logging._nameToLevel.get(os.getenv("LOG_LEVEL"), logging.INFO)
             cls.log.setLevel(level)
 
     @staticmethod
@@ -86,13 +93,13 @@ class QiskitAerTestCase(QiskitTestCase):
         """
         return os.path.normpath(os.path.join(path.value, filename))
 
-    def assertNoLogs(self, logger=None, level=None):
-        """
-        Context manager to test that no message is sent to the specified
-        logger and level (the opposite of TestCase.assertLogs()).
-        """
-        # pylint: disable=invalid-name
-        return _AssertNoLogsContext(self, logger, level)
+    # def assertNoLogs(self, logger=None, level=None):
+    #     """
+    #     Context manager to test that no message is sent to the specified
+    #     logger and level (the opposite of TestCase.assertLogs()).
+    #     """
+    #     # pylint: disable=invalid-name
+    #    return _AssertNoLogsContext(self, logger, level)
 
     def assertSuccess(self, result):
         """Assert that simulation executed without errors"""
@@ -111,7 +118,7 @@ class QiskitAerTestCase(QiskitTestCase):
             if rng is None:
                 rng = np.random.default_rng()
             params = rng.random(num_params)
-            gate = gate_cls(*params)
+            gate = gate_cls(*params, label=None)
         else:
             gate = gate_cls()
 
@@ -312,30 +319,30 @@ class QiskitAerTestCase(QiskitTestCase):
         raise self.failureException(msg)
 
 
-class _AssertNoLogsContext(unittest.case._AssertLogsContext):
-    """A context manager used to implement TestCase.assertNoLogs()."""
-
-    # pylint: disable=inconsistent-return-statements
-    def __exit__(self, exc_type, exc_value, tb):
-        """
-        This is a modified version of TestCase._AssertLogsContext.__exit__(...)
-        """
-        self.logger.handlers = self.old_handlers
-        self.logger.propagate = self.old_propagate
-        self.logger.setLevel(self.old_level)
-        if exc_type is not None:
-            # let unexpected exceptions pass through
-            return False
-
-        if self.watcher.records:
-            msg = 'logs of level {} or higher triggered on {}:\n'.format(
-                logging.getLevelName(self.level), self.logger.name)
-            for record in self.watcher.records:
-                msg += 'logger %s %s:%i: %s\n' % (record.name, record.pathname,
-                                                  record.lineno,
-                                                  record.getMessage())
-
-            self._raiseFailure(msg)
+# class _AssertNoLogsContext(unittest.case._AssertLogsContext):
+#     """A context manager used to implement TestCase.assertNoLogs()."""
+#
+#     # pylint: disable=inconsistent-return-statements
+#     def __exit__(self, exc_type, exc_value, tb):
+#         """
+#         This is a modified version of TestCase._AssertLogsContext.__exit__(...)
+#         """
+#         self.logger.handlers = self.old_handlers
+#         self.logger.propagate = self.old_propagate
+#         self.logger.setLevel(self.old_level)
+#         if exc_type is not None:
+#             # let unexpected exceptions pass through
+#             return False
+#
+#         if self.watcher.records:
+#             msg = 'logs of level {} or higher triggered on {}:\n'.format(
+#                 logging.getLevelName(self.level), self.logger.name)
+#             for record in self.watcher.records:
+#                 msg += 'logger %s %s:%i: %s\n' % (record.name, record.pathname,
+#                                                   record.lineno,
+#                                                   record.getMessage())
+#
+#             self._raiseFailure(msg)
 
 
 def _is_ci_fork_pull_request():

@@ -16,7 +16,7 @@ Test circuits and reference outputs for snapshot state instructions.
 import numpy as np
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
 from qiskit.quantum_info.states import Statevector
-from qiskit.providers.aer.extensions.snapshot_expectation_value import *
+# from qiskit.providers.aer.extensions.snapshot_expectation_value import *
 
 # Backwards compatibility for Terra <= 0.13
 if not hasattr(QuantumCircuit, 'i'):

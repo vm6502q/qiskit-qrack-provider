@@ -19,7 +19,7 @@ from numpy.random import default_rng
 from qiskit import execute
 from qiskit.quantum_info import Statevector, state_fidelity
 from qiskit.providers.qrack import QasmSimulator
-from qiskit.providers.aer.extensions import *
+# from qiskit.providers.aer.extensions import *
 
 from qiskit.circuit.library.standard_gates import (
     CXGate, CYGate, CZGate, DCXGate, HGate, IGate, SGate, SXGate, SXdgGate,
@@ -64,8 +64,8 @@ GATES = [
     (CU3Gate, 3),
     (CUGate, 4),
     (PhaseGate, 1),
-    (RC3XGate, 1),
-    (RCCXGate, 1),
+    (RC3XGate, 0),
+    (RCCXGate, 0),
     (RGate, 2),
     (RXGate, 1),
     (RXXGate, 1),

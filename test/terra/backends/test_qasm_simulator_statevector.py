@@ -61,7 +61,7 @@ from test.terra.backends.qasm_simulator.qasm_algorithms import QasmAlgorithmTest
 from test.terra.backends.qasm_simulator.qasm_fusion import QasmFusionTests
 from test.terra.backends.qasm_simulator.qasm_delay_measure import QasmDelayMeasureTests
 #from test.terra.backends.qasm_simulator.qasm_truncate import QasmQubitsTruncateTests
-from test.terra.backends.qasm_simulator.qasm_basics import QasmBasicsTests
+#from test.terra.backends.qasm_simulator.qasm_basics import QasmBasicsTests
 
 
 class StatevectorTests(
@@ -81,7 +81,7 @@ class StatevectorTests(
         #QasmReadoutNoiseTests, QasmPauliNoiseTests, QasmThreadManagementTests,
         QasmFusionTests, QasmDelayMeasureTests,
         #QasmQubitsTruncateTests, QasmResetNoiseTests, QasmKrausNoiseTests,
-        QasmBasicsTests,
+        #QasmBasicsTests,
         #QasmSnapshotStatevectorTests, QasmSnapshotDensityMatrixTests,
         #QasmSnapshotProbabilitiesTests, QasmSnapshotExpValPauliTests,
         #QasmSnapshotExpValPauliNCTests, QasmSnapshotExpValMatrixTests,

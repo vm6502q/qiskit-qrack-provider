@@ -35,7 +35,7 @@ class QasmFusionTests:
         qr = QuantumRegister(5)
         cr = ClassicalRegister(5)
         circuit = QuantumCircuit(qr, cr)
-        circuit.u3(0.1, 0.1, 0.1, qr[0])
+        circuit.u(0.1, 0.1, 0.1, qr[0])
         circuit.barrier(qr)
         circuit.x(qr[0])
         circuit.barrier(qr)
@@ -43,7 +43,7 @@ class QasmFusionTests:
         circuit.barrier(qr)
         circuit.x(qr[0])
         circuit.barrier(qr)
-        circuit.u3(0.1, 0.1, 0.1, qr[0])
+        circuit.u(0.1, 0.1, 0.1, qr[0])
         circuit.barrier(qr)
         circuit.measure(qr, cr)
         return circuit
@@ -51,7 +51,7 @@ class QasmFusionTests:
     def noise_model_depol(self):
         """ Creates a new noise model for testing purposes """
         readout_error = [0.01, 0.1]
-        params = {'u3': (1, 0.001), 'cx': (2, 0.02)}
+        params = {'u': (1, 0.001), 'cx': (2, 0.02)}
         noise = NoiseModel()
         readout = [[1.0 - readout_error[0], readout_error[0]],
                    [readout_error[1], 1.0 - readout_error[1]]]
@@ -64,7 +64,7 @@ class QasmFusionTests:
     def noise_model_kraus(self):
         """ Creates a new noise model for testing purposes """
         readout_error = [0.01, 0.1]
-        params = {'u3': (1, 0.001), 'cx': (2, 0.02)}
+        params = {'u': (1, 0.001), 'cx': (2, 0.02)}
         noise = NoiseModel()
         readout = [[1.0 - readout_error[0], readout_error[0]],
                    [readout_error[1], 1.0 - readout_error[1]]]
@@ -98,7 +98,7 @@ class QasmFusionTests:
 
         with self.subTest(msg='below fusion threshold'):
             circuit = transpile(QFT(threshold - 1),
-                                self.SIMULATOR, basis_gates=['u1', 'u2', 'u3', 'cx', 'cz'],
+                                self.SIMULATOR, basis_gates=['u1', 'u2', 'u', 'cx', 'cz'],
                                 optimization_level=0)
             circuit.measure_all()
             qobj = assemble(circuit, self.SIMULATOR, shots=shots)
@@ -111,7 +111,7 @@ class QasmFusionTests:
 
         with self.subTest(msg='at fusion threshold'):
             circuit = transpile(QFT(threshold),
-                                self.SIMULATOR, basis_gates=['u1', 'u2', 'u3', 'cx', 'cz'],
+                                self.SIMULATOR, basis_gates=['u1', 'u2', 'u', 'cx', 'cz'],
                                 optimization_level=0)
             circuit.measure_all()
             qobj = assemble(circuit, self.SIMULATOR, shots=shots)
@@ -124,7 +124,7 @@ class QasmFusionTests:
 
         with self.subTest(msg='above fusion threshold'):
             circuit = transpile(QFT(threshold + 1),
-                                self.SIMULATOR, basis_gates=['u1', 'u2', 'u3', 'cx', 'cz'],
+                                self.SIMULATOR, basis_gates=['u1', 'u2', 'u', 'cx', 'cz'],
                                 optimization_level=0)
             circuit.measure_all()
             qobj = assemble(circuit, self.SIMULATOR, shots=shots)
@@ -290,32 +290,17 @@ class QasmFusionTests:
         circuit.h(qr)
         circuit.barrier(qr)
 
-        circuit.u3(0.1, 0.1, 0.1, qr[0])
+        circuit.u(0.1, 0.1, 0.1, qr[0])
         circuit.barrier(qr)
-        circuit.u3(0.1, 0.1, 0.1, qr[1])
+        circuit.u(0.1, 0.1, 0.1, qr[1])
         circuit.barrier(qr)
         circuit.cx(qr[1], qr[0])
         circuit.barrier(qr)
-        circuit.u3(0.1, 0.1, 0.1, qr[0])
+        circuit.u(0.1, 0.1, 0.1, qr[0])
         circuit.barrier(qr)
-        circuit.u3(0.1, 0.1, 0.1, qr[1])
+        circuit.u(0.1, 0.1, 0.1, qr[1])
         circuit.barrier(qr)
-        circuit.u3(0.1, 0.1, 0.1, qr[3])
-        circuit.barrier(qr)
-
-        circuit.x(qr[0])
-        circuit.barrier(qr)
-        circuit.x(qr[1])
-        circuit.barrier(qr)
-        circuit.x(qr[0])
-        circuit.barrier(qr)
-        circuit.x(qr[1])
-        circuit.barrier(qr)
-        circuit.cx(qr[2], qr[3])
-        circuit.barrier(qr)
-        circuit.u3(0.1, 0.1, 0.1, qr[3])
-        circuit.barrier(qr)
-        circuit.u3(0.1, 0.1, 0.1, qr[3])
+        circuit.u(0.1, 0.1, 0.1, qr[3])
         circuit.barrier(qr)
 
         circuit.x(qr[0])
@@ -328,9 +313,24 @@ class QasmFusionTests:
         circuit.barrier(qr)
         circuit.cx(qr[2], qr[3])
         circuit.barrier(qr)
-        circuit.u3(0.1, 0.1, 0.1, qr[3])
+        circuit.u(0.1, 0.1, 0.1, qr[3])
         circuit.barrier(qr)
-        circuit.u3(0.1, 0.1, 0.1, qr[3])
+        circuit.u(0.1, 0.1, 0.1, qr[3])
+        circuit.barrier(qr)
+
+        circuit.x(qr[0])
+        circuit.barrier(qr)
+        circuit.x(qr[1])
+        circuit.barrier(qr)
+        circuit.x(qr[0])
+        circuit.barrier(qr)
+        circuit.x(qr[1])
+        circuit.barrier(qr)
+        circuit.cx(qr[2], qr[3])
+        circuit.barrier(qr)
+        circuit.u(0.1, 0.1, 0.1, qr[3])
+        circuit.barrier(qr)
+        circuit.u(0.1, 0.1, 0.1, qr[3])
         circuit.barrier(qr)
 
         circuit.measure(qr, cr)
@@ -397,7 +397,7 @@ class QasmFusionTests:
         num_qubits = 8
         circuit = transpile(QFT(num_qubits),
                             backend=self.SIMULATOR,
-                            basis_gates=['u1', 'u2', 'u3', 'cx', 'cz'],
+                            basis_gates=['u1', 'u2', 'u', 'cx', 'cz'],
                             optimization_level=0)
         circuit.measure_all()
         qobj = assemble([circuit],
