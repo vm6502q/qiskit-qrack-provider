@@ -100,6 +100,8 @@ class QasmSimulator(BackendV1):
         'is_paged': True,
         'is_cpu_gpu_hybrid': True,
         'is_host_pointer': False,
+        'is_t_injected': True,
+        'is_reactively_separated': True
     }
 
     DEFAULT_CONFIGURATION = {
@@ -520,6 +522,8 @@ class QasmSimulator(BackendV1):
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
         self._shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
+        self.is_t = options.is_t_injected if hasattr(options, 'is_t_injected') else self._options.get('is_t_injected')
+        self.is_reactive = options.is_reactively_separated if hasattr(options, 'is_reactively_separated') else self._options.get('is_reactively_separated')
         qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
         qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
         job_id = str(uuid.uuid4())
@@ -662,6 +666,8 @@ class QasmSimulator(BackendV1):
             boundary_start -= 1
             if boundary_start > 0:
                 self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._sim.set_t_injection(self.is_t)
+                self._sim.set_reactive_separate(self.is_reactive)
                 self._classical_memory = 0
                 self._classical_register = 0
 
@@ -675,10 +681,14 @@ class QasmSimulator(BackendV1):
         for shot in range(shotLoopMax):
             if preamble_sim is None:
                 self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._sim.set_t_injection(self.is_t)
+                self._sim.set_reactive_separate(self.is_reactive)
                 self._classical_memory = 0
                 self._classical_register = 0
             else:
                 self._sim = QrackSimulator(cloneSid = preamble_sim.sid)
+                self._sim.set_t_injection(self.is_t)
+                self._sim.set_reactive_separate(self.is_reactive)
                 self._classical_memory = preamble_memory
                 self._classical_register = preamble_register
 
