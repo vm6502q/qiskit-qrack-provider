@@ -746,6 +746,8 @@ class QasmSimulator(BackendV1):
             self._sim.u(operation.qubits[0], float(operation.params[0]), float(operation.params[1]), float(operation.params[2]))
         elif name == 'r':
             self._sim.u(operation.qubits[0], float(operation.params[0]), float(operation.params[1]) - np.pi/2, (-1 * float(operation.params[1])) + np.pi/2)
+        elif (name == 'unitary') and (len(operation.qubits) == 1):
+            self._sim.mtrx(operation.params[0].flatten(), operation.qubits[0])
         elif name == 'rx':
             self._sim.r(Pauli.PauliX, float(operation.params[0]), operation.qubits[0])
         elif name == 'ry':
