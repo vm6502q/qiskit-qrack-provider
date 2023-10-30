@@ -792,6 +792,12 @@ class QasmSimulator(BackendV1):
             self._sim.mcu(operation.qubits[0:1], operation.qubits[1], np.pi / 2, float(operation.params[0]), float(operation.params[1]))
         elif (name == 'cu3') or (name == 'cu'):
             self._sim.mcu(operation.qubits[0:1], operation.qubits[1], float(operation.params[0]), float(operation.params[1]), float(operation.params[2]))
+        elif name == 'mcu1':
+            self._sim.mcu(operation.qubits[0:-1], operation.qubits[-1], 0, 0, float(operation.params[0]))
+        elif name == 'mcu2':
+            self._sim.mcu(operation.qubits[0:-1], operation.qubits[-1], np.pi / 2, float(operation.params[0]), float(operation.params[1]))
+        elif (name == 'mcu3') or (name == 'mcu'):
+            self._sim.mcu(operation.qubits[0:-1], operation.qubits[-1], float(operation.params[0]), float(operation.params[1]), float(operation.params[2]))
         elif name == 'cx':
             self._sim.mcx(operation.qubits[0:1], operation.qubits[1])
         elif name == 'cy':
