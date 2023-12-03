@@ -9,7 +9,7 @@ requirements = [
 ]
 
 # Handle version.
-VERSION = "0.8.1"
+VERSION = "0.9.0"
 
 # Read long description from README.
 README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
@@ -42,6 +42,8 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",
     ],
     keywords="qiskit qrack pyqrack simulator quantum addon backend",

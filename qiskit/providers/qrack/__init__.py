@@ -24,6 +24,7 @@ if platform.system() == "Darwin":
 from .qrackprovider import QrackProvider
 from .qrackjob import QrackJob
 from .qrackerror import QrackError
+from .sampler import Sampler
 from .backends import *
 from .version import __version__
 
