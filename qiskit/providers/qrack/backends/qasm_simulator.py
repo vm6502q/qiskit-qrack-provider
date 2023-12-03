@@ -72,13 +72,13 @@ class QrackExperimentResultData:
 
 
 class QrackExperimentResult:
-    def __init__(self, shots, data, status, success, header, meta_data = None, time_taken = None):
+    def __init__(self, shots, data, status, success, header, metadata = None, time_taken = None):
         self.shots = shots
         self.data = data
         self.status = status
         self.success = success
         self.header = header
-        self.meta_data = meta_data,
+        self.metadata = metadata,
         self.time_taken = time_taken
 
     def to_dict(self):
@@ -724,7 +724,7 @@ class QasmSimulator(BackendV1):
             status = 'DONE',
             success = True,
             header = experiment.header if isinstance(experiment, QasmQobjExperiment) else QrackExperimentResultHeader(name = experiment.name),
-            meta_data = metadata,
+            metadata = metadata,
             time_taken = (time.time() - start)
         )
 
