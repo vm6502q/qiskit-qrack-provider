@@ -102,7 +102,7 @@ class QasmSimulator(BackendV1):
         'is_cpu_gpu_hybrid': True,
         'is_host_pointer': False,
         'is_t_injected': True,
-        'is_reactively_separated': True
+        'is_reactively_separated': False
     }
 
     DEFAULT_CONFIGURATION = {
