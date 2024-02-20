@@ -120,7 +120,7 @@ class QasmSimulator(BackendV1):
         'coupling_map': None,
         'basis_gates': [
             'id', 'u', 'u1', 'u2', 'u3', 'r', 'rx', 'ry', 'rz',
-            'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 'p', 't', 'tdg',
+            'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 'sy', 'sydg', 'p', 't', 'tdg',
             'cu', 'cu1', 'cu2', 'cu3', 'cx', 'cy', 'cz', 'ch', 'cp', 'csx', 'csxdg', 'dcx',
             'ccx', 'ccy', 'ccz', 'mcx', 'mcy', 'mcz', 'mcu', 'mcu1', 'mcu2', 'mcu3',
             'swap', 'iswap', 'cswap', 'mcswap', 'reset', 'measure', 'barrier'
@@ -774,14 +774,18 @@ class QasmSimulator(BackendV1):
             self._sim.y(operation.qubits[0])
         elif name == 'z':
             self._sim.z(operation.qubits[0])
-        elif name == 's':
-            self._sim.s(operation.qubits[0])
-        elif name == 'sdg':
-            self._sim.adjs(operation.qubits[0])
         elif name == 'sx':
             self._sim.mtrx([(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation.qubits[0])
         elif name == 'sxdg':
             self._sim.mtrx([(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], operation.qubits[0])
+        elif name == 'sy':
+            self._sim.mtrx([(1+1j)/2, -(1+1j)/2, (1+1j)/2, (1+1j)/2], operation.qubits[0])
+        elif name == 'sydg':
+            self._sim.mtrx([(1-1j)/2, (1-1j)/2, (-1+1j)/2, (1-1j)/2], operation.qubits[0])
+        elif name == 's':
+            self._sim.s(operation.qubits[0])
+        elif name == 'sdg':
+            self._sim.adjs(operation.qubits[0])
         elif name == 't':
             self._sim.t(operation.qubits[0])
         elif name == 'tdg':
