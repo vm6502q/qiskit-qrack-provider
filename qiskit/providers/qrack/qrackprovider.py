@@ -14,13 +14,12 @@
 
 """Provider for Qrack backends."""
 
-from qiskit.providers.provider import ProviderV1
 from qiskit.providers.providerutils import filter_backends
 
 from .backends import QasmSimulator
 
 
-class QrackProvider(ProviderV1):
+class QrackProvider:
     """Provider for Qrack backends."""
 
     def __init__(self):

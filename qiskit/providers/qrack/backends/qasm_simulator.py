@@ -26,10 +26,10 @@ from ..qrackjob import QrackJob
 from ..qrackerror import QrackError
 from pyqrack import QrackSimulator, Pauli
 
-from qiskit.providers.backend import BackendV1
+from qiskit.providers.backend import BackendV2
 from qiskit.result import Result
 from qiskit.providers.options import Options
-
+from qiskit.transpiler import Target, CouplingMap
 from qiskit.circuit.gate import Gate
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.qobj.qasm_qobj import QasmQobjExperiment, QasmQobjInstruction
@@ -85,10 +85,11 @@ class QrackExperimentResult:
         return vars(self)
 
 
-class QasmSimulator(BackendV1):
+class QasmSimulator(BackendV2):
     """
     Contains an OpenCL based backend
     """
+
 
     DEFAULT_OPTIONS = {
         'method': 'automatic',
@@ -120,10 +121,10 @@ class QasmSimulator(BackendV1):
         'coupling_map': None,
         'basis_gates': [
             'id', 'u', 'u1', 'u2', 'u3', 'r', 'rx', 'ry', 'rz',
-            'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 'sy', 'sydg', 'p', 't', 'tdg',
-            'cu', 'cu1', 'cu2', 'cu3', 'cx', 'cy', 'cz', 'ch', 'cp', 'csx', 'csxdg', 'dcx',
-            'ccx', 'ccy', 'ccz', 'mcx', 'mcy', 'mcz', 'mcu', 'mcu1', 'mcu2', 'mcu3',
-            'swap', 'iswap', 'cswap', 'mcswap', 'reset', 'measure', 'barrier'
+            'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 'p', 't', 'tdg',
+            'cu', 'cu1', 'cu3', 'cx', 'cy', 'cz', 'ch', 'cp', 'csx', 'dcx',
+            'ccx', 'ccz', 'swap', 'iswap', 'cswap',
+            'reset', 'measure'
         ],
         'gates': [{
             'name': 'id',
@@ -259,12 +260,6 @@ class QasmSimulator(BackendV1):
             'description': 'Two-qubit Controlled-u1 gate',
             'qasm_def': 'TODO'
         }, {
-            'name': 'cu2',
-            'parameters': ['phi', 'lam'],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-u2 gate',
-            'qasm_def': 'TODO'
-        }, {
             'name': 'cu3',
             'parameters': ['theta', 'phi', 'lam'],
             'conditional': True,
@@ -307,12 +302,6 @@ class QasmSimulator(BackendV1):
             'description': 'Two-qubit Controlled square root of Pauli-X gate',
             'qasm_def': 'TODO'
         }, {
-            'name': 'csxdg',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit controlled inverse square root of Pauli-X gate',
-            'qasm_def': 'TODO'
-        }, {
             'name': 'dcx',
             'parameters': [],
             'conditional': True,
@@ -325,58 +314,10 @@ class QasmSimulator(BackendV1):
             'description': 'Three-qubit Toffoli gate',
             'qasm_def': 'TODO'
         }, {
-            'name': 'ccy',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Three-qubit controlled-Y gate',
-            'qasm_def': 'TODO'
-        }, {
             'name': 'ccz',
             'parameters': [],
             'conditional': True,
             'description': 'Three-qubit controlled-Z gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-X gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcy',
-            'parameters': [],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-Y gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcz',
-            'parameters': [],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-Z gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcu',
-            'parameters': ['theta', 'phi', 'lam'],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-u3 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcu1',
-            'parameters': ['lam'],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-u1 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcu2',
-            'parameters': ['phi', 'lam'],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-u2 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'mcu3',
-            'parameters': ['theta', 'phi', 'lam'],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-u3 gate',
             'qasm_def': 'TODO'
         }, {
             'name': 'swap',
@@ -397,12 +338,6 @@ class QasmSimulator(BackendV1):
             'description': 'Three-qubit Fredkin (controlled-SWAP) gate',
             'qasm_def': 'TODO'
         }, {
-            'name': 'mcswap',
-            'parameters': [],
-            'conditional': True,
-            'description': 'N-qubit multi-controlled-SWAP gate',
-            'qasm_def': 'TODO'
-        }, {
             'name': 'measure',
             'parameters': [],
             'conditional': True,
@@ -414,14 +349,26 @@ class QasmSimulator(BackendV1):
             'conditional': True,
             'description': 'Reset qubit to 0 state',
             'qasm_def': 'TODO'
-        }, {
-            'name': 'barrier',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Barrier primitive for quantum circuit',
-            'qasm_def': 'TODO'
         }]
     }
+
+    max_circuits = None
+    @property
+    def target(self):
+        if self._target is None:
+            self._target = Target.from_configuration(
+                basis_gates=self._configuration.basis_gates,
+                num_qubits=self._number_of_qubits,
+                coupling_map=None,
+                inst_map=None,
+                backend_properties=None,
+                instruction_durations=None,
+                concurrent_measurements=None,
+                dt=None,
+                timing_constraints=None,
+                custom_name_mapping=None
+            )
+        return self._target
 
     def __init__(self, configuration=None, provider=None, **fields):
         """Initialize a backend class
@@ -449,10 +396,12 @@ class QasmSimulator(BackendV1):
 
         configuration = configuration or BackendConfiguration.from_dict(self.DEFAULT_CONFIGURATION)
 
-        self._number_of_qubits = 0
+        self._number_of_qubits = 64
         self._number_of_clbits = 0
         self._shots = 1
 
+        self._target = None
+        self._coupling_map = None
         self._configuration = configuration
         self._options = self._default_options()
         self._provider = provider
@@ -475,7 +424,7 @@ class QasmSimulator(BackendV1):
             qiskit.providers.Options: A options object with
                 default values set
         """
-        # WARNING: The above prototype for return type doesn't work in BackEndV1 in Qiskit v0.30.0.
+        # WARNING: The above prototype for return type doesn't work in BackendV2 in Qiskit v0.30.0.
         # We're resorting to duck typing.
         _def_opts = Options()
         _def_opts.update_options(**cls.DEFAULT_OPTIONS)
@@ -637,7 +586,7 @@ class QasmSimulator(BackendV1):
         for opcount in range(len(instructions)):
             operation = instructions[opcount]
 
-            if operation.name == 'id' or operation.name == 'barrier':
+            if operation.name == 'id':
                 continue
 
             if is_initializing and ((operation.name == 'measure') or (operation.name == 'reset')):
@@ -731,7 +680,7 @@ class QasmSimulator(BackendV1):
     def _apply_op(self, operation):
         name = operation.name
 
-        if (name == 'id') or (name == 'barrier'):
+        if name == 'id':
             # Skip measurement logic
             return
 
@@ -778,10 +727,6 @@ class QasmSimulator(BackendV1):
             self._sim.mtrx([(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation.qubits[0])
         elif name == 'sxdg':
             self._sim.mtrx([(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], operation.qubits[0])
-        elif name == 'sy':
-            self._sim.mtrx([(1+1j)/2, -(1+1j)/2, (1+1j)/2, (1+1j)/2], operation.qubits[0])
-        elif name == 'sydg':
-            self._sim.mtrx([(1-1j)/2, (1-1j)/2, (-1+1j)/2, (1-1j)/2], operation.qubits[0])
         elif name == 's':
             self._sim.s(operation.qubits[0])
         elif name == 'sdg':
@@ -792,16 +737,8 @@ class QasmSimulator(BackendV1):
             self._sim.adjt(operation.qubits[0])
         elif name == 'cu1':
             self._sim.mcu(operation.qubits[0:1], operation.qubits[1], 0, 0, float(operation.params[0]))
-        elif name == 'cu2':
-            self._sim.mcu(operation.qubits[0:1], operation.qubits[1], np.pi / 2, float(operation.params[0]), float(operation.params[1]))
         elif (name == 'cu3') or (name == 'cu'):
             self._sim.mcu(operation.qubits[0:1], operation.qubits[1], float(operation.params[0]), float(operation.params[1]), float(operation.params[2]))
-        elif name == 'mcu1':
-            self._sim.mcu(operation.qubits[0:-1], operation.qubits[-1], 0, 0, float(operation.params[0]))
-        elif name == 'mcu2':
-            self._sim.mcu(operation.qubits[0:-1], operation.qubits[-1], np.pi / 2, float(operation.params[0]), float(operation.params[1]))
-        elif (name == 'mcu3') or (name == 'mcu'):
-            self._sim.mcu(operation.qubits[0:-1], operation.qubits[-1], float(operation.params[0]), float(operation.params[1]), float(operation.params[2]))
         elif name == 'cx':
             self._sim.mcx(operation.qubits[0:1], operation.qubits[1])
         elif name == 'cy':
@@ -814,31 +751,19 @@ class QasmSimulator(BackendV1):
             self._sim.mcmtrx(operation.qubits[0:1], [1, 0, 0, np.exp(1j * float(operation.params[0]))], operation.qubits[1])
         elif name == 'csx':
             self._sim.mcmtrx(operation.qubits[0:1], [(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation.qubits[1])
-        elif name == 'csxdg':
-            self._sim.mcmtrx(operation.qubits[0:1], [(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], operation.qubits[1])
         elif name == 'dcx':
             self._sim.mcx(operation.qubits[0:1], operation.qubits[1])
             self._sim.mcx(operation.qubits[1:2], operation.qubits[0])
         elif name == 'ccx':
             self._sim.mcx(operation.qubits[0:2], operation.qubits[2])
-        elif name == 'ccy':
-            self._sim.mcy(operation.qubits[0:2], operation.qubits[2])
         elif name == 'ccz':
             self._sim.mcz(operation.qubits[0:2], operation.qubits[2])
-        elif name == 'mcx':
-            self._sim.mcx(operation.qubits[0:-1], operation.qubits[-1])
-        elif name == 'mcy':
-            self._sim.mcy(operation.qubits[0:-1], operation.qubits[-1])
-        elif name == 'mcz':
-            self._sim.mcz(operation.qubits[0:-1], operation.qubits[-1])
         elif name == 'swap':
             self._sim.swap(operation.qubits[0], operation.qubits[1])
         elif name == 'iswap':
             self._sim.iswap(operation.qubits[0], operation.qubits[1])
         elif name == 'cswap':
             self._sim.cswap(operation.qubits[0:1], operation.qubits[1], operation.qubits[2])
-        elif name == 'mcswap':
-            self._sim.cswap(operation.qubits[:-2], operation.qubits[-2], operation.qubits[-1])
         elif name == 'reset':
             qubits = operation.qubits
             for qubit in qubits:
