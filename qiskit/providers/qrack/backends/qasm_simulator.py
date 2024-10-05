@@ -586,7 +586,7 @@ class QasmSimulator(BackendV2):
         for opcount in range(len(instructions)):
             operation = instructions[opcount]
 
-            if operation.name == 'id':
+            if (operation.name == 'id') or (operation.name == 'barrier'):
                 continue
 
             if is_initializing and ((operation.name == 'measure') or (operation.name == 'reset')):
@@ -680,8 +680,7 @@ class QasmSimulator(BackendV2):
     def _apply_op(self, operation):
         name = operation.name
 
-        if name == 'id':
-            # Skip measurement logic
+        if (name == 'id') or (name == 'barrier'):
             return
 
         conditional = getattr(operation, 'conditional', None)
