@@ -2,7 +2,7 @@
 
 This repository contains a Qrack provider for Qiskit. You must [install PyQrack](https://pypi.org/project/pyqrack/) to use it.
 
-The underlying Qrack simulator is a high-performance, GPU-accelarated, noiseless simulator, by design. This repository provides the Qrack `QasmSimulator`.
+Qrack is a GPU-accelerated simulator with optional pure-CPU and CPU/GPU-hybrid simulation, scaling from minimalist systems to multiple GPUs for high performance, with novel near-Clifford, Schmidt-decomposition, quantum binary decision diagram (QBDD), light-cone optimization, state vector, and other simulation techniques. This repository provides the Qrack `QasmSimulator`.
 
 This provider is based on and adapted from work by the IBM Qiskit Team and QCGPU's creator, Adam Kelly. Attribution is noted in content files, where appropriate. Original contributions and adaptations were made by Daniel Strano of the VM6502Q/Qrack Team.
 
