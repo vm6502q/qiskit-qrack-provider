@@ -103,7 +103,8 @@ class QasmSimulator(BackendV2):
         'is_cpu_gpu_hybrid': True,
         'is_host_pointer': False,
         'is_t_injected': True,
-        'is_reactively_separated': False
+        'is_reactively_separated': False,
+        'noise': 0
     }
 
     DEFAULT_CONFIGURATION = {
@@ -116,7 +117,7 @@ class QasmSimulator(BackendV2):
         'local': True,
         'open_pulse': False,
         'memory': True,
-        'max_shots': 65536,
+        'max_shots': None,
         'description': 'An OpenCL based qasm simulator',
         'coupling_map': None,
         'basis_gates': [
@@ -469,6 +470,7 @@ class QasmSimulator(BackendV2):
             'isPaged': options.is_paged if hasattr(options, 'is_paged') else self._options.get('is_paged'),
             'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
             'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
+            'noise': options.noise if hasattr(options, 'noise') else self._options.get('noise')
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
