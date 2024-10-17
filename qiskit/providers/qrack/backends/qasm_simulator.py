@@ -585,26 +585,32 @@ class QasmSimulator(BackendV2):
         is_initializing = True
         boundary_start = -1
 
-        for opcount in range(len(instructions)):
-            operation = instructions[opcount]
+        if ('noise' in options) and (options['noise'] > 0):
+            boundary_start = 1
+            shotsPerLoop = 1
+            shotLoopMax = self._shots
+            self._sample_measure = False
+        else:
+            for opcount in range(len(instructions)):
+                operation = instructions[opcount]
 
-            if (operation.name == 'id') or (operation.name == 'barrier'):
-                continue
+                if (operation.name == 'id') or (operation.name == 'barrier'):
+                    continue
 
-            if is_initializing and ((operation.name == 'measure') or (operation.name == 'reset')):
-                continue
+                if is_initializing and ((operation.name == 'measure') or (operation.name == 'reset')):
+                    continue
 
-            is_initializing = False
+                is_initializing = False
 
-            if (operation.name == 'measure') or (operation.name == 'reset'):
-                if boundary_start == -1:
-                    boundary_start = opcount
+                if (operation.name == 'measure') or (operation.name == 'reset'):
+                    if boundary_start == -1:
+                        boundary_start = opcount
 
-            if (boundary_start != -1) and (operation.name != 'measure'):
-                shotsPerLoop = 1
-                shotLoopMax = self._shots
-                self._sample_measure = False
-                break
+                if (boundary_start != -1) and (operation.name != 'measure'):
+                    shotsPerLoop = 1
+                    shotLoopMax = self._shots
+                    self._sample_measure = False
+                    break
 
         preamble_memory = 0
         preamble_register = 0
