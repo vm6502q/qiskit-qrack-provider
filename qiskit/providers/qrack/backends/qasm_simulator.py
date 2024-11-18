@@ -97,7 +97,7 @@ class QasmSimulator(BackendV2):
         'is_tensor_network': True,
         'is_schmidt_decompose_multi': True,
         'is_schmidt_decompose': True,
-        'is_stabilizer_hybrid': True,
+        'is_stabilizer_hybrid': False,
         'is_binary_decision_tree': False,
         'is_paged': True,
         'is_cpu_gpu_hybrid': False,
