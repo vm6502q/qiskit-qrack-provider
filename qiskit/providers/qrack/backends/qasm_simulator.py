@@ -100,7 +100,7 @@ class QasmSimulator(BackendV2):
         'is_stabilizer_hybrid': True,
         'is_binary_decision_tree': False,
         'is_paged': True,
-        'is_cpu_gpu_hybrid': True,
+        'is_cpu_gpu_hybrid': False,
         'is_host_pointer': False,
         'is_t_injected': True,
         'is_reactively_separated': False,
