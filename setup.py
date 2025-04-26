@@ -32,7 +32,6 @@ setup(
     license="Apache 2.0",
     classifiers=[
         "Environment :: Console",
-        "License :: OSI Approved :: Apache Software License",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Operating System :: Microsoft :: Windows",
