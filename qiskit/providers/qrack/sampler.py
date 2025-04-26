@@ -28,7 +28,7 @@ try:
     from qiskit.circuit import ParameterExpression, QuantumCircuit
     from qiskit.compiler import transpile
     from qiskit.exceptions import QiskitError
-    from qiskit.primitives import BaseSampler, SamplerResult
+    from qiskit.primitives import BaseSamplerV2, SamplerResult
     from qiskit.primitives.utils import final_measurement_mapping, init_circuit
     from qiskit.result import QuasiDistribution
 except ImportError:
@@ -37,7 +37,7 @@ except ImportError:
 from .backends import QasmSimulator
 
 
-class Sampler(BaseSampler):
+class Sampler(BaseSamplerV2):
     """
     Aer implementation of Sampler class.
 
