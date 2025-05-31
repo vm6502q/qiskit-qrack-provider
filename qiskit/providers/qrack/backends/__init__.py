@@ -11,3 +11,4 @@
 """Qrack Backends."""
 
 from .qasm_simulator import QasmSimulator
+from .ace_qasm_simulator import AceQasmSimulator
