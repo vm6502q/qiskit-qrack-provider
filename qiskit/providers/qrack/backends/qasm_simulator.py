@@ -95,7 +95,7 @@ class QasmSimulator(BackendV2):
 
 
     DEFAULT_OPTIONS = {
-        'method': 'automatic',
+        'method': 'matrix_product_state',
         'shots': 1024,
         'is_tensor_network': True,
         'is_schmidt_decompose_multi': True,

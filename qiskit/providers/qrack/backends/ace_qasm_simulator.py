@@ -33,6 +33,12 @@ from qiskit.transpiler import Target, CouplingMap
 from qiskit.circuit.gate import Gate
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.circuit import Clbit
+from qiskit.circuit import Parameter
+from qiskit.transpiler import CouplingMap
+
+from qiskit.circuit.library import IGate, U3Gate, U2Gate, U1Gate, XGate, YGate, ZGate, HGate, RXGate, RYGate, RZGate, SGate, SdgGate, TGate, TdgGate, CXGate, CYGate, CZGate, SwapGate, iSwapGate
+
+from qiskit_aer.noise import NoiseModel, depolarizing_error
 
 
 class QrackQasmQobjInstructionConditional:
@@ -95,7 +101,7 @@ class AceQasmSimulator(BackendV2):
     """
 
     DEFAULT_OPTIONS = {
-        'method': 'automatic',
+        'method': 'matrix_product_state',
         'n_qubits': 64,
         'shots': 1024,
         'is_tensor_network': True,
@@ -104,7 +110,9 @@ class AceQasmSimulator(BackendV2):
         'long_range_columns': 2,
         'alternating_codes': True,
         'reverse_row_and_col': False,
-        'sdrp': 0.03
+        'sdrp': 0.03,
+        'noise_model_short': 0.25,
+        'noise_model_long': 0.25,
     }
 
     DEFAULT_CONFIGURATION = {
@@ -120,6 +128,7 @@ class AceQasmSimulator(BackendV2):
         'max_memory_mb' :None,
         'description': 'A fundamentally-optimized, approximate, nearest-neighbor qasm simulator',
         'coupling_map': None,
+        'noise_model': None,
         'basis_gates': [
             'id', 'u', 'u1', 'u2', 'u3', 'r', 'rx', 'ry', 'rz',
             'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 'p', 't', 'tdg',
@@ -296,7 +305,10 @@ class AceQasmSimulator(BackendV2):
 
     # Mostly written by Dan, but with a little help from Elara (custom OpenAI GPT)
     def get_logical_coupling_map(self):
-        coupling_map = set()
+        if self._coupling_map:
+            return self._coupling_map
+
+        coupling_map = []
         rows, cols = self._row_length, self._col_length
 
         # Map each column index to its full list of logical qubit indices
@@ -324,9 +336,56 @@ class AceQasmSimulator(BackendV2):
                     for r in range(0, rows):
                         b = logical_index(r, c)
                         if a != b:
-                            coupling_map.add((a, b))
+                            coupling_map.append((a, b))
 
         return sorted(coupling_map)
+
+    # Designed by Dan, and implemented by Elara:
+    def get_noise_model(self):
+        if self._noise_model:
+            return self._noise_model
+
+        noise_model = NoiseModel()
+        x, y = self._options['noise_model_short'], self._options['noise_model_long']
+
+        for a, b in self.get_logical_coupling_map():
+            col_a, col_b = a % self._row_length, b % self._row_length
+            row_a, row_b = a // self._row_length, b // self._row_length
+            is_long_a = self._is_col_long_range[col_a]
+            is_long_b = self._is_col_long_range[col_b]
+
+            if is_long_a and is_long_b:
+                continue  # No noise on long-to-long
+
+            same_col = col_a == col_b
+            even_odd = (row_a % 2) != (row_b % 2)
+
+            if same_col and not even_odd:
+                continue  # No noise for even-even or odd-odd within a boundary column
+
+            if same_col:
+                x_cy = 1 - (1 - x)**2
+                x_swap = 1 - (1 - x)**3
+                noise_model.add_quantum_error(depolarizing_error(x, 2), 'cx', [a, b])
+                noise_model.add_quantum_error(depolarizing_error(x_cy, 2), 'cy', [a, b])
+                noise_model.add_quantum_error(depolarizing_error(x_cy, 2), 'cz', [a, b])
+                noise_model.add_quantum_error(depolarizing_error(x_swap, 2), 'swap', [a, b])
+            elif is_long_a or is_long_b:
+                y_cy = 1 - (1 - y)**2
+                y_swap = 1 - (1 - y)**3
+                noise_model.add_quantum_error(depolarizing_error(y, 2), 'cx', [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cy', [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cz', [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_swap, 2), 'swap', [a, b])
+            else:
+                y_cy = 1 - (1 - y)**2
+                y_swap = 1 - (1 - y)**3
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cx', [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cy', [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cz', [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_swap, 2), 'swap', [a, b])
+
+        return noise_model
 
     max_circuits = None
     @property
@@ -375,7 +434,8 @@ class AceQasmSimulator(BackendV2):
 
         self._number_of_clbits = 0
         self._shots = 1
-
+        self._coupling_map = None
+        self._noise_model = None
         self._target = None
         self._options = self._default_options()
         self._provider = provider
@@ -399,7 +459,38 @@ class AceQasmSimulator(BackendV2):
 
         if configuration['coupling_map'] is None:
             self._coupling_map = self.get_logical_coupling_map()
-            configuration['coupling_map'] = self._coupling_map
+            configuration['coupling_map'] = CouplingMap(self._coupling_map)
+
+        if configuration['noise_model'] is None:
+            self._noise_model = self.get_noise_model()
+            configuration['noise_model'] = self._noise_model
+
+        self._target = Target()
+        single_target_dict = {(q,): None for q in range(self._number_of_qubits)}
+        self._target.add_instruction(IGate(), single_target_dict)
+        self._target.add_instruction(U3Gate(Parameter('theta'), Parameter('phi'), Parameter('lambda')), single_target_dict)
+        self._target.add_instruction(U2Gate(Parameter('phi'), Parameter('lambda')), single_target_dict)
+        self._target.add_instruction(U1Gate(Parameter('theta')), single_target_dict)
+        self._target.add_instruction(XGate(), single_target_dict)
+        self._target.add_instruction(YGate(), single_target_dict)
+        self._target.add_instruction(ZGate(), single_target_dict)
+        self._target.add_instruction(HGate(), single_target_dict)
+        self._target.add_instruction(RXGate(Parameter('theta')), single_target_dict)
+        self._target.add_instruction(RYGate(Parameter('theta')), single_target_dict)
+        self._target.add_instruction(RZGate(Parameter('theta')), single_target_dict)
+        self._target.add_instruction(SGate(), single_target_dict)
+        self._target.add_instruction(SdgGate(), single_target_dict)
+        self._target.add_instruction(TGate(), single_target_dict)
+        self._target.add_instruction(TdgGate(), single_target_dict)
+
+        double_target_dict = {(q1, q2,): None for q1, q2 in self._coupling_map}
+        self._target.add_instruction(CXGate(), double_target_dict)
+        self._target.add_instruction(CYGate(), double_target_dict)
+        self._target.add_instruction(CZGate(), double_target_dict)
+        self._target.add_instruction(SwapGate(), double_target_dict)
+        self._target.add_instruction(iSwapGate(), double_target_dict)
+
+        self._coupling_map = configuration['coupling_map']
 
         self._configuration = configuration
 
