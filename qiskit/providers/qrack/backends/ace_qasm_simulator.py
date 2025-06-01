@@ -394,7 +394,7 @@ class AceQasmSimulator(BackendV2):
         self._number_of_qubits = self._options['n_qubits'] if 'shots' in self._options else configuration['n_qubits']
         self._factor_width(self._number_of_qubits, self._options['reverse_row_and_col'])
         if configuration['coupling_map'] is None:
-            self._coupling_map = self.generate_logical_coupling_map()
+            self._coupling_map = self.get_logical_coupling_map()
             configuration['coupling_map'] = self._coupling_map
         self._configuration = configuration
 
