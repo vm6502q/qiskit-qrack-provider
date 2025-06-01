@@ -308,7 +308,7 @@ class AceQasmSimulator(BackendV2):
         if self._coupling_map:
             return self._coupling_map
 
-        coupling_map = []
+        coupling_map = set()
         rows, cols = self._row_length, self._col_length
 
         # Map each column index to its full list of logical qubit indices
@@ -336,7 +336,7 @@ class AceQasmSimulator(BackendV2):
                     for r in range(0, rows):
                         b = logical_index(r, c)
                         if a != b:
-                            coupling_map.append((a, b))
+                            coupling_map.add((a, b))
 
         return sorted(coupling_map)
 
