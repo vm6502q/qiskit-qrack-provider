@@ -115,9 +115,8 @@ class AceQasmSimulator(BackendV2):
         'simulator': True,
         'local': True,
         'open_pulse': False,
-        'memory': True,
-        'max_shots': None,
-        'max_memory_mb': None,
+        'memory': False,
+        'max_memory_mb' :None,
         'description': 'A fundamentally-optimized, approximate, nearest-neighbor qasm simulator',
         'coupling_map': None,
         'basis_gates': [
@@ -322,6 +321,9 @@ class AceQasmSimulator(BackendV2):
                 custom_name_mapping=None
             )
         return self._target
+
+    def max_memory_mb(self):
+        return None
 
     def __init__(self, configuration=None, provider=None, **fields):
         """Initialize a backend class
