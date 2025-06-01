@@ -294,17 +294,19 @@ class AceQasmSimulator(BackendV2):
         self._col_length = row_len if reverse else col_len
         self._row_length = col_len if reverse else row_len
 
+    # Provided by Elara (custom OpenAI GPT)
     def generate_logical_coupling_map(self):
         coupling_map = []
         for y in range(self._col_length):
             for x in range(self._row_length):
                 q = y * self._row_length + x
-                # Define neighbors with optional orbifolding
+                # Define neighbors with orbifolding
                 neighbors = []
                 neighbors.append((x + 1) % self._row_length + y * self._row_length)
                 neighbors.append(x + ((y + 1) % self._col_length) * self._row_length)
                 for nq in neighbors:
                     coupling_map.append([q, nq])
+
         return coupling_map 
 
     max_circuits = None
