@@ -96,6 +96,7 @@ class AceQasmSimulator(BackendV2):
 
     DEFAULT_OPTIONS = {
         'method': 'automatic',
+        'n_qubits': 64,
         'shots': 1024,
         'is_tensor_network': True,
         'is_stabilizer_hybrid': False,
@@ -122,7 +123,7 @@ class AceQasmSimulator(BackendV2):
         'basis_gates': [
             'id', 'u', 'u1', 'u2', 'u3', 'r', 'rx', 'ry', 'rz',
             'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 'p', 't', 'tdg',
-            'cx', 'cy', 'cz', 'dcx', 'swap', 'iswap', 'reset', 'measure'
+            'cx', 'cy', 'cz', 'swap', 'iswap', 'reset', 'measure'
         ],
         'gates': [{
             'name': 'id',
@@ -293,15 +294,15 @@ class AceQasmSimulator(BackendV2):
         self._col_length = row_len if reverse else col_len
         self._row_length = col_len if reverse else row_len
 
-    def generate_logical_coupling_map(self, width, height):
+    def generate_logical_coupling_map(self):
         coupling_map = []
-        for y in range(height):
-            for x in range(width):
-                q = y * width + x
+        for y in range(self._col_length):
+            for x in range(self._row_length):
+                q = y * self._row_length + x
                 # Define neighbors with optional orbifolding
                 neighbors = []
-                neighbors.append((x + 1) % width + y * width)
-                neighbors.append(x + ((y + 1) % height) * width)
+                neighbors.append((x + 1) % self._row_length + y * self._row_length)
+                neighbors.append(x + ((y + 1) % self._col_length) * self._row_length)
                 for nq in neighbors:
                     coupling_map.append([q, nq])
         return coupling_map 
@@ -351,7 +352,6 @@ class AceQasmSimulator(BackendV2):
 
         configuration = configuration or self.DEFAULT_CONFIGURATION
 
-        self._number_of_qubits = configuration['n_qubits']
         self._number_of_clbits = 0
         self._shots = 1
 
@@ -363,9 +363,10 @@ class AceQasmSimulator(BackendV2):
                 if  field not in self.DEFAULT_OPTIONS:
                     raise AttributeError("Options field %s is not valid for this backend" % field)
             self._options.update_options(**fields)
+        self._number_of_qubits = self._options['n_qubits'] if 'shots' in self._options else configuration['n_qubits']
         self._factor_width(self._number_of_qubits, self._options['reverse_row_and_col'])
         if configuration['coupling_map'] is None:
-            self._coupling_map = self.generate_logical_coupling_map(self._row_length, self._col_length)
+            self._coupling_map = self.generate_logical_coupling_map()
             configuration['coupling_map'] = self._coupling_map
         self._configuration = configuration
 
