@@ -297,7 +297,7 @@ class AceQasmSimulator(BackendV2):
     # Mostly written by Dan, but with a little help from Elara (custom OpenAI GPT)
     def get_logical_coupling_map(self):
         coupling_map = set()
-        rows, cols = self.row_length, self.col_length
+        rows, cols = self._row_length, self._col_length
 
         # Map each column index to its full list of logical qubit indices
         def logical_index(row, col):
@@ -306,12 +306,12 @@ class AceQasmSimulator(BackendV2):
         for col in range(cols):
             connected_cols = [col]
             c = (col - 1) % cols
-            while self._is_col_long_range[c]:
+            while self._is_col_long_range[c] and (len(connected_cols) < self._row_length):
                 connected_cols.append(c)
                 c = (c - 1) % cols
             connected_cols.append(c)
             c = (col + 1) % cols
-            while self._is_col_long_range[c]:
+            while self._is_col_long_range[c] and (len(connected_cols) < self._row_length):
                 connected_cols.append(c)
                 c = (c + 1) % cols
             connected_cols.append(c)
@@ -391,11 +391,23 @@ class AceQasmSimulator(BackendV2):
                 if  field not in self.DEFAULT_OPTIONS:
                     raise AttributeError("Options field %s is not valid for this backend" % field)
             self._options.update_options(**fields)
-        self._number_of_qubits = self._options['n_qubits'] if 'shots' in self._options else configuration['n_qubits']
+
+        self._number_of_qubits = self._options['n_qubits'] if 'n_qubits' in self._options else configuration['n_qubits']
         self._factor_width(self._number_of_qubits, self._options['reverse_row_and_col'])
+
+        long_range_columns = self._options['long_range_columns'] if 'long_range_columns' in self._options else DEFAULT_OPTIONS['long_range_columns']
+        col_seq = [True] * long_range_columns + [False]
+        len_col_seq = len(col_seq)
+        self._is_col_long_range = (
+            col_seq * ((self._row_length + len_col_seq - 1) // len_col_seq)
+        )[: self._row_length]
+        if long_range_columns < self._row_length:
+            self._is_col_long_range[-1] = False
+
         if configuration['coupling_map'] is None:
             self._coupling_map = self.get_logical_coupling_map()
             configuration['coupling_map'] = self._coupling_map
+
         self._configuration = configuration
 
     @classmethod
