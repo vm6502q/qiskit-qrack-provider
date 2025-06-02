@@ -107,7 +107,7 @@ class AceQasmSimulator(BackendV2):
         'is_tensor_network': True,
         'is_stabilizer_hybrid': False,
         'is_binary_decision_tree': False,
-        'long_range_columns': 2,
+        'long_range_columns': -1,
         'alternating_codes': True,
         'reverse_row_and_col': False,
         'sdrp': 0.03,
