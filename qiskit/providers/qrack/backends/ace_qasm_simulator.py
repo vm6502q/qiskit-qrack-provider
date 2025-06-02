@@ -358,32 +358,28 @@ class AceQasmSimulator(BackendV2):
                 continue  # No noise on long-to-long
 
             same_col = col_a == col_b
-            even_odd = (row_a % 2) != (row_b % 2)
-
-            if same_col and not even_odd:
-                continue  # No noise for even-even or odd-odd within a boundary column
 
             if same_col:
-                x_cy = 1 - (1 - x)**2
-                x_swap = 1 - (1 - x)**3
-                noise_model.add_quantum_error(depolarizing_error(x, 2), 'cx', [a, b])
-                noise_model.add_quantum_error(depolarizing_error(x_cy, 2), 'cy', [a, b])
-                noise_model.add_quantum_error(depolarizing_error(x_cy, 2), 'cz', [a, b])
-                noise_model.add_quantum_error(depolarizing_error(x_swap, 2), 'swap', [a, b])
-            elif is_long_a or is_long_b:
-                y_cy = 1 - (1 - y)**2
-                y_swap = 1 - (1 - y)**3
-                noise_model.add_quantum_error(depolarizing_error(y, 2), 'cx', [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cy', [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cz', [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_swap, 2), 'swap', [a, b])
+                continue  # No noise for same column
+
+            if is_long_a or is_long_b:
+                y_cy = 1 - (1 - y) ** 2
+                y_swap = 1 - (1 - y) ** 3
+                noise_model.add_quantum_error(depolarizing_error(y, 2), "cx", [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cy", [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cz", [a, b])
+                noise_model.add_quantum_error(
+                    depolarizing_error(y_swap, 2), "swap", [a, b]
+                )
             else:
-                y_cy = 1 - (1 - y)**2
-                y_swap = 1 - (1 - y)**3
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cx', [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cy', [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), 'cz', [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_swap, 2), 'swap', [a, b])
+                y_cy = 1 - (1 - y) ** 2
+                y_swap = 1 - (1 - y) ** 3
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cx", [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cy", [a, b])
+                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cz", [a, b])
+                noise_model.add_quantum_error(
+                    depolarizing_error(y_swap, 2), "swap", [a, b]
+                )
 
         return noise_model
 
