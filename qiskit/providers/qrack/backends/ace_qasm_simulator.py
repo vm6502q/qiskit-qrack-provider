@@ -449,6 +449,8 @@ class AceQasmSimulator(BackendV2):
         self._factor_width(self._number_of_qubits, self._options['reverse_row_and_col'])
 
         long_range_columns = self._options['long_range_columns'] if 'long_range_columns' in self._options else DEFAULT_OPTIONS['long_range_columns']
+        if long_range_columns < 0:
+            long_range_columns = 3 if (self.row_length % 3) == 1 else 2
         col_seq = [True] * long_range_columns + [False]
         len_col_seq = len(col_seq)
         self._is_col_long_range = (
