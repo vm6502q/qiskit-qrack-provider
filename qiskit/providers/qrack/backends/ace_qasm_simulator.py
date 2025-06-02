@@ -108,7 +108,6 @@ class AceQasmSimulator(BackendV2):
         'is_stabilizer_hybrid': False,
         'is_binary_decision_tree': False,
         'long_range_columns': -1,
-        'alternating_codes': True,
         'reverse_row_and_col': False,
         'sdrp': 0.03,
         'noise_model_short': 0.25,
@@ -546,7 +545,6 @@ class AceQasmSimulator(BackendV2):
             'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
             'isBinaryDecisionTree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
             'long_range_columns': options.long_range_columns if hasattr(options, 'long_range_columns') else self._options.get('long_range_columns'),
-            'alternating_codes': options.alternating_codes if hasattr(options, 'alternating_codes') else self._options.get('alternating_codes'),
             'reverse_row_and_col': options.reverse_row_and_col if hasattr(options, 'reverse_row_and_col') else self._options.get('reverse_row_and_col'),
         }
 
