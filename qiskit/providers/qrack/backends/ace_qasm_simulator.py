@@ -109,7 +109,7 @@ class AceQasmSimulator(BackendV2):
         'is_binary_decision_tree': False,
         'long_range_columns': -1,
         'reverse_row_and_col': False,
-        'sdrp': 0.0428,
+        'sdrp': 0.03,
         'noise_model_short': 0.25,
         'noise_model_long': 0.25,
     }

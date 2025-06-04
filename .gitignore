@@ -17,6 +17,7 @@ out/*
 *.whl
 *.egg*
 build/*
+dist/*
 
 # Ignore macOS DS_Store
 .DS_Store
