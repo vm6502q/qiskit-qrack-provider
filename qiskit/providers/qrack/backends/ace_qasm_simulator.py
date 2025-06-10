@@ -104,8 +104,6 @@ class AceQasmSimulator(BackendV2):
         'method': 'matrix_product_state',
         'n_qubits': 64,
         'shots': 1024,
-        'long_range_columns': 5,
-        'long_range_rows': 2,
         'is_tensor_network': True,
         'is_schmidt_decompose_multi': True,
         'is_schmidt_decompose': True,
@@ -116,6 +114,9 @@ class AceQasmSimulator(BackendV2):
         'is_host_pointer': False,
         'noise': 0,
         'sdrp': 0.03,
+        'long_range_columns': 5,
+        'long_range_rows': 2,
+        'is_transpose': False,
         'noise_model_short': 0.25,
         'noise_model_long': 0.25,
     }
@@ -123,7 +124,6 @@ class AceQasmSimulator(BackendV2):
     DEFAULT_CONFIGURATION = {
         'backend_name': 'ace_qasm_simulator',
         'backend_version': __version__,
-        'n_qubits': 64,
         'conditional': True,
         'url': 'https://github.com/vm6502q/qiskit-qrack-provider',
         'simulator': True,
@@ -376,17 +376,18 @@ class AceQasmSimulator(BackendV2):
             'isHostPointer': self._options.get('is_host_pointer'),
             'noise': self._options.get('noise'),
             'long_range_columns': self._options.get('long_range_columns'),
-            'long_range_rows': self._options.get('long_range_rows'),
+            'long_range_rows':self._options.get('long_range_rows'),
             'is_transpose': self._options.get('is_transpose'),
         }
 
-        dummy = QrackAceBackend(self._number_of_qubits, **qrack_options)
+        dummy = QrackAceBackend(self._number_of_qubits, long_range_columns=qrack_options['long_range_columns'], long_range_rows=qrack_options['long_range_rows'])
         if configuration['coupling_map'] is None:
             self._coupling_map = dummy.get_logical_coupling_map()
             configuration['coupling_map'] = CouplingMap(self._coupling_map)
         if configuration['noise_model'] is None:
             self._noise_model = dummy.create_noise_model()
             configuration['noise_model'] = self._noise_model
+        dummy = None
 
         self._target = Target()
         single_target_dict = {(q,): None for q in range(self._number_of_qubits)}
@@ -477,47 +478,8 @@ class AceQasmSimulator(BackendV2):
             'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
             'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
             'noise': options.noise if hasattr(options, 'noise') else self._options.get('noise'),
-            'long_range_columns': options.long_range_columns if hasattr(options, 'long_range_columns') else self._options.get('long_range_columns'),
-            'long_range_rows': options.long_range_columns if hasattr(options, 'long_range_rows') else self._options.get('long_range_rows'),
-            'is_transpose': options.is_transpose if hasattr(options, 'is_transpose') else self._options.get('is_transpose'),
+            'noise': options.sdrp if hasattr(options, 'sdrp') else self._options.get('sdrp'),
         }
-
-        dummy = QrackAceBackend(self._number_of_qubits, **qrack_options)
-        if configuration['coupling_map'] is None:
-            self._coupling_map = dummy.get_logical_coupling_map()
-            configuration['coupling_map'] = CouplingMap(self._coupling_map)
-        if configuration['noise_model'] is None:
-            self._noise_model = dummy.create_noise_model()
-            configuration['noise_model'] = self._noise_model
-
-
-        self._target = Target()
-        single_target_dict = {(q,): None for q in range(self._number_of_qubits)}
-        self._target.add_instruction(IGate(), single_target_dict)
-        self._target.add_instruction(U3Gate(Parameter('theta'), Parameter('phi'), Parameter('lambda')), single_target_dict)
-        self._target.add_instruction(U2Gate(Parameter('phi'), Parameter('lambda')), single_target_dict)
-        self._target.add_instruction(U1Gate(Parameter('theta')), single_target_dict)
-        self._target.add_instruction(XGate(), single_target_dict)
-        self._target.add_instruction(YGate(), single_target_dict)
-        self._target.add_instruction(ZGate(), single_target_dict)
-        self._target.add_instruction(HGate(), single_target_dict)
-        self._target.add_instruction(RXGate(Parameter('theta')), single_target_dict)
-        self._target.add_instruction(RYGate(Parameter('theta')), single_target_dict)
-        self._target.add_instruction(RZGate(Parameter('theta')), single_target_dict)
-        self._target.add_instruction(SGate(), single_target_dict)
-        self._target.add_instruction(SdgGate(), single_target_dict)
-        self._target.add_instruction(TGate(), single_target_dict)
-        self._target.add_instruction(TdgGate(), single_target_dict)
-
-        double_target_dict = {(q1, q2,): None for q1, q2 in self._coupling_map}
-        self._target.add_instruction(CXGate(), double_target_dict)
-        self._target.add_instruction(CYGate(), double_target_dict)
-        self._target.add_instruction(CZGate(), double_target_dict)
-        self._target.add_instruction(SwapGate(), double_target_dict)
-        self._target.add_instruction(iSwapGate(), double_target_dict)
-
-        self._coupling_map = configuration['coupling_map']
-        self._noise_model = configuration['noise_model']
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
         self._shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
