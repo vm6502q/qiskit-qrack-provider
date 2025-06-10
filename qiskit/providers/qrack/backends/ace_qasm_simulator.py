@@ -104,11 +104,17 @@ class AceQasmSimulator(BackendV2):
         'method': 'matrix_product_state',
         'n_qubits': 64,
         'shots': 1024,
+        'long_range_columns': 5,
+        'long_range_rows': 2,
         'is_tensor_network': True,
+        'is_schmidt_decompose_multi': True,
+        'is_schmidt_decompose': True,
         'is_stabilizer_hybrid': False,
         'is_binary_decision_tree': False,
-        'long_range_columns': -1,
-        'reverse_row_and_col': False,
+        'is_paged': True,
+        'is_cpu_gpu_hybrid': True,
+        'is_host_pointer': False,
+        'noise': 0,
         'sdrp': 0.03,
         'noise_model_short': 0.25,
         'noise_model_long': 0.25,
@@ -293,94 +299,11 @@ class AceQasmSimulator(BackendV2):
         }]
     }
 
-    def _factor_width(self, width, reverse=False):
-        col_len = math.floor(math.sqrt(width))
-        while ((width // col_len) * col_len) != width:
-            col_len -= 1
-        row_len = width // col_len
-
-        self._col_length = row_len if reverse else col_len
-        self._row_length = col_len if reverse else row_len
-
-    # Mostly written by Dan, but with a little help from Elara (custom OpenAI GPT)
     def get_logical_coupling_map(self):
-        if self._coupling_map:
-            return self._coupling_map
+        return self._coupling_map
 
-        coupling_map = set()
-        rows, cols = self._row_length, self._col_length
-
-        # Map each column index to its full list of logical qubit indices
-        def logical_index(row, col):
-            return row * cols + col
-
-        for col in range(cols):
-            connected_cols = [col]
-            c = (col - 1) % cols
-            while self._is_col_long_range[c] and (len(connected_cols) < self._row_length):
-                connected_cols.append(c)
-                c = (c - 1) % cols
-            if len(connected_cols) < self._row_length:
-                connected_cols.append(c)
-            c = (col + 1) % cols
-            while self._is_col_long_range[c] and (len(connected_cols) < self._row_length):
-                connected_cols.append(c)
-                c = (c + 1) % cols
-            if len(connected_cols) < self._row_length:
-                connected_cols.append(c)
-
-            for row in range(rows):
-                a = logical_index(row, col)
-                for c in connected_cols:
-                    for r in range(0, rows):
-                        b = logical_index(r, c)
-                        if a != b:
-                            coupling_map.add((a, b))
-
-        return sorted(coupling_map)
-
-    # Designed by Dan, and implemented by Elara:
     def get_noise_model(self):
-        if self._noise_model:
-            return self._noise_model
-
-        noise_model = NoiseModel()
-        x, y = self._options['noise_model_short'], self._options['noise_model_long']
-
-        for a, b in self.get_logical_coupling_map():
-            col_a, col_b = a % self._row_length, b % self._row_length
-            row_a, row_b = a // self._row_length, b // self._row_length
-            is_long_a = self._is_col_long_range[col_a]
-            is_long_b = self._is_col_long_range[col_b]
-
-            if is_long_a and is_long_b:
-                continue  # No noise on long-to-long
-
-            same_col = col_a == col_b
-
-            if same_col:
-                continue  # No noise for same column
-
-            if is_long_a or is_long_b:
-                y_cy = 1 - (1 - y) ** 2
-                y_swap = 1 - (1 - y) ** 3
-                noise_model.add_quantum_error(depolarizing_error(y, 2), "cx", [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cy", [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cz", [a, b])
-                noise_model.add_quantum_error(
-                    depolarizing_error(y_swap, 2), "swap", [a, b]
-                )
-            else:
-                y_cy = 1 - (1 - y) ** 2
-                y_swap = 1 - (1 - y) ** 3
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cx", [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cy", [a, b])
-                noise_model.add_quantum_error(depolarizing_error(y_cy, 2), "cz", [a, b])
-                noise_model.add_quantum_error(
-                    depolarizing_error(y_swap, 2), "swap", [a, b]
-                )
-
-        return noise_model
+        return self._noise_model
 
     max_circuits = None
     @property
@@ -441,25 +364,28 @@ class AceQasmSimulator(BackendV2):
             self._options.update_options(**fields)
 
         self._number_of_qubits = self._options['n_qubits'] if 'n_qubits' in self._options else configuration['n_qubits']
-        self._factor_width(self._number_of_qubits, self._options['reverse_row_and_col'])
 
-        long_range_columns = self._options['long_range_columns'] if 'long_range_columns' in self._options else DEFAULT_OPTIONS['long_range_columns']
-        if long_range_columns < 0:
-            long_range_columns = 3 if (self._row_length % 3) == 1 else 2
-        col_seq = [True] * long_range_columns + [False]
-        len_col_seq = len(col_seq)
-        self._is_col_long_range = (
-            col_seq * ((self._row_length + len_col_seq - 1) // len_col_seq)
-        )[: self._row_length]
-        if long_range_columns < self._row_length:
-            self._is_col_long_range[-1] = False
+        qrack_options = {
+            'isTensorNetwork': self._options.get('is_tensor_network'),
+            'isSchmidtDecomposeMulti': self._options.get('is_schmidt_decompose_multi'),
+            'isSchmidtDecompose': self._options.get('is_schmidt_decompose'),
+            'isStabilizerHybrid': self._options.get('is_stabilizer_hybrid'),
+            'isBinaryDecisionTree': self._options.get('is_binary_decision_tree'),
+            'isPaged': self._options.get('is_paged'),
+            'isCpuGpuHybrid': self._options.get('is_cpu_gpu_hybrid'),
+            'isHostPointer': self._options.get('is_host_pointer'),
+            'noise': self._options.get('noise'),
+            'long_range_columns': self._options.get('long_range_columns'),
+            'long_range_rows': self._options.get('long_range_rows'),
+            'is_transpose': self._options.get('is_transpose'),
+        }
 
+        dummy = QrackAceBackend(self._number_of_qubits, **qrack_options)
         if configuration['coupling_map'] is None:
-            self._coupling_map = self.get_logical_coupling_map()
+            self._coupling_map = dummy.get_logical_coupling_map()
             configuration['coupling_map'] = CouplingMap(self._coupling_map)
-
         if configuration['noise_model'] is None:
-            self._noise_model = self.get_noise_model()
+            self._noise_model = dummy.create_noise_model()
             configuration['noise_model'] = self._noise_model
 
         self._target = Target()
@@ -488,6 +414,7 @@ class AceQasmSimulator(BackendV2):
         self._target.add_instruction(iSwapGate(), double_target_dict)
 
         self._coupling_map = configuration['coupling_map']
+        self._noise_model = configuration['noise_model']
 
         self._configuration = configuration
 
@@ -542,11 +469,55 @@ class AceQasmSimulator(BackendV2):
 
         qrack_options = {
             'isTensorNetwork': options.is_tensor_network if hasattr(options, 'is_tensor_network') else self._options.get('is_tensor_network'),
+            'isSchmidtDecomposeMulti': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
+            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
             'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
             'isBinaryDecisionTree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
+            'isPaged': options.is_paged if hasattr(options, 'is_paged') else self._options.get('is_paged'),
+            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
+            'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
+            'noise': options.noise if hasattr(options, 'noise') else self._options.get('noise'),
             'long_range_columns': options.long_range_columns if hasattr(options, 'long_range_columns') else self._options.get('long_range_columns'),
-            'reverse_row_and_col': options.reverse_row_and_col if hasattr(options, 'reverse_row_and_col') else self._options.get('reverse_row_and_col'),
+            'long_range_rows': options.long_range_columns if hasattr(options, 'long_range_rows') else self._options.get('long_range_rows'),
+            'is_transpose': options.is_transpose if hasattr(options, 'is_transpose') else self._options.get('is_transpose'),
         }
+
+        dummy = QrackAceBackend(self._number_of_qubits, **qrack_options)
+        if configuration['coupling_map'] is None:
+            self._coupling_map = dummy.get_logical_coupling_map()
+            configuration['coupling_map'] = CouplingMap(self._coupling_map)
+        if configuration['noise_model'] is None:
+            self._noise_model = dummy.create_noise_model()
+            configuration['noise_model'] = self._noise_model
+
+
+        self._target = Target()
+        single_target_dict = {(q,): None for q in range(self._number_of_qubits)}
+        self._target.add_instruction(IGate(), single_target_dict)
+        self._target.add_instruction(U3Gate(Parameter('theta'), Parameter('phi'), Parameter('lambda')), single_target_dict)
+        self._target.add_instruction(U2Gate(Parameter('phi'), Parameter('lambda')), single_target_dict)
+        self._target.add_instruction(U1Gate(Parameter('theta')), single_target_dict)
+        self._target.add_instruction(XGate(), single_target_dict)
+        self._target.add_instruction(YGate(), single_target_dict)
+        self._target.add_instruction(ZGate(), single_target_dict)
+        self._target.add_instruction(HGate(), single_target_dict)
+        self._target.add_instruction(RXGate(Parameter('theta')), single_target_dict)
+        self._target.add_instruction(RYGate(Parameter('theta')), single_target_dict)
+        self._target.add_instruction(RZGate(Parameter('theta')), single_target_dict)
+        self._target.add_instruction(SGate(), single_target_dict)
+        self._target.add_instruction(SdgGate(), single_target_dict)
+        self._target.add_instruction(TGate(), single_target_dict)
+        self._target.add_instruction(TdgGate(), single_target_dict)
+
+        double_target_dict = {(q1, q2,): None for q1, q2 in self._coupling_map}
+        self._target.add_instruction(CXGate(), double_target_dict)
+        self._target.add_instruction(CYGate(), double_target_dict)
+        self._target.add_instruction(CZGate(), double_target_dict)
+        self._target.add_instruction(SwapGate(), double_target_dict)
+        self._target.add_instruction(iSwapGate(), double_target_dict)
+
+        self._coupling_map = configuration['coupling_map']
+        self._noise_model = configuration['noise_model']
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
         self._shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
