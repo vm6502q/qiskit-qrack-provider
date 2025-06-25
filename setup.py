@@ -5,12 +5,13 @@ from distutils.core import setup
 
 requirements = [
     'numpy>=1.16.3',
+    'pandas',
     'pyqrack>=1.21.0',
     'qiskit>=2.0.0'
 ]
 
 # Handle version.
-VERSION = "0.17.0"
+VERSION = "0.17.1"
 
 # Read long description from README.
 README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
