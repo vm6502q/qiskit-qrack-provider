@@ -6,12 +6,12 @@ from distutils.core import setup
 requirements = [
     'numpy>=1.16.3',
     'pandas',
-    'pyqrack>=1.21.0',
+    'pyqrack<3.0.0',
     'qiskit>=2.0.0'
 ]
 
 # Handle version.
-VERSION = "0.17.1"
+VERSION = "1.0.0"
 
 # Read long description from README.
 README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
@@ -45,7 +45,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Quantum Computing",
     ],
     keywords="qiskit qrack pyqrack simulator quantum addon backend",
     install_requires=requirements

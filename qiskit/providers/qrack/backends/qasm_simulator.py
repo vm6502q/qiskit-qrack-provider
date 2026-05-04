@@ -97,17 +97,15 @@ class QasmSimulator(BackendV2):
     DEFAULT_OPTIONS = {
         'method': 'matrix_product_state',
         'shots': 1024,
-        'is_tensor_network': True,
         'is_schmidt_decompose_multi': True,
-        'is_schmidt_decompose': True,
         'is_stabilizer_hybrid': False,
         'is_binary_decision_tree': False,
-        'is_paged': True,
-        'is_cpu_gpu_hybrid': True,
+        'is_approx_near_clifford': False,
+        'is_near_clifford_cpu': False,
+        'is_gpu': True,
         'is_host_pointer': False,
-        'is_t_injected': True,
-        'is_reactively_separated': False,
-        'noise': 0
+        'noise': 0,
+        'sdrp': 0,
     }
 
     DEFAULT_CONFIGURATION = {
@@ -468,19 +466,22 @@ class QasmSimulator(BackendV2):
         """
 
         qrack_options = {
-            'isTensorNetwork': options.is_tensor_network if hasattr(options, 'is_tensor_network') else self._options.get('is_tensor_network'),
-            'isSchmidtDecomposeMulti': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
-            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
-            'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
-            'isBinaryDecisionTree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
-            'isPaged': options.is_paged if hasattr(options, 'is_paged') else self._options.get('is_paged'),
-            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
-            'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
+            'is_schmidt_decompose_multi': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
+            'is_stabilizer_hybrid': (
+                (options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid')) or
+                (options.is_approx_near_clifford if hasattr(options, 'is_approx_near_clifford') else self._options.get('is_approx_near_clifford'))
+            ),
+            'is_binary_decision_tree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
+            'is_gpu': options.is_gpu if hasattr(options, 'is_gpu') else self._options.get('is_gpu'),
+            'is_near_clifford_tableau_writer': options.is_near_clifford_cpu if hasattr(options, 'is_near_clifford_cpu') else self._options.get('is_near_clifford_cpu'),
+            'is_host_pointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
             'noise': options.noise if hasattr(options, 'noise') else self._options.get('noise')
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
         self._shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
+        self.sdrp = options.sdrp if hasattr(options, 'sdrp') else self._options.get('sdrp')
+        self.is_approx_rz = options.is_approx_near_clifford if hasattr(options, 'is_approx_near_clifford') else self._options.get('is_approx_near_clifford')
         self.is_t = options.is_t_injected if hasattr(options, 'is_t_injected') else self._options.get('is_t_injected')
         self.is_reactive = options.is_reactively_separated if hasattr(options, 'is_reactively_separated') else self._options.get('is_reactively_separated')
         qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
@@ -626,7 +627,10 @@ class QasmSimulator(BackendV2):
         else:
             boundary_start -= 1
             if boundary_start > 0:
-                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._sim = QrackSimulator(qubit_count = self._number_of_qubits, **options)
+                if self.sdrp > 0:
+                    self._sim.set_sdrp(self.sdrp)
+                self._sim.set_use_exact_near_clifford(not self.is_approx_rz)
                 self._sim.set_t_injection(self.is_t)
                 self._sim.set_reactive_separate(self.is_reactive)
                 self._classical_memory = 0
@@ -641,13 +645,19 @@ class QasmSimulator(BackendV2):
 
         for shot in range(shotLoopMax):
             if preamble_sim is None:
-                self._sim = QrackSimulator(qubitCount = self._number_of_qubits, **options)
+                self._sim = QrackSimulator(qubit_count = self._number_of_qubits, **options)
+                if self.sdrp > 0:
+                    self._sim.set_sdrp(self.sdrp)
+                self._sim.set_use_exact_near_clifford(not self.is_approx_rz)
                 self._sim.set_t_injection(self.is_t)
                 self._sim.set_reactive_separate(self.is_reactive)
                 self._classical_memory = 0
                 self._classical_register = 0
             else:
                 self._sim = QrackSimulator(cloneSid = preamble_sim.sid)
+                if self.sdrp > 0:
+                    self._sim.set_sdrp(self.sdrp)
+                self._sim.set_use_exact_near_clifford(not self.is_approx_rz)
                 self._sim.set_t_injection(self.is_t)
                 self._sim.set_reactive_separate(self.is_reactive)
                 self._classical_memory = preamble_memory
