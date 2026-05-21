@@ -364,15 +364,15 @@ class AceQasmSimulator(BackendV2):
         self._number_of_qubits = self._options['n_qubits'] if 'n_qubits' in self._options else configuration['n_qubits']
 
         qrack_options = {
-            'is_schmidt_decompose_multi': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
-            'is_stabilizer_hybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
-            'is_binary_decision_tree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
-            'is_gpu': options.is_gpu if hasattr(options, 'is_gpu') else self._options.get('is_gpu'),
-            'is_near_clifford_tableau_writer': options.is_near_clifford_cpu if hasattr(options, 'is_near_clifford_cpu') else self._options.get('is_near_clifford_cpu'),
-            'is_host_pointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
-            'noise': options.noise if hasattr(options, 'noise') else self._options.get('noise'),
+            'is_schmidt_decompose_multi': self._options.is_schmidt_decompose_multi if hasattr(self._options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
+            'is_stabilizer_hybrid': self._options.is_stabilizer_hybrid if hasattr(self._options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
+            'is_binary_decision_tree': self._options.is_binary_decision_tree if hasattr(self._options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
+            'is_gpu': self._options.is_gpu if hasattr(self._options, 'is_gpu') else self._options.get('is_gpu'),
+            'is_near_clifford_tableau_writer': self._options.is_near_clifford_cpu if hasattr(self._options, 'is_near_clifford_cpu') else self._options.get('is_near_clifford_cpu'),
+            'is_host_pointer': self._options.is_host_pointer if hasattr(self._options, 'is_host_pointer') else self._options.get('is_host_pointer'),
+            'noise': self._options.noise if hasattr(self._options, 'noise') else self._options.get('noise'),
             'long_range_columns': self._options.get('long_range_columns'),
-            'long_range_rows':self._options.get('long_range_rows'),
+            'long_range_rows': self._options.get('long_range_rows'),
             'is_transpose': self._options.get('is_transpose'),
         }
 
@@ -465,16 +465,16 @@ class AceQasmSimulator(BackendV2):
         """
 
         qrack_options = {
-            'isTensorNetwork': options.is_tensor_network if hasattr(options, 'is_tensor_network') else self._options.get('is_tensor_network'),
-            'isSchmidtDecomposeMulti': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
-            'isSchmidtDecompose': options.is_schmidt_decompose if hasattr(options, 'is_schmidt_decompose') else self._options.get('is_schmidt_decompose'),
-            'isStabilizerHybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
-            'isBinaryDecisionTree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
-            'isPaged': options.is_paged if hasattr(options, 'is_paged') else self._options.get('is_paged'),
-            'isCpuGpuHybrid': options.is_cpu_gpu_hybrid if hasattr(options, 'is_cpu_gpu_hybrid') else self._options.get('is_cpu_gpu_hybrid'),
-            'isHostPointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
+            'is_schmidt_decompose_multi': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
+            'is_stabilizer_hybrid': options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid'),
+            'is_binary_decision_tree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
+            'is_gpu': options.is_gpu if hasattr(options, 'is_gpu') else self._options.get('is_gpu'),
+            'is_near_clifford_tableau_writer': options.is_near_clifford_cpu if hasattr(options, 'is_near_clifford_cpu') else self._options.get('is_near_clifford_cpu'),
+            'is_host_pointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
             'noise': options.noise if hasattr(options, 'noise') else self._options.get('noise'),
-            'noise': options.sdrp if hasattr(options, 'sdrp') else self._options.get('sdrp'),
+            'long_range_columns': self._options.get('long_range_columns'),
+            'long_range_rows':self._options.get('long_range_rows'),
+            'is_transpose': self._options.get('is_transpose'),
         }
 
         data = run_input.config.memory if hasattr(run_input, 'config') else []
