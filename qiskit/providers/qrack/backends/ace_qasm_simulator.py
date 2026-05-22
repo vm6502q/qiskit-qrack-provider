@@ -115,7 +115,7 @@ class AceQasmSimulator(BackendV2):
         'long_range_columns': 4,
         'long_range_rows': 4,
         'is_transpose': False,
-        'noise_model_short': 0.25,
+        'noise_model_short': 0.125,
         'noise_model_long': 0.25,
     }
 
