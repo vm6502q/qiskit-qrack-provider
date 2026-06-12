@@ -251,7 +251,7 @@ class QasmSimulator(BackendV2):
             'qasm_def': 'TODO'
         }, {
             'name': 'cu',
-            'parameters': ['theta', 'phi', 'lam'],
+            'parameters': ['theta', 'phi', 'lam', 'gam'],
             'conditional': True,
             'description': 'Two-qubit Controlled-u gate',
             'qasm_def': 'TODO'
@@ -751,8 +751,10 @@ class QasmSimulator(BackendV2):
             self._sim.adjt(operation['qubits'][0])
         elif name == 'cu1':
             self._sim.mcu(operation['qubits'][0:1], operation['qubits'][1], 0, 0, float(operation['params'][0]))
-        elif (name == 'cu3') or (name == 'cu'):
+        elif name == 'cu3':
             self._sim.mcu(operation['qubits'][0:1], operation['qubits'][1], float(operation['params'][0]), float(operation['params'][1]), float(operation['params'][2]))
+        elif name == 'cu':
+            self._sim.mcu(operation['qubits'][0:1], operation['qubits'][1], float(operation['params'][0]), float(operation['params'][1]), float(operation['params'][2]), float(operation['params'][3]))
         elif name == 'cx':
             self._sim.mcx(operation['qubits'][0:1], operation['qubits'][1])
         elif name == 'cy':
