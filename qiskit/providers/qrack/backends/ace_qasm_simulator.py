@@ -305,12 +305,16 @@ class AceQasmSimulator(BackendV2):
 
     max_circuits = None
     @property
+    def coupling_map(self):
+        return self._configuration['coupling_map']
+
+    @property
     def target(self):
         if self._target is None:
             self._target = Target.from_configuration(
                 basis_gates=self._configuration['basis_gates'],
                 num_qubits=self._number_of_qubits,
-                coupling_map=None,
+                coupling_map=self._configuration['coupling_map'],
                 instruction_durations=None,
                 concurrent_measurements=None,
                 dt=None,
@@ -346,7 +350,7 @@ class AceQasmSimulator(BackendV2):
         .. automethod:: _default_options
         """
 
-        configuration = configuration or self.DEFAULT_CONFIGURATION
+        self._configuration = configuration or self.DEFAULT_CONFIGURATION
 
         self._number_of_clbits = 0
         self._shots = 1
@@ -361,7 +365,7 @@ class AceQasmSimulator(BackendV2):
                     raise AttributeError("Options field %s is not valid for this backend" % field)
             self._options.update_options(**fields)
 
-        self._number_of_qubits = self._options['n_qubits'] if 'n_qubits' in self._options else configuration['n_qubits']
+        self._number_of_qubits = self._options['n_qubits'] if 'n_qubits' in self._options else self._configuration['n_qubits']
 
         qrack_options = {
             'is_schmidt_decompose_multi': self._options.is_schmidt_decompose_multi if hasattr(self._options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
@@ -377,43 +381,16 @@ class AceQasmSimulator(BackendV2):
         }
 
         dummy = QrackAceBackend(self._number_of_qubits, long_range_columns=qrack_options['long_range_columns'], long_range_rows=qrack_options['long_range_rows'])
-        if configuration['coupling_map'] is None:
+        if self._configuration['coupling_map'] is None:
             self._coupling_map = dummy.get_logical_coupling_map()
-            configuration['coupling_map'] = CouplingMap(self._coupling_map)
-        if configuration['noise_model'] is None:
+            self._configuration['coupling_map'] = CouplingMap(self._coupling_map)
+        if self._configuration['noise_model'] is None:
             self._noise_model = dummy.create_noise_model()
-            configuration['noise_model'] = self._noise_model
+            self._configuration['noise_model'] = self._noise_model
         dummy = None
 
-        self._target = Target()
-        single_target_dict = {(q,): None for q in range(self._number_of_qubits)}
-        self._target.add_instruction(IGate(), single_target_dict)
-        self._target.add_instruction(U3Gate(Parameter('theta'), Parameter('phi'), Parameter('lambda')), single_target_dict)
-        self._target.add_instruction(U2Gate(Parameter('phi'), Parameter('lambda')), single_target_dict)
-        self._target.add_instruction(U1Gate(Parameter('theta')), single_target_dict)
-        self._target.add_instruction(XGate(), single_target_dict)
-        self._target.add_instruction(YGate(), single_target_dict)
-        self._target.add_instruction(ZGate(), single_target_dict)
-        self._target.add_instruction(HGate(), single_target_dict)
-        self._target.add_instruction(RXGate(Parameter('theta')), single_target_dict)
-        self._target.add_instruction(RYGate(Parameter('theta')), single_target_dict)
-        self._target.add_instruction(RZGate(Parameter('theta')), single_target_dict)
-        self._target.add_instruction(SGate(), single_target_dict)
-        self._target.add_instruction(SdgGate(), single_target_dict)
-        self._target.add_instruction(TGate(), single_target_dict)
-        self._target.add_instruction(TdgGate(), single_target_dict)
-
-        double_target_dict = {(q1, q2,): None for q1, q2 in self._coupling_map}
-        self._target.add_instruction(CXGate(), double_target_dict)
-        self._target.add_instruction(CYGate(), double_target_dict)
-        self._target.add_instruction(CZGate(), double_target_dict)
-        self._target.add_instruction(SwapGate(), double_target_dict)
-        self._target.add_instruction(iSwapGate(), double_target_dict)
-
-        self._coupling_map = configuration['coupling_map']
-        self._noise_model = configuration['noise_model']
-
-        self._configuration = configuration
+        self._target = None
+        self._target = self.target
 
     @classmethod
     def _default_options(cls):
