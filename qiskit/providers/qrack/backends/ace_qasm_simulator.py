@@ -88,8 +88,8 @@ class AceQasmSimulator(BackendV2):
 
     # Gates supported by QrackAceBackend
     BASIS_GATES = [
-        'id', 'u', 'u1', 'u2', 'u3', 'r', 'rx', 'ry', 'rz',
-        'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 'p', 't', 'tdg',
+        'id', 'u', 'rx', 'ry', 'rz',
+        'h', 'x', 'y', 'z', 's', 'sdg', 't', 'tdg',
         'cx', 'cy', 'cz', 'swap', 'iswap', 'reset', 'measure'
     ]
 
