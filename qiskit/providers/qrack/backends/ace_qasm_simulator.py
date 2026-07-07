@@ -405,7 +405,7 @@ class AceQasmSimulator(BackendV2):
 
             if not self._sample_measure and len(self._sample_qubits) > 0:
                 self._data += [
-                    bin(self._classical_memory)[2:].zfill(self._number_of_qubits)
+                    bin(self._classical_memory)[2:].zfill(self._number_of_clbits)
                 ]
                 self._sample_qubits   = []
                 self._sample_clbits   = []
@@ -573,6 +573,6 @@ class AceQasmSimulator(BackendV2):
                 self._classical_memory = (
                     (self._classical_memory & ~clmask) | (qubit_outcome << clbit)
                 )
-            data.append(bin(self._classical_memory)[2:].zfill(self._number_of_qubits))
+            data.append(bin(self._classical_memory)[2:].zfill(self._number_of_clbits))
 
         return data

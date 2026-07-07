@@ -145,13 +145,6 @@ class QasmSimulator(BackendV2):
                 for a in range(n) for b in range(n) if a != b
             }
 
-        def _all_3q():
-            return {
-                (a, b, c): InstructionProperties()
-                for a in range(n) for b in range(n) for c in range(n)
-                if len({a, b, c}) == 3
-            }
-
         # Single-qubit
         tgt.add_instruction(IGate(),               _all_1q())
         tgt.add_instruction(UGate(theta, phi, lam), _all_1q())
@@ -183,10 +176,11 @@ class QasmSimulator(BackendV2):
         tgt.add_instruction(SwapGate(),            _all_2q())
         tgt.add_instruction(iSwapGate(),           _all_2q())
 
-        # Three-qubit
-        tgt.add_instruction(CCXGate(),             _all_3q())
-        tgt.add_instruction(CCZGate(),             _all_3q())
-        tgt.add_instruction(CSwapGate(),           _all_3q())
+        # Three-qubit: register with None (available on any 3 qubits)
+        # Avoids building n*(n-1)*(n-2) entries which is huge at n=64.
+        tgt.add_instruction(CCXGate(),   None)
+        tgt.add_instruction(CCZGate(),   None)
+        tgt.add_instruction(CSwapGate(), None)
 
         # Measure / reset
         tgt.add_instruction(Measure(), {(q,): InstructionProperties() for q in range(n)})
@@ -379,7 +373,7 @@ class QasmSimulator(BackendV2):
 
             if not self._sample_measure and len(self._sample_qubits) > 0:
                 self._data += [
-                    bin(self._classical_memory)[2:].zfill(self._number_of_qubits)
+                    bin(self._classical_memory)[2:].zfill(self._number_of_clbits)
                 ]
                 self._sample_qubits   = []
                 self._sample_clbits   = []
@@ -578,6 +572,6 @@ class QasmSimulator(BackendV2):
                 self._classical_memory = (
                     (self._classical_memory & ~clmask) | (qubit_outcome << clbit)
                 )
-            data.append(bin(self._classical_memory)[2:].zfill(self._number_of_qubits))
+            data.append(bin(self._classical_memory)[2:].zfill(self._number_of_clbits))
 
         return data
