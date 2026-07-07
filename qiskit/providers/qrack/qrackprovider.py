@@ -16,7 +16,7 @@
 
 from qiskit.providers.providerutils import filter_backends
 
-from .backends import QasmSimulator
+from .backends import QasmSimulator, AceQasmSimulator
 
 
 class QrackProvider:
@@ -27,7 +27,8 @@ class QrackProvider:
 
         # Populate the list of Qrack simulator providers.
         self._backends = [
-            QasmSimulator(configuration=None, provider=self)
+            QasmSimulator(provider=self),
+            AceQasmSimulator(provider=self)
         ]
 
     def backends(self, name=None, filters=None, **kwargs):
