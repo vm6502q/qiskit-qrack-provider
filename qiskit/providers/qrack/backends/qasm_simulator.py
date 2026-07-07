@@ -1,6 +1,7 @@
 # This code is based on and adapted from https://github.com/Qiskit/qiskit-qcgpu-provider/blob/master/qiskit_qcgpu_provider/qasm_simulator.py
 #
 # Adapted by Daniel Strano. Many thanks to Adam Kelly for pioneering a third-party Qiskit provider.
+# Anthropic Claude adapted this back-end wrapper for Qiskit v2.4.2.
 #
 # This code is licensed under the Apache License, Version 2.0. You may
 # obtain a copy of this license in the LICENSE.txt file in the root directory
@@ -10,13 +11,22 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-# pylint: disable=invalid-name
-
+# Updated for Qiskit v2 (2.x) compatibility:
+#   - BackendV2.__init__ signature: name/description as kwargs
+#   - CircuitInstruction API: .operation / .qubits / .clbits (not tuple indexing)
+#   - Target built via add_instruction + InstructionProperties (fully-connected, no noise)
+#   - Result: qobj_id removed
+#   - name is a str attribute, not a @staticmethod
+#   - ExperimentResult uses qiskit.result.models.ExperimentResult/ExperimentResultData
+#   - pandas dependency dropped
+#   - inst_map/backend_properties removed (no longer in Qiskit v2 Target API)
+#   - bfunc: consistent dict access for mask/relation/val
+#   - operation.relation -> operation.get('relation') for consistency
 
 import uuid
 import time
+import math
 import numpy as np
-import pandas as pd
 from datetime import datetime
 from collections import Counter
 
@@ -27,11 +37,23 @@ from pyqrack import QrackSimulator, Pauli
 
 from qiskit.providers.backend import BackendV2
 from qiskit.result import Result
+from qiskit.result.models import ExperimentResult, ExperimentResultData
 from qiskit.providers.options import Options
-from qiskit.transpiler import Target, CouplingMap
-from qiskit.circuit.gate import Gate
+from qiskit.transpiler import Target, InstructionProperties
 from qiskit.circuit.quantumcircuit import QuantumCircuit
-from qiskit.circuit import Clbit
+from qiskit.circuit import Clbit, Parameter
+
+from qiskit.circuit.library import (
+    IGate, UGate, U3Gate, U2Gate, U1Gate,
+    XGate, YGate, ZGate, HGate, SGate, SdgGate, TGate, TdgGate,
+    SXGate, SXdgGate,
+    RXGate, RYGate, RZGate,
+    CUGate, CXGate, CYGate, CZGate, CHGate,
+    CPhaseGate, CSXGate,
+    CCXGate, CCZGate,
+    SwapGate, iSwapGate, CSwapGate,
+    Measure, Reset,
+)
 
 
 class QrackQasmQobjInstructionConditional:
@@ -43,59 +65,13 @@ class QrackQasmQobjInstructionConditional:
         return vars(self)
 
 
-class QrackExperimentHeader(dict):
-    def __init__(self, a_dict=None):
-        dict.__init__(self)
-        for key, value in a_dict.items():
-            self[key] = value
-
-    def to_dict(self):
-        return self
-
-class QrackExperimentResultHeader:
-    def __init__(self, name):
-        self.name = name
-
-    def to_dict(self):
-        return vars(self)
-
-    def get(self, param, val):
-        return self.name if param == 'name' else val
-
-    def items(self):
-        return { 'name': self.name }.items()
-
-class QrackExperimentResultData:
-    def __init__(self, counts, memory):
-        self.counts = counts
-        self.memory = memory
-
-    def to_dict(self):
-        return vars(self)
-
-
-class QrackExperimentResult:
-    def __init__(self, shots, data, status, success, header, metadata = None, time_taken = None):
-        self.shots = shots
-        self.data = data
-        self.status = status
-        self.success = success
-        self.header = header
-        self.metadata = metadata,
-        self.time_taken = time_taken
-
-    def to_dict(self):
-        return vars(self)
-
-
 class QasmSimulator(BackendV2):
     """
-    Contains an OpenCL based backend
+    Contains an OpenCL based backend (Qiskit v2 compatible).
+    Fully-connected topology; no noise model.
     """
 
-
     DEFAULT_OPTIONS = {
-        'method': 'matrix_product_state',
         'shots': 1024,
         'is_schmidt_decompose_multi': True,
         'is_stabilizer_hybrid': False,
@@ -108,783 +84,500 @@ class QasmSimulator(BackendV2):
         'sdrp': 0,
     }
 
-    DEFAULT_CONFIGURATION = {
-        'backend_name': 'statevector_simulator',
-        'backend_version': __version__,
-        'n_qubits': 64,
-        'conditional': True,
-        'url': 'https://github.com/vm6502q/qiskit-qrack-provider',
-        'simulator': True,
-        'local': True,
-        'open_pulse': False,
-        'memory': False,
-        'max_memory_mb' :None,
-        'description': 'An OpenCL based qasm simulator',
-        'coupling_map': None,
-        'basis_gates': [
-            'id', 'u', 'u1', 'u2', 'u3', 'r', 'rx', 'ry', 'rz',
-            'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 'p', 't', 'tdg',
-            'cu', 'cu1', 'cu3', 'cx', 'cy', 'cz', 'ch', 'cp', 'csx',
-            'ccx', 'ccz', 'swap', 'iswap', 'cswap',
-            'reset', 'measure'
-        ],
-        'gates': [{
-            'name': 'id',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit identity gate',
-            'qasm_def': 'gate id a { U(0,0,0) a; }'
-        }, {
-            'name': 'u',
-            'parameters': ['theta', 'phi', 'lam'],
-            'conditional': True,
-            'description': 'Single-qubit gate with three rotation angles',
-            'qasm_def': 'gate u(theta,phi,lam) q { U(theta,phi,lam) q; }'
-        }, {
-            'name': 'u1',
-            'parameters': ['lam'],
-            'conditional': True,
-            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
-            'qasm_def': 'gate u1(lam) q { U(0,0,lam) q; }'
-        }, {
-            'name': 'u2',
-            'parameters': ['phi', 'lam'],
-            'conditional': True,
-            'description':
-            'Single-qubit gate [[1, -exp(1j*lam)], [exp(1j*phi), exp(1j*(phi+lam))]]/sqrt(2)',
-            'qasm_def': 'gate u2(phi,lam) q { U(pi/2,phi,lam) q; }'
-        }, {
-            'name': 'u3',
-            'parameters': ['theta', 'phi', 'lam'],
-            'conditional': True,
-            'description': 'Single-qubit gate with three rotation angles',
-            'qasm_def': 'gate u3(theta,phi,lam) q { U(theta,phi,lam) q; }'
-        }, {
-            'name': 'r',
-            'parameters': ['lam'],
-            'conditional': True,
-            'description': 'Single-qubit gate [[1, 0], [0, exp(1j*lam)]]',
-            'qasm_def': 'gate p(lam) q { U(0,0,lam) q; }'
-        }, {
-            'name': 'rx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-X axis rotation gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'ry',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-Y axis rotation gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'rz',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-Z axis rotation gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'h',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Hadamard gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'x',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-X gate',
-            'qasm_def': 'gate x a { U(pi,0,pi) a; }'
-        }, {
-            'name': 'y',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-Y gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'z',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit Pauli-Z gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 's',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit phase gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'sdg',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit adjoint phase gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'sx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit square root of Pauli-X gate',
-            'qasm_def': 'gate sx a { rz(-pi/2) a; h a; rz(-pi/2); }'
-        }, {
-            'name': 'sxdg',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit inverse square root of Pauli-X gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'p',
-            'parameters': ['theta', 'phi'],
-            'conditional': True,
-            'description': 'Single-qubit gate [[cos(theta), -1j*exp(-1j*phi)], [sin(theta), -1j*exp(1j *phi)*sin(theta), cos(theta)]]',
-            'qasm_def': 'gate r(theta, phi) q { U(theta, phi - pi/2, -phi + pi/2) q;}'
-        }, {
-            'name': 't',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit T gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'tdg',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Single-qubit adjoint T gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cu',
-            'parameters': ['theta', 'phi', 'lam', 'gam'],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-u gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cu1',
-            'parameters': ['lam'],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-u1 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cu3',
-            'parameters': ['theta', 'phi', 'lam'],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-u3 gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-NOT gate',
-            'qasm_def': 'gate cx c,t { CX c,t; }'
-        }, {
-            'name': 'cy',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-Y gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cz',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-Z gate',
-            'qasm_def': 'gate cz a,b { h b; cx a,b; h b; }'
-        }, {
-            'name': 'ch',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit Controlled-H gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cp',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Controlled-Phase gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'csx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit Controlled square root of Pauli-X gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'dcx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Double-CNOT gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'ccx',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Three-qubit Toffoli gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'ccz',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Three-qubit controlled-Z gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'swap',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit SWAP gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'iswap',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Two-qubit ISWAP gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'cswap',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Three-qubit Fredkin (controlled-SWAP) gate',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'measure',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Measure qubit',
-            'qasm_def': 'TODO'
-        }, {
-            'name': 'reset',
-            'parameters': [],
-            'conditional': True,
-            'description': 'Reset qubit to 0 state',
-            'qasm_def': 'TODO'
-        }]
-    }
-
     max_circuits = None
-    @property
-    def target(self):
-        if self._target is None:
-            self._target = Target.from_configuration(
-                basis_gates=self._configuration['basis_gates'],
-                num_qubits=self._number_of_qubits,
-                coupling_map=None,
-                inst_map=None,
-                backend_properties=None,
-                instruction_durations=None,
-                concurrent_measurements=None,
-                dt=None,
-                timing_constraints=None,
-                custom_name_mapping=None
-            )
-        return self._target
 
-    def max_memory_mb(self):
-        return None
-
-    def __init__(self, configuration=None, provider=None, **fields):
-        """Initialize a backend class
+    def __init__(self, provider=None, **fields):
+        """Initialize QasmSimulator (Qiskit v2).
 
         Args:
-            configuration (dict): A backend configuration
-                object for the backend object.
-            provider (qiskit.providers.Provider): Optionally, the provider
-                object that this Backend comes from.
-            fields: kwargs for the values to use to override the default
-                options.
-        Raises:
-            AttributeError: if input field not a valid options
-
-        ..
-            This next bit is necessary just because autosummary generally won't summarise private
-            methods; changing that behaviour would have annoying knock-on effects through all the
-            rest of the documentation, so instead we just hard-code the automethod directive.
-
-        In addition to the public abstract methods, subclasses should also implement the following
-        private methods:
-
-        .. automethod:: _default_options
+            provider: Optional provider object.
+            fields: kwargs for option overrides.
         """
+        for field in fields:
+            if field not in self.DEFAULT_OPTIONS:
+                raise AttributeError(
+                    "Options field %s is not valid for this backend" % field
+                )
 
-        configuration = configuration or self.DEFAULT_CONFIGURATION
+        super().__init__(
+            provider=provider,
+            name='qasm_simulator',
+            description='An OpenCL based qasm simulator',
+            backend_version=__version__,
+        )
+
+        self._options = self._default_options()
+        if fields:
+            self._options.update_options(**fields)
 
         self._number_of_qubits = 64
         self._number_of_clbits = 0
-        self._shots = 1
-
         self._target = None
-        self._coupling_map = None
-        self._configuration = configuration
-        self._options = self._default_options()
-        self._provider = provider
-        if fields:
-            for field in fields:
-                if  field not in self.DEFAULT_OPTIONS:
-                    raise AttributeError("Options field %s is not valid for this backend" % field)
-            self._options.update_options(**fields)
 
     @classmethod
     def _default_options(cls):
-        """Return the default options
+        opts = Options()
+        opts.update_options(**cls.DEFAULT_OPTIONS)
+        return opts
 
-        This method will return a :class:`qiskit.providers.Options`
-        subclass object that will be used for the default options. These
-        should be the default parameters to use for the options of the
-        backend.
+    @property
+    def target(self):
+        if self._target is not None:
+            return self._target
 
-        Returns:
-            qiskit.providers.Options: A options object with
-                default values set
-        """
-        # WARNING: The above prototype for return type doesn't work in BackendV2 in Qiskit v0.30.0.
-        # We're resorting to duck typing.
-        _def_opts = Options()
-        _def_opts.update_options(**cls.DEFAULT_OPTIONS)
-        return _def_opts
+        # Fully-connected target — no coupling map, no noise.
+        # We build with a conservative qubit count; the transpiler will
+        # see all pairs as connected since we pass None coupling_map.
+        n = self._number_of_qubits
+        tgt = Target(num_qubits=n, description=self.description)
+
+        theta = Parameter('theta')
+        phi   = Parameter('phi')
+        lam   = Parameter('lam')
+        gam   = Parameter('gamma')
+
+        def _all_1q():
+            return {(q,): InstructionProperties() for q in range(n)}
+
+        def _all_2q():
+            return {
+                (a, b): InstructionProperties()
+                for a in range(n) for b in range(n) if a != b
+            }
+
+        def _all_3q():
+            return {
+                (a, b, c): InstructionProperties()
+                for a in range(n) for b in range(n) for c in range(n)
+                if len({a, b, c}) == 3
+            }
+
+        # Single-qubit
+        tgt.add_instruction(IGate(),               _all_1q())
+        tgt.add_instruction(UGate(theta, phi, lam), _all_1q())
+        tgt.add_instruction(U3Gate(theta, phi, lam), _all_1q())
+        tgt.add_instruction(U2Gate(phi, lam),      _all_1q())
+        tgt.add_instruction(U1Gate(lam),           _all_1q())
+        tgt.add_instruction(RXGate(theta),         _all_1q())
+        tgt.add_instruction(RYGate(theta),         _all_1q())
+        tgt.add_instruction(RZGate(theta),         _all_1q())
+        tgt.add_instruction(HGate(),               _all_1q())
+        tgt.add_instruction(XGate(),               _all_1q())
+        tgt.add_instruction(YGate(),               _all_1q())
+        tgt.add_instruction(ZGate(),               _all_1q())
+        tgt.add_instruction(SGate(),               _all_1q())
+        tgt.add_instruction(SdgGate(),             _all_1q())
+        tgt.add_instruction(SXGate(),              _all_1q())
+        tgt.add_instruction(SXdgGate(),            _all_1q())
+        tgt.add_instruction(TGate(),               _all_1q())
+        tgt.add_instruction(TdgGate(),             _all_1q())
+
+        # Two-qubit
+        tgt.add_instruction(CUGate(theta, phi, lam, gam), _all_2q())
+        tgt.add_instruction(CXGate(),              _all_2q())
+        tgt.add_instruction(CYGate(),              _all_2q())
+        tgt.add_instruction(CZGate(),              _all_2q())
+        tgt.add_instruction(CHGate(),              _all_2q())
+        tgt.add_instruction(CPhaseGate(theta),     _all_2q())
+        tgt.add_instruction(CSXGate(),             _all_2q())
+        tgt.add_instruction(SwapGate(),            _all_2q())
+        tgt.add_instruction(iSwapGate(),           _all_2q())
+
+        # Three-qubit
+        tgt.add_instruction(CCXGate(),             _all_3q())
+        tgt.add_instruction(CCZGate(),             _all_3q())
+        tgt.add_instruction(CSwapGate(),           _all_3q())
+
+        # Measure / reset
+        tgt.add_instruction(Measure(), {(q,): InstructionProperties() for q in range(n)})
+        tgt.add_instruction(Reset(),   {(q,): InstructionProperties() for q in range(n)})
+
+        self._target = tgt
+        return self._target
 
     def run(self, run_input, **options):
-        """Run on the backend.
-
-        This method that will return a :class:`~qiskit.providers.Job` object
-        that run circuits. Depending on the backend this may be either an async
-        or sync call. It is the discretion of the provider to decide whether
-        running should  block until the execution is finished or not. The Job
-        class can handle either situation.
-
-        Args:
-            run_input (QuantumCircuit or Schedule or list): An individual or a
-                list of :class:`~qiskit.circuits.QuantumCircuit` or
-                :class:`~qiskit.pulse.Schedule` objects to run on the backend.
-                For legacy providers migrating to the new versioned providers,
-                provider interface a :class:`~qiskit.qobj.QasmQobj` or
-                :class:`~qiskit.qobj.PulseQobj` objects should probably be
-                supported too (but deprecated) for backwards compatibility. Be
-                sure to update the docstrings of subclasses implementing this
-                method to document that. New provider implementations should not
-                do this though as :mod:`qiskit.qobj` will be deprecated and
-                removed along with the legacy providers interface.
-            options: Any kwarg options to pass to the backend for running the
-                config. If a key is also present in the options
-                attribute/object then the expectation is that the value
-                specified will be used instead of what's set in the options
-                object.
-        Returns:
-            Job: The job object for the run
-        """
+        """Run a QuantumCircuit (or list) on this backend."""
+        opts = dict(self._options._fields)
+        opts.update(options)
 
         qrack_options = {
-            'is_schmidt_decompose_multi': options.is_schmidt_decompose_multi if hasattr(options, 'is_schmidt_decompose_multi') else self._options.get('is_schmidt_decompose_multi'),
+            'is_schmidt_decompose_multi': opts.get('is_schmidt_decompose_multi'),
             'is_stabilizer_hybrid': (
-                (options.is_stabilizer_hybrid if hasattr(options, 'is_stabilizer_hybrid') else self._options.get('is_stabilizer_hybrid')) or
-                (options.is_approx_near_clifford if hasattr(options, 'is_approx_near_clifford') else self._options.get('is_approx_near_clifford'))
+                opts.get('is_stabilizer_hybrid') or
+                opts.get('is_approx_near_clifford')
             ),
-            'is_binary_decision_tree': options.is_binary_decision_tree if hasattr(options, 'is_binary_decision_tree') else self._options.get('is_binary_decision_tree'),
-            'is_gpu': options.is_gpu if hasattr(options, 'is_gpu') else self._options.get('is_gpu'),
-            'is_near_clifford_tableau_writer': options.is_near_clifford_cpu if hasattr(options, 'is_near_clifford_cpu') else self._options.get('is_near_clifford_cpu'),
-            'is_host_pointer': options.is_host_pointer if hasattr(options, 'is_host_pointer') else self._options.get('is_host_pointer'),
-            'noise': options.noise if hasattr(options, 'noise') else self._options.get('noise')
+            'is_binary_decision_tree':    opts.get('is_binary_decision_tree'),
+            'is_gpu':                     opts.get('is_gpu'),
+            'is_near_clifford_tableau_writer': opts.get('is_near_clifford_cpu'),
+            'is_host_pointer':            opts.get('is_host_pointer'),
+            'noise':                      opts.get('noise'),
         }
 
-        data = run_input.config.memory if hasattr(run_input, 'config') else []
-        self._shots = options['shots'] if 'shots' in options else (run_input.config.shots if hasattr(run_input, 'config') else self._options.get('shots'))
-        self.sdrp = options.sdrp if hasattr(options, 'sdrp') else self._options.get('sdrp')
-        self.is_approx_rz = options.is_approx_near_clifford if hasattr(options, 'is_approx_near_clifford') else self._options.get('is_approx_near_clifford')
-        self.is_t = options.is_t_injected if hasattr(options, 'is_t_injected') else self._options.get('is_t_injected')
-        self.is_reactive = options.is_reactively_separated if hasattr(options, 'is_reactively_separated') else self._options.get('is_reactively_separated')
-        qobj_id = options['qobj_id'] if 'qobj_id' in options else (run_input.qobj_id if hasattr(run_input, 'config') else '')
-        qobj_header = options['qobj_header'] if 'qobj_header' in options else (run_input.header if hasattr(run_input, 'config') else {})
-        job_id = str(uuid.uuid4())
+        self._shots       = opts.get('shots', 1024)
+        self._sdrp        = opts.get('sdrp', 0)
+        self._is_approx_rz = opts.get('is_approx_near_clifford', False)
+        self._is_t         = opts.get('is_t_injected', False)
+        self._is_reactive  = opts.get('is_reactively_separated', False)
 
-        job = QrackJob(self, job_id, self._run_job(job_id, run_input, data, qobj_id, qobj_header, **qrack_options), run_input)
+        job_id = str(uuid.uuid4())
+        job = QrackJob(
+            self, job_id,
+            self._run_job(job_id, run_input, **qrack_options),
+            run_input,
+        )
         return job
 
-    def _run_job(self, job_id, run_input, data, qobj_id, qobj_header, **options):
-        """Run experiments in run_input
-        Args:
-            job_id (str): unique id for the job.
-            run_input (QuantumCircuit or Schedule or list): job description
-        Returns:
-            Result: Result object
-        """
+    def _run_job(self, job_id, run_input, **options):
         start = time.time()
 
-        self._data = data
+        if isinstance(run_input, QuantumCircuit):
+            experiments = [run_input]
+        elif isinstance(run_input, list):
+            experiments = run_input
+        else:
+            raise QrackError('Unrecognized run_input type: %s' % type(run_input))
 
-        experiments = run_input.experiments if hasattr(run_input, 'config') else run_input
-        if isinstance(experiments, QuantumCircuit):
-            experiments = [experiments]
         results = []
-
         for experiment in experiments:
-            results.append(self.run_experiment(experiment, **options))
+            results.append(self._run_experiment(experiment, **options))
 
         return Result(
-            backend_name = self.name(),
-            backend_version = self._configuration['backend_version'],
-            qobj_id = qobj_id,
-            job_id = job_id,
-            success = True,
-            results = results,
-            date = datetime.now(),
-            status = 'COMPLETED',
-            header = QrackExperimentHeader(qobj_header) if type(qobj_header) is dict else qobj_header,
-            time_taken = (time.time() - start)
+            backend_name=self.name,
+            backend_version=self.backend_version,
+            job_id=job_id,
+            success=True,
+            results=results,
+            date=datetime.now(),
+            status='COMPLETED',
+            header={},
         )
 
-    def run_experiment(self, experiment, **options):
-        """Run an experiment (circuit) and return a single experiment result.
-        Args:
-            experiment (QuantumCircuit): experiment from qobj experiments list
-        Returns:
-            dict: A dictionary of results.
-            dict: A result dictionary
-        Raises:
-            QrackError: If the number of qubits is too large, or another
-                error occurs during execution.
-        """
+    def _run_experiment(self, experiment, **options):
+        """Run a single QuantumCircuit and return an ExperimentResult."""
         start = time.time()
 
+        if not isinstance(experiment, QuantumCircuit):
+            raise QrackError('run_input must be a QuantumCircuit.')
+
+        self._number_of_qubits = len(experiment.qubits)
+        self._number_of_clbits = len(experiment.clbits)
+
+        # --- Build instruction list using Qiskit v2 CircuitInstruction API ---
         instructions = []
-        if isinstance(experiment, QuantumCircuit):
-            self._number_of_qubits = len(experiment.qubits)
-            self._number_of_clbits = len(experiment.clbits)
-            for datum in experiment.data:
-                qubits = []
-                for qubit in datum[1]:
-                    qubits.append(experiment.qubits.index(qubit))
+        for datum in experiment.data:
+            op     = datum.operation
+            qubits = [experiment.find_bit(q).index for q in datum.qubits]
+            clbits = [experiment.find_bit(c).index for c in datum.clbits]
 
-                clbits = []
-                for clbit in datum[2]:
-                    clbits.append(experiment.clbits.index(clbit))
+            conditional = None
+            condition = getattr(op, 'condition', None)
+            if condition is not None:
+                if isinstance(condition[0], Clbit):
+                    conditional = experiment.find_bit(condition[0]).index
+                else:
+                    creg_index = experiment.cregs.index(condition[0])
+                    size   = experiment.cregs[creg_index].size
+                    offset = sum(len(experiment.cregs[i]) for i in range(creg_index))
+                    mask   = ((1 << offset) - 1) ^ ((1 << (offset + size)) - 1)
+                    val    = condition[1]
+                    conditional = (
+                        offset
+                        if size == 1
+                        else QrackQasmQobjInstructionConditional(mask, val)
+                    )
 
-                conditional = None
-                condition = getattr(datum[0], "condition", None)
-                if condition is not None:
-                    if isinstance(condition[0], Clbit):
-                        conditional = experiment.clbits.index(condition[0])
-                    else:
-                        creg_index = experiment.cregs.index(condition[0])
-                        size = experiment.cregs[creg_index].size
-                        offset = 0
-                        for i in range(creg_index):
-                            offset += len(experiment.cregs[i])
-                        mask = ((1 << offset) - 1) ^ ((1 << (offset + size)) - 1)
-                        val = condition[1]
-                        conditional = offset if (size == 1) else QrackQasmQobjInstructionConditional(mask, val)
+            instructions.append({
+                'name':        op.name,
+                'qubits':      qubits,
+                'memory':      clbits,
+                'condition':   condition,
+                'conditional': conditional,
+                'params':      list(op.params),
+            })
 
-                instructions.append({
-                    'name': datum[0].name,
-                    'qubits': qubits,
-                    'memory': clbits,
-                    'condition': condition,
-                    'conditional': conditional,
-                    'params': datum[0].params
-                })
-        else:
-            raise QrackError('Unrecognized "run_input" argument specified for run().')
-
-        self._sample_qubits = []
-        self._sample_clbits = []
+        # --- Determine shot / sample strategy ---
+        self._sample_qubits   = []
+        self._sample_clbits   = []
         self._sample_cregbits = []
-        self._data = []
-
-        self._sample_measure = True
+        self._data            = []
+        self._sample_measure  = True
         shotsPerLoop = self._shots
-        shotLoopMax = 1
+        shotLoopMax  = 1
 
         is_initializing = True
-        boundary_start = -1
+        boundary_start  = -1
 
-        if ('noise' in options) and (options['noise'] > 0):
+        if options.get('noise', 0) > 0:
             boundary_start = 1
-            shotsPerLoop = 1
-            shotLoopMax = self._shots
+            shotsPerLoop   = 1
+            shotLoopMax    = self._shots
             self._sample_measure = False
         else:
-            for opcount in range(len(instructions)):
-                operation = instructions[opcount]
-
-                if (operation['name'] == 'id') or (operation['name'] == 'barrier'):
+            for opcount, op in enumerate(instructions):
+                name = op['name']
+                if name in ('id', 'barrier'):
                     continue
-
-                if is_initializing and ((operation['name'] == 'measure') or (operation['name'] == 'reset')):
+                if is_initializing and name in ('measure', 'reset'):
                     continue
-
                 is_initializing = False
-
-                if (operation['name'] == 'measure') or (operation['name'] == 'reset'):
-                    if boundary_start == -1:
-                        boundary_start = opcount
-
-                if (boundary_start != -1) and (operation['name'] != 'measure'):
+                if name in ('measure', 'reset') and boundary_start == -1:
+                    boundary_start = opcount
+                if boundary_start != -1 and name != 'measure':
                     shotsPerLoop = 1
-                    shotLoopMax = self._shots
+                    shotLoopMax  = self._shots
                     self._sample_measure = False
                     break
-
-        preamble_memory = 0
-        preamble_register = 0
-        preamble_sim = None
 
         if self._sample_measure or boundary_start <= 0:
             boundary_start = 0
             self._sample_measure = True
             shotsPerLoop = self._shots
-            shotLoopMax = 1
-        else:
-            boundary_start -= 1
-            if boundary_start > 0:
-                self._sim = QrackSimulator(qubit_count = self._number_of_qubits, **options)
-                if self.sdrp > 0:
-                    self._sim.set_sdrp(self.sdrp)
-                self._sim.set_use_exact_near_clifford(not self.is_approx_rz)
-                self._sim.set_t_injection(self.is_t)
-                self._sim.set_reactive_separate(self.is_reactive)
-                self._classical_memory = 0
-                self._classical_register = 0
+            shotLoopMax  = 1
 
-                for operation in instructions[:boundary_start]:
-                    self._apply_op(operation)
+        # --- Preamble ---
+        preamble_memory   = 0
+        preamble_register = 0
+        preamble_sim      = None
 
-                preamble_memory = self._classical_memory
-                preamble_register = self._classical_register
-                preamble_sim = self._sim
+        def _make_sim():
+            sim = QrackSimulator(qubit_count=self._number_of_qubits, **options)
+            if self._sdrp > 0:
+                sim.set_sdrp(self._sdrp)
+            sim.set_use_exact_near_clifford(not self._is_approx_rz)
+            sim.set_t_injection(self._is_t)
+            sim.set_reactive_separate(self._is_reactive)
+            return sim
 
-        for shot in range(shotLoopMax):
+        if boundary_start > 1:
+            self._sim = _make_sim()
+            self._classical_memory   = 0
+            self._classical_register = 0
+            for op in instructions[:boundary_start]:
+                self._apply_op(op)
+            preamble_memory   = self._classical_memory
+            preamble_register = self._classical_register
+            preamble_sim      = self._sim
+
+        # --- Shot loop ---
+        for _ in range(shotLoopMax):
             if preamble_sim is None:
-                self._sim = QrackSimulator(qubit_count = self._number_of_qubits, **options)
-                if self.sdrp > 0:
-                    self._sim.set_sdrp(self.sdrp)
-                self._sim.set_use_exact_near_clifford(not self.is_approx_rz)
-                self._sim.set_t_injection(self.is_t)
-                self._sim.set_reactive_separate(self.is_reactive)
-                self._classical_memory = 0
+                self._sim = _make_sim()
+                self._classical_memory   = 0
                 self._classical_register = 0
             else:
-                self._sim = QrackSimulator(cloneSid = preamble_sim.sid)
-                if self.sdrp > 0:
-                    self._sim.set_sdrp(self.sdrp)
-                self._sim.set_use_exact_near_clifford(not self.is_approx_rz)
-                self._sim.set_t_injection(self.is_t)
-                self._sim.set_reactive_separate(self.is_reactive)
-                self._classical_memory = preamble_memory
+                self._sim = QrackSimulator(cloneSid=preamble_sim.sid)
+                if self._sdrp > 0:
+                    self._sim.set_sdrp(self._sdrp)
+                self._sim.set_use_exact_near_clifford(not self._is_approx_rz)
+                self._sim.set_t_injection(self._is_t)
+                self._sim.set_reactive_separate(self._is_reactive)
+                self._classical_memory   = preamble_memory
                 self._classical_register = preamble_register
 
-            for operation in instructions[boundary_start:]:
-                self._apply_op(operation)
+            for op in instructions[boundary_start:]:
+                self._apply_op(op)
 
-            if not self._sample_measure and (len(self._sample_qubits) > 0):
-                self._data += [bin(self._classical_memory)[2:].zfill(self._number_of_qubits)]
-                self._sample_qubits = []
-                self._sample_clbits = []
+            if not self._sample_measure and len(self._sample_qubits) > 0:
+                self._data += [
+                    bin(self._classical_memory)[2:].zfill(self._number_of_qubits)
+                ]
+                self._sample_qubits   = []
+                self._sample_clbits   = []
                 self._sample_cregbits = []
 
-        if self._sample_measure and (len(self._sample_qubits) > 0):
-            self._data = self._add_sample_measure(self._sample_qubits, self._sample_clbits, self._shots)
+        if self._sample_measure and len(self._sample_qubits) > 0:
+            self._data = self._add_sample_measure(
+                self._sample_qubits, self._sample_clbits, self._shots
+            )
 
-        data = pd.DataFrame(data={ 'counts': dict(Counter(self._data)) })
+        counts = dict(Counter(self._data))
+        hex_counts = {'0x%x' % int(k, 2): v for k, v in counts.items()}
 
-        metadata = { 'measure_sampling': self._sample_measure }
-        if isinstance(experiment, QuantumCircuit) and hasattr(experiment, 'metadata') and experiment.metadata:
-            metadata = experiment.metadata
-            metadata['measure_sampling'] = self._sample_measure
-
-        return QrackExperimentResult(
-            shots = self._shots,
-            data = data,
-            status = 'DONE',
-            success = True,
-            header = QrackExperimentResultHeader(name = experiment.name),
-            metadata = metadata,
-            time_taken = (time.time() - start)
+        return ExperimentResult(
+            shots=self._shots,
+            success=True,
+            data=ExperimentResultData(counts=hex_counts, memory=self._data),
+            status='DONE',
+            header={
+                'name': experiment.name,
+                'n_qubits': self._number_of_qubits,
+                'creg_sizes': [[r.name, r.size] for r in experiment.cregs],
+                'memory_slots': self._number_of_clbits,
+            },
         )
 
     def _apply_op(self, operation):
-        name = operation['name']
+        name   = operation['name']
+        qubits = operation['qubits']
+        params = operation['params']
 
-        if (name == 'id') or (name == 'barrier'):
+        if name in ('id', 'barrier'):
             return
 
-        conditional = getattr(operation, 'conditional', None)
+        # Handle conditionals
+        conditional = operation.get('conditional')
         if isinstance(conditional, int):
-            conditional_bit_set = (self._classical_register >> conditional) & 1
-            if not conditional_bit_set:
+            if not ((self._classical_register >> conditional) & 1):
                 return
         elif conditional is not None:
             mask = int(conditional.mask, 16)
             if mask > 0:
                 value = self._classical_memory & mask
                 while (mask & 0x1) == 0:
-                    mask >>= 1
+                    mask  >>= 1
                     value >>= 1
                 if value != int(conditional.val, 16):
                     return
 
-        if (name == 'u1') or (name == 'p'):
-            self._sim.u(operation['qubits'][0], 0, 0, float(operation['params'][0]))
+        if name in ('u1', 'p'):
+            self._sim.u(qubits[0], 0, 0, float(params[0]))
         elif name == 'u2':
-            self._sim.u(operation['qubits'][0], np.pi / 2, float(operation['params'][0]), float(operation['params'][1]))
-        elif (name == 'u3') or (name == 'u'):
-            self._sim.u(operation['qubits'][0], float(operation['params'][0]), float(operation['params'][1]), float(operation['params'][2]))
+            self._sim.u(qubits[0], math.pi / 2, float(params[0]), float(params[1]))
+        elif name in ('u3', 'u'):
+            self._sim.u(qubits[0], float(params[0]), float(params[1]), float(params[2]))
         elif name == 'r':
-            self._sim.u(operation['qubits'][0], float(operation['params'][0]), float(operation['params'][1]) - np.pi/2, (-1 * float(operation['params'][1])) + np.pi/2)
-        elif (name == 'unitary') and (len(operation['qubits']) == 1):
-            self._sim.mtrx(operation['params'][0].flatten(), operation['qubits'][0])
+            p1 = float(params[1])
+            self._sim.u(qubits[0], float(params[0]), p1 - math.pi/2, -p1 + math.pi/2)
+        elif name == 'unitary' and len(qubits) == 1:
+            self._sim.mtrx(params[0].flatten(), qubits[0])
         elif name == 'rx':
-            self._sim.r(Pauli.PauliX, float(operation['params'][0]), operation['qubits'][0])
+            self._sim.r(Pauli.PauliX, float(params[0]), qubits[0])
         elif name == 'ry':
-            self._sim.r(Pauli.PauliY, float(operation['params'][0]), operation['qubits'][0])
+            self._sim.r(Pauli.PauliY, float(params[0]), qubits[0])
         elif name == 'rz':
-            self._sim.r(Pauli.PauliZ, float(operation['params'][0]), operation['qubits'][0])
+            self._sim.r(Pauli.PauliZ, float(params[0]), qubits[0])
         elif name == 'h':
-            self._sim.h(operation['qubits'][0])
+            self._sim.h(qubits[0])
         elif name == 'x':
-            self._sim.x(operation['qubits'][0])
+            self._sim.x(qubits[0])
         elif name == 'y':
-            self._sim.y(operation['qubits'][0])
+            self._sim.y(qubits[0])
         elif name == 'z':
-            self._sim.z(operation['qubits'][0])
+            self._sim.z(qubits[0])
         elif name == 'sx':
-            self._sim.mtrx([(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation['qubits'][0])
+            self._sim.mtrx([(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], qubits[0])
         elif name == 'sxdg':
-            self._sim.mtrx([(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], operation['qubits'][0])
+            self._sim.mtrx([(1-1j)/2, (1+1j)/2, (1+1j)/2, (1-1j)/2], qubits[0])
         elif name == 's':
-            self._sim.s(operation['qubits'][0])
+            self._sim.s(qubits[0])
         elif name == 'sdg':
-            self._sim.adjs(operation['qubits'][0])
+            self._sim.adjs(qubits[0])
         elif name == 't':
-            self._sim.t(operation['qubits'][0])
+            self._sim.t(qubits[0])
         elif name == 'tdg':
-            self._sim.adjt(operation['qubits'][0])
+            self._sim.adjt(qubits[0])
         elif name == 'cu1':
-            self._sim.mcu(operation['qubits'][0:1], operation['qubits'][1], 0, 0, float(operation['params'][0]))
+            self._sim.mcu(qubits[0:1], qubits[1], 0, 0, float(params[0]))
         elif name == 'cu3':
-            self._sim.mcu(operation['qubits'][0:1], operation['qubits'][1], float(operation['params'][0]), float(operation['params'][1]), float(operation['params'][2]))
+            self._sim.mcu(qubits[0:1], qubits[1],
+                          float(params[0]), float(params[1]), float(params[2]))
         elif name == 'cu':
-            self._sim.mcu(operation['qubits'][0:1], operation['qubits'][1], float(operation['params'][0]), float(operation['params'][1]), float(operation['params'][2]), float(operation['params'][3]))
+            self._sim.mcu(qubits[0:1], qubits[1],
+                          float(params[0]), float(params[1]),
+                          float(params[2]), float(params[3]))
         elif name == 'cx':
-            self._sim.mcx(operation['qubits'][0:1], operation['qubits'][1])
+            self._sim.mcx(qubits[0:1], qubits[1])
         elif name == 'cy':
-            self._sim.mcy(operation['qubits'][0:1], operation['qubits'][1])
+            self._sim.mcy(qubits[0:1], qubits[1])
         elif name == 'cz':
-            self._sim.mcz(operation['qubits'][0:1], operation['qubits'][1])
+            self._sim.mcz(qubits[0:1], qubits[1])
         elif name == 'ch':
-            self._sim.mch(operation['qubits'][0:1], operation['qubits'][1])
+            self._sim.mch(qubits[0:1], qubits[1])
         elif name == 'cp':
-            self._sim.mcmtrx(operation['qubits'][0:1], [1, 0, 0, np.exp(1j * float(operation['params'][0]))], operation['qubits'][1])
+            self._sim.mcmtrx(qubits[0:1],
+                              [1, 0, 0, np.exp(1j * float(params[0]))],
+                              qubits[1])
         elif name == 'csx':
-            self._sim.mcmtrx(operation['qubits'][0:1], [(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2], operation['qubits'][1])
+            self._sim.mcmtrx(qubits[0:1],
+                              [(1+1j)/2, (1-1j)/2, (1-1j)/2, (1+1j)/2],
+                              qubits[1])
         elif name == 'dcx':
-            self._sim.mcx(operation['qubits'][0:1], operation['qubits'][1])
-            self._sim.mcx(operation['qubits'][1:2], operation['qubits'][0])
+            self._sim.mcx(qubits[0:1], qubits[1])
+            self._sim.mcx(qubits[1:2], qubits[0])
         elif name == 'ccx':
-            self._sim.mcx(operation['qubits'][0:2], operation['qubits'][2])
+            self._sim.mcx(qubits[0:2], qubits[2])
         elif name == 'ccz':
-            self._sim.mcz(operation['qubits'][0:2], operation['qubits'][2])
+            self._sim.mcz(qubits[0:2], qubits[2])
         elif name == 'swap':
-            self._sim.swap(operation['qubits'][0], operation['qubits'][1])
+            self._sim.swap(qubits[0], qubits[1])
         elif name == 'iswap':
-            self._sim.iswap(operation['qubits'][0], operation['qubits'][1])
+            self._sim.iswap(qubits[0], qubits[1])
+        elif name in ('iswap_dg', 'adjiswap'):
+            self._sim.adjiswap(qubits[0], qubits[1])
         elif name == 'cswap':
-            self._sim.cswap(operation['qubits'][0:1], operation['qubits'][1], operation['qubits'][2])
+            self._sim.cswap(qubits[0:1], qubits[1], qubits[2])
         elif name == 'reset':
-            qubits = operation['qubits']
-            for qubit in qubits:
-                if self._sim.m(qubit):
-                    self._sim.x(qubit)
+            for q in qubits:
+                if self._sim.m(q):
+                    self._sim.x(q)
         elif name == 'measure':
-            qubits = operation['qubits']
             clbits = operation['memory']
-            cregbits = operation['register'] if hasattr(operation, 'register') else len(operation['qubits']) * [-1]
-
-            self._sample_qubits += qubits
-            self._sample_clbits += clbits
-            self._sample_cregbits += cregbits
+            self._sample_qubits   += qubits
+            self._sample_clbits   += clbits
+            self._sample_cregbits += [-1] * len(qubits)
 
             if not self._sample_measure:
-                for index in range(len(qubits)):
-                    qubit_outcome = self._sim.m(qubits[index])
-
-                    clbit = clbits[index]
-                    clmask = 1 << clbit
-                    self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
-
-                    cregbit = cregbits[index]
-                    if cregbit < 0:
-                        cregbit = clbit
-
-                    regbit = 1 << cregbit
-                    self._classical_register = (self._classical_register & (~regbit)) | (qubit_outcome << cregbit)
-
+                for idx in range(len(qubits)):
+                    outcome = self._sim.m(qubits[idx])
+                    clbit   = clbits[idx]
+                    clmask  = 1 << clbit
+                    self._classical_memory = (
+                        (self._classical_memory & ~clmask) | (outcome << clbit)
+                    )
+                    self._classical_register = (
+                        (self._classical_register & ~clmask) | (outcome << clbit)
+                    )
         elif name == 'bfunc':
-            mask = int(operation['mask'], 16)
-            relation = operation.relation
-            val = int(operation['val'], 16)
-
-            cregbit = operation['register']
-            cmembit = operation['memory'] if hasattr(operation, 'memory') else None
-
+            mask     = int(operation.get('mask', '0x0'), 16)
+            relation = operation.get('relation', '==')
+            val      = int(operation.get('val', '0x0'), 16)
+            cregbit  = operation.get('register', 0)
+            cmembit  = operation.get('memory_bit', None)
             compared = (self._classical_register & mask) - val
-
-            if relation == '==':
-                outcome = (compared == 0)
-            elif relation == '!=':
-                outcome = (compared != 0)
-            elif relation == '<':
-                outcome = (compared < 0)
-            elif relation == '<=':
-                outcome = (compared <= 0)
-            elif relation == '>':
-                outcome = (compared > 0)
-            elif relation == '>=':
-                outcome = (compared >= 0)
-            else:
-                raise QrackError('Invalid boolean function relation.')
-
-            # Store outcome in register and optionally memory slot
+            outcome = {
+                '==': compared == 0, '!=': compared != 0,
+                '<':  compared <  0, '<=': compared <= 0,
+                '>':  compared >  0, '>=': compared >= 0,
+            }.get(relation)
+            if outcome is None:
+                raise QrackError("Invalid boolean function relation: %s" % relation)
             regbit = 1 << cregbit
-            self._classical_register = \
-                (self._classical_register & (~regbit)) | (int(outcome) << cregbit)
+            self._classical_register = (
+                (self._classical_register & ~regbit) | (int(outcome) << cregbit)
+            )
             if cmembit is not None:
                 membit = 1 << cmembit
-                self._classical_memory = \
-                    (self._classical_memory & (~membit)) | (int(outcome) << cmembit)
+                self._classical_memory = (
+                    (self._classical_memory & ~membit) | (int(outcome) << cmembit)
+                )
         else:
-            backend = self.name()
-            err_msg = '{0} encountered unrecognized operation "{1}"'
-            raise QrackError(err_msg.format(backend, operation))
+            raise QrackError(
+                '%s encountered unrecognized operation "%s"' % (self.name, name)
+            )
 
     def _add_sample_measure(self, sample_qubits, sample_clbits, num_samples):
-        """Generate data samples from current statevector.
-        Taken almost straight from the terra source code.
-        Args:
-            measure_params (list): List of (qubit, clbit) values for
-                                   measure instructions to sample.
-            num_samples (int): The number of data samples to generate.
-        Returns:
-            list: A list of data values in hex format.
-        """
-        # Get unique qubits that are actually measured
-        measure_qubit = [qubit for qubit in sample_qubits]
-        measure_clbit = [clbit for clbit in sample_clbits]
+        measure_qubit = list(sample_qubits)
+        measure_clbit = list(sample_clbits)
 
-        # Sample and convert to bit-strings
-        data = []
         if num_samples == 1:
             sample = self._sim.m_all()
             result = 0
-            for index in range(len(measure_qubit)):
-                qubit = measure_qubit[index]
-                qubit_outcome = ((sample >> qubit) & 1)
-                result |= qubit_outcome << index
+            for idx in range(len(measure_qubit)):
+                qubit_outcome = (sample >> measure_qubit[idx]) & 1
+                result |= qubit_outcome << idx
             measure_results = [result]
         else:
             measure_results = self._sim.measure_shots(measure_qubit, num_samples)
 
+        data = []
         for sample in measure_results:
-            for index in range(len(measure_qubit)):
-                qubit_outcome = ((sample >> index) & 1)
-                clbit = measure_clbit[index]
+            for idx in range(len(measure_qubit)):
+                qubit_outcome = (sample >> idx) & 1
+                clbit  = measure_clbit[idx]
                 clmask = 1 << clbit
-                self._classical_memory = (self._classical_memory & (~clmask)) | (qubit_outcome << clbit)
-
+                self._classical_memory = (
+                    (self._classical_memory & ~clmask) | (qubit_outcome << clbit)
+                )
             data.append(bin(self._classical_memory)[2:].zfill(self._number_of_qubits))
 
         return data
-
-    @staticmethod
-    def name():
-        return 'qasm_simulator'
