@@ -82,8 +82,10 @@ class AceQasmSimulator(BackendV2):
         'long_range_columns': 4,
         'long_range_rows': 4,
         'is_transpose': False,
-        'noise_model_short': 0.125,
-        'noise_model_long': 0.25,
+        'noise_model_short': 0.0,
+        'noise_model_long': 0.5,
+        'history_window': 0,
+        'is_torus': True,
     }
 
     # Gates supported by QrackAceBackend
@@ -129,18 +131,21 @@ class AceQasmSimulator(BackendV2):
         # Build coupling map and noise model from a dummy backend instance
         long_range_columns = self._options.get('long_range_columns')
         long_range_rows = self._options.get('long_range_rows')
-        noise_model_short = self._options.get('noise_model_short')
+        # noise_model_short = self._options.get('noise_model_short')
         noise_model_long = self._options.get('noise_model_long')
+        history_window = self._options.get('history_window')
+        is_torus = self._options.get('is_torus')
 
         dummy = QrackAceBackend(
             self._number_of_qubits,
             long_range_columns=long_range_columns,
             long_range_rows=long_range_rows,
+            history_window=history_window,
+            is_torus=is_torus,
         )
         self._coupling_map = dummy.get_logical_coupling_map()
         self._noise_model = dummy.create_noise_model(
-            x=noise_model_short,
-            y=noise_model_long,
+            x=noise_model_long,
         )
         dummy = None
 
@@ -183,8 +188,6 @@ class AceQasmSimulator(BackendV2):
             for a, b in self._coupling_map:
                 boundary.add(a)
                 boundary.add(b)
-        # error hint from noise model short-range value
-        e1 = self._options.get('noise_model_short') or 0.0
 
         def _1q_props(err=0.0):
             return {
@@ -192,22 +195,22 @@ class AceQasmSimulator(BackendV2):
                 for q in range(n)
             }
 
-        tgt.add_instruction(IGate(),              _1q_props())
-        tgt.add_instruction(UGate(theta, phi, lam), _1q_props(e1))
-        tgt.add_instruction(U3Gate(theta, phi, lam), _1q_props(e1))
-        tgt.add_instruction(U2Gate(phi, lam),     _1q_props(e1))
-        tgt.add_instruction(U1Gate(lam),          _1q_props(e1))
-        tgt.add_instruction(RXGate(theta),        _1q_props(e1))
-        tgt.add_instruction(RYGate(theta),        _1q_props(e1))
-        tgt.add_instruction(RZGate(theta),        _1q_props(e1))
-        tgt.add_instruction(HGate(),              _1q_props(e1))
-        tgt.add_instruction(XGate(),              _1q_props(e1))
-        tgt.add_instruction(YGate(),              _1q_props(e1))
-        tgt.add_instruction(ZGate(),              _1q_props(e1))
-        tgt.add_instruction(SGate(),              _1q_props(e1))
-        tgt.add_instruction(SdgGate(),            _1q_props(e1))
-        tgt.add_instruction(TGate(),              _1q_props(e1))
-        tgt.add_instruction(TdgGate(),            _1q_props(e1))
+        tgt.add_instruction(IGate(),                 _1q_props())
+        tgt.add_instruction(UGate(theta, phi, lam),  _1q_props())
+        tgt.add_instruction(U3Gate(theta, phi, lam), _1q_props())
+        tgt.add_instruction(U2Gate(phi, lam),        _1q_props())
+        tgt.add_instruction(U1Gate(lam),             _1q_props())
+        tgt.add_instruction(RXGate(theta),           _1q_props())
+        tgt.add_instruction(RYGate(theta),           _1q_props())
+        tgt.add_instruction(RZGate(theta),           _1q_props())
+        tgt.add_instruction(HGate(),                 _1q_props())
+        tgt.add_instruction(XGate(),                 _1q_props())
+        tgt.add_instruction(YGate(),                 _1q_props())
+        tgt.add_instruction(ZGate(),                 _1q_props())
+        tgt.add_instruction(SGate(),                 _1q_props())
+        tgt.add_instruction(SdgGate(),               _1q_props())
+        tgt.add_instruction(TGate(),                 _1q_props())
+        tgt.add_instruction(TdgGate(),               _1q_props())
 
         # --- two-qubit gates: coupled pairs ---
         e2 = self._options.get('noise_model_long') or 0.0
