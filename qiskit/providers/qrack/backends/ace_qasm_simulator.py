@@ -91,7 +91,7 @@ class AceQasmSimulator(BackendV2):
     # Gates supported by QrackAceBackend
     BASIS_GATES = [
         'id', 'u', 'rx', 'ry', 'rz',
-        'h', 'x', 'y', 'z', 's', 'sdg', 't', 'tdg',
+        'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 't', 'tdg',
         'cx', 'cy', 'cz', 'swap', 'iswap', 'reset', 'measure'
     ]
 
@@ -485,6 +485,10 @@ class AceQasmSimulator(BackendV2):
             self._sim.s(qubits[0])
         elif name == 'sdg':
             self._sim.adjs(qubits[0])
+        elif name == 'sx':
+            self._sim.sx(qubits[0])
+        elif name == 'sxdg':
+            self._sim.adjsx(qubits[0])
         elif name == 't':
             self._sim.t(qubits[0])
         elif name == 'tdg':
