@@ -78,7 +78,7 @@ class AceQasmSimulator(BackendV2):
         'is_gpu': True,
         'is_host_pointer': False,
         'noise': 0,
-        'sdrp': 0.03,
+        'sdrp': 0.0,
         'long_range_columns': 4,
         'long_range_rows': 4,
         'is_transpose': False,
@@ -124,6 +124,7 @@ class AceQasmSimulator(BackendV2):
             self._options.update_options(**fields)
 
         self._number_of_qubits = self._options.get('n_qubits')
+        self._sdrp  = self._options.get('sdrp', 0.0)
         self._coupling_map = None
         self._noise_model = None
         self._target = None
@@ -143,6 +144,8 @@ class AceQasmSimulator(BackendV2):
             history_window=history_window,
             is_torus=is_torus,
         )
+        if self._sdrp > 0.0:
+            dummy.set_sdrp(self._sdrp)
         self._coupling_map = dummy.get_logical_coupling_map()
         self._noise_model = dummy.create_noise_model(
             x=noise_model_long,
@@ -259,7 +262,7 @@ class AceQasmSimulator(BackendV2):
         }
 
         self._shots = opts.get('shots', 1024)
-        self._sdrp  = opts.get('sdrp', 0.03)
+        self._sdrp  = opts.get('sdrp', 0.0)
 
         job_id = str(uuid.uuid4())
         job = QrackJob(
@@ -384,6 +387,8 @@ class AceQasmSimulator(BackendV2):
 
         if boundary_start > 1:
             self._sim = QrackAceBackend(self._number_of_qubits, **options)
+            if self._sdrp > 0.0:
+                self._sim.set_sdrp(self._sdrp)
             self._classical_memory   = 0
             self._classical_register = 0
             for op in instructions[:boundary_start]:
@@ -396,6 +401,8 @@ class AceQasmSimulator(BackendV2):
         for _ in range(shotLoopMax):
             if preamble_sim is None:
                 self._sim = QrackAceBackend(self._number_of_qubits, **options)
+                if self._sdrp > 0.0:
+                    self._sim.set_sdrp(self._sdrp)
                 self._classical_memory   = 0
                 self._classical_register = 0
             else:
