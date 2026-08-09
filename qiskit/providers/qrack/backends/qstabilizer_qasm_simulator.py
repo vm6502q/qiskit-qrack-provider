@@ -61,6 +61,7 @@ class QStabilizerQasmSimulator(BackendV2):
     """
 
     DEFAULT_OPTIONS = {
+        'method': 'stabilizer',
         "n_qubits": 32,
         "shots": 1024,
     }
