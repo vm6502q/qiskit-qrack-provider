@@ -12,3 +12,4 @@
 
 from .qasm_simulator import QasmSimulator
 from .ace_qasm_simulator import AceQasmSimulator
+from .qstabilizer_qasm_simulator import QStabilizerQasmSimulator

@@ -77,6 +77,7 @@ class AceQasmSimulator(BackendV2):
         'is_near_clifford_cpu': False,
         'is_gpu': True,
         'is_host_pointer': False,
+        'is_1d_chain': False,
         'noise': 0,
         'sdrp': 0.0,
         'long_range_columns': 4,
@@ -249,16 +250,17 @@ class AceQasmSimulator(BackendV2):
         opts.update(options)
 
         qrack_options = {
-            'is_schmidt_decompose_multi': opts.get('is_schmidt_decompose_multi'),
-            'is_stabilizer_hybrid':       opts.get('is_stabilizer_hybrid'),
-            'is_binary_decision_tree':    opts.get('is_binary_decision_tree'),
-            'is_gpu':                     opts.get('is_gpu'),
+            'is_schmidt_decompose_multi':      opts.get('is_schmidt_decompose_multi'),
+            'is_stabilizer_hybrid':            opts.get('is_stabilizer_hybrid'),
+            'is_binary_decision_tree':         opts.get('is_binary_decision_tree'),
+            'is_gpu':                          opts.get('is_gpu'),
             'is_near_clifford_tableau_writer': opts.get('is_near_clifford_cpu'),
-            'is_host_pointer':            opts.get('is_host_pointer'),
-            'noise':                      opts.get('noise'),
-            'long_range_columns':         opts.get('long_range_columns'),
-            'long_range_rows':            opts.get('long_range_rows'),
-            'is_transpose':               opts.get('is_transpose'),
+            'is_host_pointer':                 opts.get('is_host_pointer'),
+            'noise':                           opts.get('noise'),
+            'long_range_columns':              opts.get('long_range_columns'),
+            'long_range_rows':                 opts.get('long_range_rows'),
+            'is_transpose':                    opts.get('is_transpose'),
+            'is_1d_chain':                     opts.get('is_1d_chain'),
         }
 
         self._shots = opts.get('shots', 1024)
