@@ -87,6 +87,7 @@ class AceQasmSimulator(BackendV2):
         'noise_model_long': 0.5,
         'history_window': 0,
         'is_torus': True,
+        'recursion_depth': 2,
     }
 
     # Gates supported by QrackAceBackend
@@ -137,6 +138,7 @@ class AceQasmSimulator(BackendV2):
         noise_model_long = self._options.get('noise_model_long')
         history_window = self._options.get('history_window')
         is_torus = self._options.get('is_torus')
+        recusrion_depth = self._options.get('recursion_depth')
 
         dummy = QrackAceBackend(
             self._number_of_qubits,
@@ -144,6 +146,7 @@ class AceQasmSimulator(BackendV2):
             long_range_rows=long_range_rows,
             history_window=history_window,
             is_torus=is_torus,
+            recursion_depth=recursion_depth,
         )
         if self._sdrp > 0.0:
             dummy.set_sdrp(self._sdrp)
@@ -260,7 +263,9 @@ class AceQasmSimulator(BackendV2):
             'long_range_columns':              opts.get('long_range_columns'),
             'long_range_rows':                 opts.get('long_range_rows'),
             'is_transpose':                    opts.get('is_transpose'),
+            'is_torus':                        opts.get('is_torus'),
             'is_1d_chain':                     opts.get('is_1d_chain'),
+            'recursion_depth':                 opts.get('recursion_depth'),
         }
 
         self._shots = opts.get('shots', 1024)
