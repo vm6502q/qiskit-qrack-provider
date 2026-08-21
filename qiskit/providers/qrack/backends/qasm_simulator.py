@@ -75,7 +75,7 @@ class QasmSimulator(BackendV2):
         # This isn't MPS, but Qiskit won't let us allocate many qubits otherwise.
         'method': 'matrix_product_state',
         'shots': 1024,
-        'is_schmidt_decompose_multi': True,
+        'is_schmidt_decompose_multi': False,
         'is_stabilizer_hybrid': False,
         'is_binary_decision_tree': False,
         'is_approx_near_clifford': False,

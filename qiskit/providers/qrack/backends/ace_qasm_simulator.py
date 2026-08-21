@@ -71,7 +71,7 @@ class AceQasmSimulator(BackendV2):
         'method': 'matrix_product_state',
         'n_qubits': 64,
         'shots': 1024,
-        'is_schmidt_decompose_multi': True,
+        'is_schmidt_decompose_multi': False,
         'is_stabilizer_hybrid': False,
         'is_binary_decision_tree': False,
         'is_near_clifford_cpu': False,

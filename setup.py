@@ -11,7 +11,7 @@ requirements = [
 ]
 
 # Handle version.
-VERSION = "1.9.0"
+VERSION = "1.10.0"
 
 # Read long description from README.
 README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)),
