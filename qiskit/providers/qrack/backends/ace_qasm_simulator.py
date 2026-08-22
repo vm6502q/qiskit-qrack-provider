@@ -83,8 +83,8 @@ class AceQasmSimulator(BackendV2):
         'long_range_columns': 4,
         'long_range_rows': 4,
         'is_transpose': False,
-        'noise_model_short': 0.0,
-        'noise_model_long': 0.5,
+        'noise_model_infidelty': 0.5,
+        'noise_model_damping': 0.5,
         'history_window': 0,
         'is_torus': True,
     }
@@ -133,8 +133,8 @@ class AceQasmSimulator(BackendV2):
         # Build coupling map and noise model from a dummy backend instance
         long_range_columns = self._options.get('long_range_columns')
         long_range_rows = self._options.get('long_range_rows')
-        # noise_model_short = self._options.get('noise_model_short')
-        noise_model_long = self._options.get('noise_model_long')
+        noise_model_infidelty = self._options.get('noise_model_infidelty')
+        noise_model_damping = self._options.get('noise_model_damping')
         history_window = self._options.get('history_window')
         is_torus = self._options.get('is_torus')
 
@@ -149,7 +149,8 @@ class AceQasmSimulator(BackendV2):
             dummy.set_sdrp(self._sdrp)
         self._coupling_map = dummy.get_logical_coupling_map()
         self._noise_model = dummy.create_noise_model(
-            x=noise_model_long,
+            x=noise_model_infidelty,
+            y=noise_model_damping,
         )
         dummy = None
 
@@ -217,7 +218,7 @@ class AceQasmSimulator(BackendV2):
         tgt.add_instruction(TdgGate(),               _1q_props())
 
         # --- two-qubit gates: coupled pairs ---
-        e2 = self._options.get('noise_model_long') or 0.0
+        e2 = self._options.get('noise_model_infidelity') or 0.0
         if self._coupling_map:
             pair_props = {
                 (a, b): InstructionProperties(error=e2)
