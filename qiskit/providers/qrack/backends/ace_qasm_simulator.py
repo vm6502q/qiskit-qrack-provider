@@ -78,6 +78,8 @@ class AceQasmSimulator(BackendV2):
         'is_gpu': True,
         'is_host_pointer': False,
         'is_1d_chain': False,
+        'is_error_detection': True,
+        'is_boundary_repetition_code': False,
         'noise': 0,
         'sdrp': 0.0,
         'long_range_columns': 4,
@@ -262,6 +264,8 @@ class AceQasmSimulator(BackendV2):
             'long_range_rows':                 opts.get('long_range_rows'),
             'is_transpose':                    opts.get('is_transpose'),
             'is_1d_chain':                     opts.get('is_1d_chain'),
+            'is_error_detection':              opts.get('is_error_detection'),
+            'is_boundary_repetition_code':     opts.get('is_boundary_repetition_code'),
         }
 
         self._shots = opts.get('shots', 1024)
