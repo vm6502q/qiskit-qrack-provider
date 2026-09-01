@@ -89,6 +89,8 @@ class AceQasmSimulator(BackendV2):
         'noise_model_damping': 0.5,
         'history_window': 0,
         'is_torus': True,
+        'patch_device_ids': [-1],
+        'crossbar_device_id': -1,
     }
 
     # Gates supported by QrackAceBackend
@@ -264,12 +266,15 @@ class AceQasmSimulator(BackendV2):
             'long_range_rows':                 opts.get('long_range_rows'),
             'is_transpose':                    opts.get('is_transpose'),
             'is_1d_chain':                     opts.get('is_1d_chain'),
+            'is_torus':                        opts.get('is_torus'),
             'is_error_detection':              opts.get('is_error_detection'),
             'is_boundary_repetition_code':     opts.get('is_boundary_repetition_code'),
         }
 
         self._shots = opts.get('shots', 1024)
         self._sdrp  = opts.get('sdrp', 0.0)
+        self._patch_device_ids = opts.get('patch_device_ids', [-1])
+        self._crossbar_device_id = opts.get('crossbar_device_id', -1)
 
         job_id = str(uuid.uuid4())
         job = QrackJob(
@@ -303,6 +308,15 @@ class AceQasmSimulator(BackendV2):
             status='COMPLETED',
             header={},
         )
+
+    def _set_devices(self):
+        if self._crossbar_device_id > -1:
+            self._sim.sim[self._sim._boundary_sim_id].set_device(self._crossbar_device_id)
+        lid = len(self._patch_device_ids)
+        for i, sim in enumerate(self._sim.sim):
+            did = self._patch_device_ids[i % lid]
+            if did > -1:
+               sim.set_device(did)
 
     def _run_experiment(self, experiment, **options):
         """Run a single QuantumCircuit and return an ExperimentResult."""
@@ -394,6 +408,7 @@ class AceQasmSimulator(BackendV2):
 
         if boundary_start > 1:
             self._sim = QrackAceBackend(self._number_of_qubits, **options)
+            self._set_devices()
             if self._sdrp > 0.0:
                 self._sim.set_sdrp(self._sdrp)
             self._classical_memory   = 0
@@ -408,6 +423,7 @@ class AceQasmSimulator(BackendV2):
         for _ in range(shotLoopMax):
             if preamble_sim is None:
                 self._sim = QrackAceBackend(self._number_of_qubits, **options)
+                self._set_devices()
                 if self._sdrp > 0.0:
                     self._sim.set_sdrp(self._sdrp)
                 self._classical_memory   = 0
