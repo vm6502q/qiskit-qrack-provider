@@ -69,7 +69,7 @@ class AceQasmSimulator(BackendV2):
     DEFAULT_OPTIONS = {
         # This isn't MPS, but Qiskit won't let us allocate many qubits otherwise.
         'method': 'matrix_product_state',
-        'n_qubits': 108,
+        'n_qubits': 208,
         'shots': 1024,
         'is_schmidt_decompose_multi': False,
         'is_stabilizer_hybrid': False,
@@ -82,8 +82,8 @@ class AceQasmSimulator(BackendV2):
         'is_boundary_repetition_code': False,
         'noise': 0,
         'sdrp': 0.0,
-        'long_range_columns': 26,
-        'long_range_rows': 26,
+        'long_range_columns': 25,
+        'long_range_rows': 25,
         'is_transpose': False,
         'noise_model_infidelty': 0.5,
         'noise_model_damping': 0.5,
