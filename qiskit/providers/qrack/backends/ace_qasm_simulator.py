@@ -87,7 +87,6 @@ class AceQasmSimulator(BackendV2):
         'is_transpose': False,
         'noise_model_infidelty': 0.5,
         'noise_model_damping': 0.5,
-        'history_window': 0,
         'is_torus': True,
         'patch_device_ids': [-1],
         'crossbar_device_id': -1,
@@ -139,14 +138,12 @@ class AceQasmSimulator(BackendV2):
         long_range_rows = self._options.get('long_range_rows')
         noise_model_infidelty = self._options.get('noise_model_infidelty')
         noise_model_damping = self._options.get('noise_model_damping')
-        history_window = self._options.get('history_window')
         is_torus = self._options.get('is_torus')
 
         dummy = QrackAceBackend(
             self._number_of_qubits,
             long_range_columns=long_range_columns,
             long_range_rows=long_range_rows,
-            history_window=history_window,
             is_torus=is_torus,
         )
         if self._sdrp > 0.0:
