@@ -45,6 +45,7 @@ from qiskit.circuit.library import (
     RXGate, RYGate, RZGate,
     SGate, SdgGate, TGate, TdgGate,
     CXGate, CYGate, CZGate, SwapGate, iSwapGate,
+    CCXGate, CCZGate, CSwapGate,
     Measure, Reset
 )
 
@@ -96,7 +97,8 @@ class AceQasmSimulator(BackendV2):
     BASIS_GATES = [
         'id', 'u', 'rx', 'ry', 'rz',
         'h', 'x', 'y', 'z', 's', 'sdg', 'sx', 'sxdg', 't', 'tdg',
-        'cx', 'cy', 'cz', 'swap', 'iswap', 'reset', 'measure'
+        'cx', 'cy', 'cz', 'swap', 'iswap', 'reset', 'measure',
+        'ccx', 'ccz', 'mcx', 'mcy', 'mcz', 'cswap'
     ]
 
     max_circuits = None
@@ -153,6 +155,20 @@ class AceQasmSimulator(BackendV2):
             x=noise_model_infidelty,
             y=noise_model_damping,
         )
+        # For the new multi-controlled gates (mcx/mcy/mcz beyond 1 control,
+        # ccx, ccz, cswap): these are only valid intra-patch, among qubits
+        # that are ALL bulk (never boundary). Per Dan's criterion, a qubit
+        # is bulk-in-a-single-patch iff its unpacked hardware-qubit list has
+        # length 1, and it's "same patch" as another bulk qubit iff their
+        # (length-1) unpacked sim ids match. Computed here, from the same
+        # dummy instance, before it's discarded -- self._coupling_map above
+        # is NOT sufficient for this (it includes boundary-crossing pairs,
+        # which these gates must reject).
+        self._bulk_by_patch = {}
+        for q in range(self._number_of_qubits):
+            hq = dummy._unpack(q)
+            if len(hq) == 1:
+                self._bulk_by_patch.setdefault(hq[0][0], []).append(q)
         dummy = None
 
     @classmethod
@@ -218,17 +234,19 @@ class AceQasmSimulator(BackendV2):
         tgt.add_instruction(TGate(),                 _1q_props())
         tgt.add_instruction(TdgGate(),               _1q_props())
 
+        bulk = self._bulk_by_patch.values()
+
         # --- two-qubit gates: coupled pairs ---
         e2 = self._options.get('noise_model_infidelity') or 0.0
         if self._coupling_map:
             pair_props = {
-                (a, b): InstructionProperties(error=e2)
+                (a, b): InstructionProperties(error=0 if (a in bulk) and (b in bulk) else e2)
                 for a, b in self._coupling_map
             }
         else:
             # fully connected fallback
             pair_props = {
-                (a, b): InstructionProperties(error=e2)
+                (a, b): InstructionProperties(error=0)
                 for a in range(n) for b in range(n) if a != b
             }
 
@@ -237,6 +255,40 @@ class AceQasmSimulator(BackendV2):
         tgt.add_instruction(CZGate(),   pair_props)
         tgt.add_instruction(SwapGate(), pair_props)
         tgt.add_instruction(iSwapGate(), pair_props)
+
+        # --- 3-qubit gates: intra-patch, all-bulk triples only ---
+        # ccx/ccz/cswap (and, by extension, mcx/mcy/mcz beyond a single
+        # control) are only valid when every involved qubit is bulk and
+        # shares the same patch -- see QrackAceBackend.mcx/cswap, which
+        # raise otherwise. self._bulk_by_patch was computed in __init__
+        # from the same criterion.
+        #
+        # CCXGate/CCZGate and CSwapGate do NOT share a qubit-ordering
+        # convention -- verified directly (CCXGate().definition puts the
+        # target on qubit 2, with qubits 0-1 as the two controls; CSwapGate
+        # puts the control on qubit 0, with qubits 1-2 as the swapped
+        # pair) -- so they need separately-ordered InstructionProperties
+        # dicts, not one tuple set reused for both.
+        # ccx_props = {}
+        # cswap_props = {}
+        # for qubits_here in bulk:
+        #     for pivot in qubits_here:
+        #         others = [q for q in qubits_here if q != pivot]
+        #         for i in range(len(others)):
+        #             for j in range(len(others)):
+        #                 if i == j:
+        #                     continue
+        #                 # pivot as CCX/CCZ's target, others as its two
+        #                 # (interchangeable) controls:
+        #                 ccx_props[(others[i], others[j], pivot)] = InstructionProperties(error=0)
+        #                 # pivot as CSwap's control, others as its two
+        #                 # (interchangeable) swapped targets:
+        #                 cswap_props[(pivot, others[i], others[j])] = InstructionProperties(error=0)
+        # if ccx_props:
+        #     tgt.add_instruction(CCXGate(), ccx_props)
+        #     tgt.add_instruction(CCZGate(), ccx_props)
+        # if cswap_props:
+        #     tgt.add_instruction(CSwapGate(), cswap_props)
 
         # --- measure / reset: all qubits ---
         tgt.add_instruction(Measure(), {(q,): InstructionProperties() for q in range(n)})
@@ -529,6 +581,19 @@ class AceQasmSimulator(BackendV2):
         elif name == 'dcx':
             self._sim.cx(qubits[0], qubits[1])
             self._sim.cx(qubits[1], qubits[0])
+        elif name in ('ccx', 'mcx'):
+            # Both dispatch to QrackAceBackend.mcx(), which already
+            # enforces the same-patch/all-bulk restriction itself (and
+            # transparently falls back to ordinary cx() for a single
+            # control, which IS allowed across a boundary) -- no need to
+            # duplicate that check here.
+            self._sim.mcx(qubits[:-1], qubits[-1])
+        elif name == 'mcy':
+            self._sim.mcy(qubits[:-1], qubits[-1])
+        elif name in ('ccz', 'mcz'):
+            self._sim.mcz(qubits[:-1], qubits[-1])
+        elif name == 'cswap':
+            self._sim.cswap(qubits[:-2], qubits[-2], qubits[-1])
         elif name == 'swap':
             self._sim.swap(qubits[0], qubits[1])
         elif name == 'iswap':
