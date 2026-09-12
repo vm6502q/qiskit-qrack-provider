@@ -143,7 +143,7 @@ class AceQasmSimulator(BackendV2):
             dummy.set_sdrp(self._sdrp)
         self._coupling_map = dummy.get_logical_coupling_map()
         self._noise_model = dummy.create_noise_model(
-            x=noise_model_infidelty,
+            x=noise_model_infidelty or 0.0,
             y=noise_model_damping,
         )
         # Target construction now lives on QrackAceBackend itself (so it's
