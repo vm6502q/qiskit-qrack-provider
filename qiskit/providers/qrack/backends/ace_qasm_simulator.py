@@ -14,7 +14,8 @@
 # Updated for Qiskit v2 (2.x) compatibility:
 #   - BackendV2.__init__ signature: name/description as kwargs
 #   - CircuitInstruction API: .operation / .qubits / .clbits (not tuple indexing)
-#   - Target built via add_instruction + InstructionProperties (not from_configuration)
+#   - Target built via QrackAceBackend.get_target() (add_instruction +
+#     InstructionProperties under the hood there, not from_configuration)
 #   - Result: qobj_id removed
 #   - name is a str attribute, not a @staticmethod
 #   - ExperimentResult uses qiskit.result.models.ExperimentResult/ExperimentResultData
@@ -35,19 +36,9 @@ from qiskit.providers.backend import BackendV2
 from qiskit.result import Result
 from qiskit.result.models import ExperimentResult, ExperimentResultData
 from qiskit.providers.options import Options
-from qiskit.transpiler import Target, CouplingMap, InstructionProperties
+from qiskit.transpiler import CouplingMap
 from qiskit.circuit.quantumcircuit import QuantumCircuit
-from qiskit.circuit import Clbit, Parameter
-
-from qiskit.circuit.library import (
-    IGate, UGate, U3Gate, U2Gate, U1Gate,
-    XGate, YGate, ZGate, HGate,
-    RXGate, RYGate, RZGate,
-    SGate, SdgGate, TGate, TdgGate,
-    CXGate, CYGate, CZGate, SwapGate, iSwapGate,
-    CCXGate, CCZGate, CSwapGate,
-    Measure, Reset
-)
+from qiskit.circuit import Clbit
 
 from qiskit_aer.noise import NoiseModel, depolarizing_error
 
@@ -155,20 +146,24 @@ class AceQasmSimulator(BackendV2):
             x=noise_model_infidelty,
             y=noise_model_damping,
         )
-        # For the new multi-controlled gates (mcx/mcy/mcz beyond 1 control,
-        # ccx, ccz, cswap): these are only valid intra-patch, among qubits
-        # that are ALL bulk (never boundary). Per Dan's criterion, a qubit
-        # is bulk-in-a-single-patch iff its unpacked hardware-qubit list has
-        # length 1, and it's "same patch" as another bulk qubit iff their
-        # (length-1) unpacked sim ids match. Computed here, from the same
-        # dummy instance, before it's discarded -- self._coupling_map above
-        # is NOT sufficient for this (it includes boundary-crossing pairs,
-        # which these gates must reject).
-        self._bulk_by_patch = {}
-        for q in range(self._number_of_qubits):
-            hq = dummy._unpack(q)
-            if len(hq) == 1:
-                self._bulk_by_patch.setdefault(hq[0][0], []).append(q)
+        # Target construction now lives on QrackAceBackend itself (so it's
+        # usable directly with plain qiskit.transpile(), without needing
+        # this wrapper at all) -- built here, eagerly, from the same dummy
+        # instance, rather than lazily duplicating the logic in the
+        # target property below.
+        #
+        # BUGFIX found while wiring this up: the error-rate value passed
+        # in previously read self._options.get('noise_model_infidelity')
+        # (correctly spelled), but DEFAULT_OPTIONS and every other read in
+        # this file use 'noise_model_infidelty' (missing the second "i").
+        # Those never matched, so the Target's 2-qubit error hint has
+        # always silently fallen back to 0.0 regardless of what a user
+        # configured. Using the actual stored key (noise_model_infidelty,
+        # already fetched above) now.
+        self._target = dummy.get_target(
+            description=self.description,
+            error_2q=(noise_model_infidelty or 0.0),
+        )
         dummy = None
 
     @classmethod
@@ -189,112 +184,6 @@ class AceQasmSimulator(BackendV2):
 
     @property
     def target(self):
-        if self._target is not None:
-            return self._target
-
-        # Build a proper Target with InstructionProperties so the transpiler
-        # understands the gate set, connectivity, and approximate error rates.
-        n = self._number_of_qubits
-        tgt = Target(num_qubits=n, description=self.description)
-
-        # Parameters for parameterised gates
-        theta = Parameter('theta')
-        phi   = Parameter('phi')
-        lam   = Parameter('lam')
-
-        # --- single-qubit gates: all qubits ---
-        all_qubits = {(q,): InstructionProperties() for q in range(n)}
-        # boundary qubits get a small depolarising penalty hint
-        boundary = set()
-        if self._coupling_map:
-            for a, b in self._coupling_map:
-                boundary.add(a)
-                boundary.add(b)
-
-        def _1q_props(err=0.0):
-            return {
-                (q,): InstructionProperties(error=(err if q in boundary else 0.0))
-                for q in range(n)
-            }
-
-        tgt.add_instruction(IGate(),                 _1q_props())
-        tgt.add_instruction(UGate(theta, phi, lam),  _1q_props())
-        tgt.add_instruction(U3Gate(theta, phi, lam), _1q_props())
-        tgt.add_instruction(U2Gate(phi, lam),        _1q_props())
-        tgt.add_instruction(U1Gate(lam),             _1q_props())
-        tgt.add_instruction(RXGate(theta),           _1q_props())
-        tgt.add_instruction(RYGate(theta),           _1q_props())
-        tgt.add_instruction(RZGate(theta),           _1q_props())
-        tgt.add_instruction(HGate(),                 _1q_props())
-        tgt.add_instruction(XGate(),                 _1q_props())
-        tgt.add_instruction(YGate(),                 _1q_props())
-        tgt.add_instruction(ZGate(),                 _1q_props())
-        tgt.add_instruction(SGate(),                 _1q_props())
-        tgt.add_instruction(SdgGate(),               _1q_props())
-        tgt.add_instruction(TGate(),                 _1q_props())
-        tgt.add_instruction(TdgGate(),               _1q_props())
-
-        bulk = self._bulk_by_patch.values()
-
-        # --- two-qubit gates: coupled pairs ---
-        e2 = self._options.get('noise_model_infidelity') or 0.0
-        if self._coupling_map:
-            pair_props = {
-                (a, b): InstructionProperties(error=0 if (a in bulk) and (b in bulk) else e2)
-                for a, b in self._coupling_map
-            }
-        else:
-            # fully connected fallback
-            pair_props = {
-                (a, b): InstructionProperties(error=0)
-                for a in range(n) for b in range(n) if a != b
-            }
-
-        tgt.add_instruction(CXGate(),   pair_props)
-        tgt.add_instruction(CYGate(),   pair_props)
-        tgt.add_instruction(CZGate(),   pair_props)
-        tgt.add_instruction(SwapGate(), pair_props)
-        tgt.add_instruction(iSwapGate(), pair_props)
-
-        # --- 3-qubit gates: intra-patch, all-bulk triples only ---
-        # ccx/ccz/cswap (and, by extension, mcx/mcy/mcz beyond a single
-        # control) are only valid when every involved qubit is bulk and
-        # shares the same patch -- see QrackAceBackend.mcx/cswap, which
-        # raise otherwise. self._bulk_by_patch was computed in __init__
-        # from the same criterion.
-        #
-        # CCXGate/CCZGate and CSwapGate do NOT share a qubit-ordering
-        # convention -- verified directly (CCXGate().definition puts the
-        # target on qubit 2, with qubits 0-1 as the two controls; CSwapGate
-        # puts the control on qubit 0, with qubits 1-2 as the swapped
-        # pair) -- so they need separately-ordered InstructionProperties
-        # dicts, not one tuple set reused for both.
-        # ccx_props = {}
-        # cswap_props = {}
-        # for qubits_here in bulk:
-        #     for pivot in qubits_here:
-        #         others = [q for q in qubits_here if q != pivot]
-        #         for i in range(len(others)):
-        #             for j in range(len(others)):
-        #                 if i == j:
-        #                     continue
-        #                 # pivot as CCX/CCZ's target, others as its two
-        #                 # (interchangeable) controls:
-        #                 ccx_props[(others[i], others[j], pivot)] = InstructionProperties(error=0)
-        #                 # pivot as CSwap's control, others as its two
-        #                 # (interchangeable) swapped targets:
-        #                 cswap_props[(pivot, others[i], others[j])] = InstructionProperties(error=0)
-        # if ccx_props:
-        #     tgt.add_instruction(CCXGate(), ccx_props)
-        #     tgt.add_instruction(CCZGate(), ccx_props)
-        # if cswap_props:
-        #     tgt.add_instruction(CSwapGate(), cswap_props)
-
-        # --- measure / reset: all qubits ---
-        tgt.add_instruction(Measure(), {(q,): InstructionProperties() for q in range(n)})
-        tgt.add_instruction(Reset(),   {(q,): InstructionProperties() for q in range(n)})
-
-        self._target = tgt
         return self._target
 
     def run(self, run_input, **options):
