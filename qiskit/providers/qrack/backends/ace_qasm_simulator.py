@@ -235,7 +235,7 @@ class AceQasmSimulator(BackendV2):
                     b_set = self._boundary_qb.get(b, {b})
                     d = len(a_set ^ b_set)
                     if d > 0:
-                        p = InstructionProperties(error=infidelty ** (d / (len(a_set) + len(b_set))))
+                        p = InstructionProperties(error=1 - ((1 - infidelty) ** (d / (len(a_set) + len(b_set)))))
                 if p is None:
                     p = InstructionProperties()
                 pair_props[(a, b)] = p
