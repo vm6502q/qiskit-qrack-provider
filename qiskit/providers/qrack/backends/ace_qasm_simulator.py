@@ -86,7 +86,7 @@ class AceQasmSimulator(BackendV2):
         'long_range_rows': 6, # Full wrap-around, 3 patches total
         'is_transpose': False,
         'noise_model_infidelty': 0.2,
-        'noise_model_damping': 0.5,
+        'noise_model_damping': 0.7,
         'is_torus': True,
         'patch_device_ids': [-1],
         'crossbar_device_id': -1,
@@ -154,9 +154,11 @@ class AceQasmSimulator(BackendV2):
             y=self._noise_model_damping,
         )
         self._boundary_qb = {}
+        self._bulk_sim_id = {}
         for q in range(self._number_of_qubits):
             hq = dummy._unpack(q)
             if len(hq) == 1:
+                self._bulk_sim_id[q] = hq[0][0]
                 continue
             s = set()
             for h in hq:
@@ -231,8 +233,8 @@ class AceQasmSimulator(BackendV2):
                     continue
                 p = None
                 if ((a in b_keys) or (b in b_keys)):
-                    a_set = self._boundary_qb.get(a, {a})
-                    b_set = self._boundary_qb.get(b, {b})
+                    a_set = self._boundary_qb.get(a, {self._bulk_sim_id.get(a, a)})
+                    b_set = self._boundary_qb.get(b, {self._bulk_sim_id.get(b, b)})
                     d = len(a_set ^ b_set)
                     if d > 0:
                         p = InstructionProperties(error=1 - ((1 - infidelty) ** (d / (len(a_set) + len(b_set)))))
