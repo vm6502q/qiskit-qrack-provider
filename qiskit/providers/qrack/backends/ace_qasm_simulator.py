@@ -85,7 +85,7 @@ class AceQasmSimulator(BackendV2):
         'long_range_columns': 2, # 3 columns per patch, with boundary
         'long_range_rows': 6, # Full wrap-around, 3 patches total
         'is_transpose': False,
-        'noise_model_infidelty': 0.5,
+        'noise_model_infidelty': 0.2,
         'noise_model_damping': 0.5,
         'is_torus': True,
         'patch_device_ids': [-1],
@@ -129,6 +129,8 @@ class AceQasmSimulator(BackendV2):
 
         self._number_of_qubits = self._options.get('n_qubits')
         self._sdrp  = self._options.get('sdrp', 0.0)
+        self._noise_model_infidelty = self._options.get('noise_model_infidelty')
+        self._noise_model_damping = self._options.get('noise_model_damping')
         self._coupling_map = None
         self._noise_model = None
         self._target = None
@@ -136,8 +138,6 @@ class AceQasmSimulator(BackendV2):
         # Build coupling map and noise model from a dummy backend instance
         long_range_columns = self._options.get('long_range_columns')
         long_range_rows = self._options.get('long_range_rows')
-        noise_model_infidelty = self._options.get('noise_model_infidelty')
-        noise_model_damping = self._options.get('noise_model_damping')
         is_torus = self._options.get('is_torus')
 
         dummy = QrackAceBackend(
@@ -150,9 +150,20 @@ class AceQasmSimulator(BackendV2):
             dummy.set_sdrp(self._sdrp)
         self._coupling_map = dummy.get_logical_coupling_map()
         self._noise_model = dummy.create_noise_model(
-            x=noise_model_infidelty,
-            y=noise_model_damping,
+            x=self._noise_model_infidelty,
+            y=self._noise_model_damping,
         )
+        self._boundary_qb = {}
+        for q in range(self._number_of_qubits):
+            hq = dummy._unpack(q)
+            if len(hq) == 1:
+                continue
+            s = set()
+            for h in hq:
+                s.add(h[0])
+            self._boundary_qb[q] = s
+        self._row_length = dummy._row_length
+        self._col_length = dummy._col_length
         dummy = None
 
     @classmethod
@@ -176,74 +187,77 @@ class AceQasmSimulator(BackendV2):
         if self._target is not None:
             return self._target
 
-        # Build a proper Target with InstructionProperties so the transpiler
-        # understands the gate set, connectivity, and approximate error rates.
         n = self._number_of_qubits
         tgt = Target(num_qubits=n, description=self.description)
 
         # Parameters for parameterised gates
-        theta = Parameter('theta')
-        phi   = Parameter('phi')
-        lam   = Parameter('lam')
+        theta = Parameter("theta")
+        phi = Parameter("phi")
+        lam = Parameter("lam")
 
         # --- single-qubit gates: all qubits ---
-        all_qubits = {(q,): InstructionProperties() for q in range(n)}
-        # boundary qubits get a small depolarising penalty hint
-        boundary = set()
-        if self._coupling_map:
-            for a, b in self._coupling_map:
-                boundary.add(a)
-                boundary.add(b)
-
-        def _1q_props(err=0.0):
+        def _1q_props():
             return {
-                (q,): InstructionProperties(error=(err if q in boundary else 0.0))
+                (q,): InstructionProperties()
                 for q in range(n)
             }
 
-        tgt.add_instruction(IGate(),                 _1q_props())
-        tgt.add_instruction(UGate(theta, phi, lam),  _1q_props())
+        tgt.add_instruction(IGate(), _1q_props())
+        tgt.add_instruction(UGate(theta, phi, lam), _1q_props())
         tgt.add_instruction(U3Gate(theta, phi, lam), _1q_props())
-        tgt.add_instruction(U2Gate(phi, lam),        _1q_props())
-        tgt.add_instruction(U1Gate(lam),             _1q_props())
-        tgt.add_instruction(RXGate(theta),           _1q_props())
-        tgt.add_instruction(RYGate(theta),           _1q_props())
-        tgt.add_instruction(RZGate(theta),           _1q_props())
-        tgt.add_instruction(HGate(),                 _1q_props())
-        tgt.add_instruction(XGate(),                 _1q_props())
-        tgt.add_instruction(YGate(),                 _1q_props())
-        tgt.add_instruction(ZGate(),                 _1q_props())
-        tgt.add_instruction(SGate(),                 _1q_props())
-        tgt.add_instruction(SdgGate(),               _1q_props())
-        tgt.add_instruction(TGate(),                 _1q_props())
-        tgt.add_instruction(TdgGate(),               _1q_props())
+        tgt.add_instruction(U2Gate(phi, lam), _1q_props())
+        tgt.add_instruction(U1Gate(lam), _1q_props())
+        tgt.add_instruction(RXGate(theta), _1q_props())
+        tgt.add_instruction(RYGate(theta), _1q_props())
+        tgt.add_instruction(RZGate(theta), _1q_props())
+        tgt.add_instruction(HGate(), _1q_props())
+        tgt.add_instruction(XGate(), _1q_props())
+        tgt.add_instruction(YGate(), _1q_props())
+        tgt.add_instruction(ZGate(), _1q_props())
+        tgt.add_instruction(SGate(), _1q_props())
+        tgt.add_instruction(SdgGate(), _1q_props())
+        tgt.add_instruction(TGate(), _1q_props())
+        tgt.add_instruction(TdgGate(), _1q_props())
 
-        # --- two-qubit gates: coupled pairs ---
-        e2 = self._options.get('noise_model_infidelity') or 0.0
-        if self._coupling_map:
-            pair_props = {
-                (a, b): InstructionProperties(error=e2)
-                for a, b in self._coupling_map
-            }
+        # --- two-qubit gates: coupled pairs (includes boundary-crossing
+        # pairs -- those are supported, via the noisy-coupler mechanism) ---
+        coupling_map = self.get_logical_coupling_map()
+        b_keys = self._boundary_qb.keys()
+        infidelty = self._noise_model_infidelty
+        if coupling_map:
+            pair_props = {}
+            for a, b in coupling_map:
+                if (a == b):
+                    continue
+                p = None
+                if ((a in b_keys) or (b in b_keys)):
+                    a_set = self._boundary_qb.get(a, {a})
+                    b_set = self._boundary_qb.get(b, {b})
+                    d = len(a_set ^ b_set)
+                    if d > 0:
+                        p = InstructionProperties(error=infidelty ** (d / (len(a_set) + len(b_set))))
+                if p is None:
+                    p = InstructionProperties()
+                pair_props[(a, b)] = p
         else:
-            # fully connected fallback
             pair_props = {
-                (a, b): InstructionProperties(error=e2)
-                for a in range(n) for b in range(n) if a != b
+                (a, b): InstructionProperties()
+                for a in range(n)
+                for b in range(n)
+                if a != b
             }
 
-        tgt.add_instruction(CXGate(),   pair_props)
-        tgt.add_instruction(CYGate(),   pair_props)
-        tgt.add_instruction(CZGate(),   pair_props)
+        tgt.add_instruction(CXGate(), pair_props)
+        tgt.add_instruction(CYGate(), pair_props)
+        tgt.add_instruction(CZGate(), pair_props)
         tgt.add_instruction(SwapGate(), pair_props)
         tgt.add_instruction(iSwapGate(), pair_props)
 
         # --- measure / reset: all qubits ---
         tgt.add_instruction(Measure(), {(q,): InstructionProperties() for q in range(n)})
-        tgt.add_instruction(Reset(),   {(q,): InstructionProperties() for q in range(n)})
+        tgt.add_instruction(Reset(), {(q,): InstructionProperties() for q in range(n)})
 
-        self._target = tgt
-        return self._target
+        return tgt
 
     def run(self, run_input, **options):
         """Run a QuantumCircuit (or list) on this backend."""
