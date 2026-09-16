@@ -85,8 +85,8 @@ class AceQasmSimulator(BackendV2):
         'long_range_columns': 2, # 3 columns per patch, with boundary
         'long_range_rows': 6, # Full wrap-around, 3 patches total
         'is_transpose': False,
-        'noise_model_infidelty': 0.2,
-        'noise_model_damping': 0.7,
+        'noise_model_infidelty': 0.25,
+        'noise_model_damping': 0.3,
         'is_torus': True,
         'patch_device_ids': [-1],
         'crossbar_device_id': -1,
@@ -131,6 +131,7 @@ class AceQasmSimulator(BackendV2):
         self._sdrp  = self._options.get('sdrp', 0.0)
         self._noise_model_infidelty = self._options.get('noise_model_infidelty')
         self._noise_model_damping = self._options.get('noise_model_damping')
+        self._is_error_detection = self._options.get('is_error_detection')
         self._coupling_map = None
         self._noise_model = None
         self._target = None
@@ -225,7 +226,9 @@ class AceQasmSimulator(BackendV2):
         # pairs -- those are supported, via the noisy-coupler mechanism) ---
         coupling_map = self.get_logical_coupling_map()
         b_keys = self._boundary_qb.keys()
-        infidelty = self._noise_model_infidelty
+        fidelty = self._noise_model_infidelty
+        sdrp_fidelity = (1.0 - self._sdrp / 2.0)
+        damping = self._noise_model_damping if self._is_error_detection else 1.0
         if coupling_map:
             pair_props = {}
             for a, b in coupling_map:
@@ -237,7 +240,10 @@ class AceQasmSimulator(BackendV2):
                     b_set = self._boundary_qb.get(b, {self._bulk_sim_id.get(b, b)})
                     d = len(a_set ^ b_set)
                     if d > 0:
-                        p = InstructionProperties(error=1 - ((1 - infidelty) ** (d / (len(a_set) + len(b_set)))))
+                        t = len(a_set) + len(b_set)
+                        u = d / t
+                        c = 1 - u
+                        p = InstructionProperties(error=1 - (fidelty ** u) * (sdrp_fidelity ** c) * damping)
                 if p is None:
                     p = InstructionProperties()
                 pair_props[(a, b)] = p
@@ -288,6 +294,7 @@ class AceQasmSimulator(BackendV2):
         self._sdrp  = opts.get('sdrp', 0.0)
         self._patch_device_ids = opts.get('patch_device_ids', [-1])
         self._crossbar_device_id = opts.get('crossbar_device_id', -1)
+        self._is_error_detection = opts.get('is_error_detection', True)
 
         job_id = str(uuid.uuid4())
         job = QrackJob(
