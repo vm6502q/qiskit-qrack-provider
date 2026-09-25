@@ -373,6 +373,10 @@ class QasmSimulator(BackendV2):
             for op in instructions[boundary_start:]:
                 self._apply_op(op)
 
+            # Flush preamble sim
+            if preamble_sim is not None:
+                preamble_sim.are_factorized([0], list(range(1, self._number_of_qubits)), True)
+
             if not self._sample_measure and len(self._sample_qubits) > 0:
                 self._data += [
                     bin(self._classical_memory)[2:].zfill(self._number_of_clbits)
