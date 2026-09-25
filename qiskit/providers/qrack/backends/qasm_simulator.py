@@ -180,9 +180,9 @@ class QasmSimulator(BackendV2):
 
         # Three-qubit: register with None (available on any 3 qubits)
         # Avoids building n*(n-1)*(n-2) entries which is huge at n=64.
-        tgt.add_instruction(CCXGate(),   None)
-        tgt.add_instruction(CCZGate(),   None)
-        tgt.add_instruction(CSwapGate(), None)
+        # tgt.add_instruction(CCXGate(),   None)
+        # tgt.add_instruction(CCZGate(),   None)
+        # tgt.add_instruction(CSwapGate(), None)
 
         # Measure / reset
         tgt.add_instruction(Measure(), {(q,): InstructionProperties() for q in range(n)})
