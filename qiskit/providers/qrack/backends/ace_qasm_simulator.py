@@ -86,7 +86,7 @@ class AceQasmSimulator(BackendV2):
         'long_range_rows': 6, # Full wrap-around, 3 patches total
         'is_transpose': False,
         'noise_model_infidelty': 0.25,
-        'noise_model_damping': 0.50,
+        'noise_model_damping': 0.25,
         'is_torus': True,
         'patch_device_ids': [-1],
         'crossbar_device_id': -1,
@@ -240,10 +240,10 @@ class AceQasmSimulator(BackendV2):
                     b_set = self._boundary_qb.get(b, {self._bulk_sim_id.get(b, b)})
                     d = len(a_set ^ b_set)
                     if d > 0:
-                        t = len(a_set) + len(b_set)
+                        t = len(a_set.union(b_set))
                         u = d / t
                         c = 1 - u
-                        p = InstructionProperties(error=1 - (fidelty ** u) * (sdrp_fidelity ** c) * damping)
+                        p = InstructionProperties(error=1 - (fidelty ** u) * (sdrp_fidelity ** c) * (damping ** c))
                 if p is None:
                     p = InstructionProperties()
                 pair_props[(a, b)] = p
