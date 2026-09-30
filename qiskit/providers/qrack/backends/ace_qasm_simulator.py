@@ -85,8 +85,8 @@ class AceQasmSimulator(BackendV2):
         'long_range_columns': 2, # 3 columns per patch, with boundary
         'long_range_rows': 6, # Full wrap-around, 3 patches total
         'is_transpose': False,
-        'noise_model_infidelty': 0.25,
-        'noise_model_damping': 0.25,
+        'noise_model_infidelty': 0.75,
+        'noise_model_damping': 0.75,
         'is_torus': True,
         'patch_device_ids': [-1],
         'crossbar_device_id': -1,
@@ -226,9 +226,9 @@ class AceQasmSimulator(BackendV2):
         # pairs -- those are supported, via the noisy-coupler mechanism) ---
         coupling_map = self.get_logical_coupling_map()
         b_keys = self._boundary_qb.keys()
-        fidelty = self._noise_model_infidelty
+        fidelty = 1.0 - self._noise_model_infidelty
         sdrp_fidelity = (1.0 - self._sdrp / 2.0)
-        damping = self._noise_model_damping if self._is_error_detection else 1.0
+        damping = 1.0 - (self._noise_model_damping if self._is_error_detection else 1.0)
         if coupling_map:
             pair_props = {}
             for a, b in coupling_map:
@@ -243,7 +243,8 @@ class AceQasmSimulator(BackendV2):
                         t = len(a_set.union(b_set))
                         u = d / t
                         c = 1 - u
-                        p = InstructionProperties(error=1 - (fidelty ** u) * (sdrp_fidelity ** c) * (damping ** c))
+                        f = 1 - (fidelty ** u) * (1.0 - (damping ** u)) * (sdrp_fidelity ** c)
+                        p = InstructionProperties(error=f)
                 if p is None:
                     p = InstructionProperties()
                 pair_props[(a, b)] = p
