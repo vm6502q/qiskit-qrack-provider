@@ -86,7 +86,7 @@ class AceQasmSimulator(BackendV2):
         'long_range_rows': 6, # Full wrap-around, 3 patches total
         'is_transpose': False,
         'noise_model_infidelty': 0.25,
-        'noise_model_damping': 0.01, # To very rough empirical test
+        'noise_model_damping': 0.20, # To rough empirical test
         'is_torus': True,
         'patch_device_ids': [-1],
         'crossbar_device_id': -1,
