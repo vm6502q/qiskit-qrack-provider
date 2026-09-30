@@ -85,8 +85,8 @@ class AceQasmSimulator(BackendV2):
         'long_range_columns': 2, # 3 columns per patch, with boundary
         'long_range_rows': 6, # Full wrap-around, 3 patches total
         'is_transpose': False,
-        'noise_model_infidelty': 0.75,
-        'noise_model_damping': 0.75,
+        'noise_model_infidelty': 0.5,
+        'noise_model_damping': 0.5,
         'is_torus': True,
         'patch_device_ids': [-1],
         'crossbar_device_id': -1,
