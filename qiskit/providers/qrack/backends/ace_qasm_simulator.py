@@ -88,6 +88,7 @@ class AceQasmSimulator(BackendV2):
         'noise_model_infidelty': 0.5,
         'noise_model_damping': 0.5,
         'is_torus': True,
+        'use_crossbars': True,
         'patch_device_ids': [-1],
         'crossbar_device_id': -1,
     }
@@ -140,12 +141,14 @@ class AceQasmSimulator(BackendV2):
         long_range_columns = self._options.get('long_range_columns')
         long_range_rows = self._options.get('long_range_rows')
         is_torus = self._options.get('is_torus')
+        use_crossbars = self._options.get('use_crossbars')
 
         dummy = QrackAceBackend(
             self._number_of_qubits,
             long_range_columns=long_range_columns,
             long_range_rows=long_range_rows,
             is_torus=is_torus,
+            use_crossbars=use_crossbars,
         )
         if self._sdrp > 0.0:
             dummy.set_sdrp(self._sdrp)
@@ -289,6 +292,7 @@ class AceQasmSimulator(BackendV2):
             'is_torus':                        opts.get('is_torus'),
             'is_error_detection':              opts.get('is_error_detection'),
             'is_boundary_repetition_code':     opts.get('is_boundary_repetition_code'),
+            'use_crossbars':                   opts.get('use_crossbars'),
         }
 
         self._shots = opts.get('shots', 1024)
