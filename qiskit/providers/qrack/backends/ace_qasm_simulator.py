@@ -85,12 +85,14 @@ class AceQasmSimulator(BackendV2):
         'long_range_columns': 2, # 3 columns per patch, with boundary
         'long_range_rows': 6, # Full wrap-around, 3 patches total
         'is_transpose': False,
-        'noise_model_infidelty': 0.5,
+        'noise_model_infidelity': 0.5,
         'noise_model_damping': 0.5,
         'is_torus': True,
         'use_crossbars': True,
         'patch_device_ids': [-1],
         'crossbar_device_id': -1,
+        'coupling_map': None,
+        'noise_model': None,
     }
 
     # Gates supported by QrackAceBackend
@@ -130,11 +132,11 @@ class AceQasmSimulator(BackendV2):
 
         self._number_of_qubits = self._options.get('n_qubits')
         self._sdrp  = self._options.get('sdrp', 0.0)
-        self._noise_model_infidelty = self._options.get('noise_model_infidelty')
+        self._noise_model_infidelty = self._options.get('noise_model_infidelity')
         self._noise_model_damping = self._options.get('noise_model_damping')
         self._is_error_detection = self._options.get('is_error_detection')
-        self._coupling_map = None
-        self._noise_model = None
+        self._coupling_map = self._options.get('coupling_map')
+        self._noise_model = self._options.get('noise_model')
         self._target = None
 
         # Build coupling map and noise model from a dummy backend instance
@@ -152,11 +154,13 @@ class AceQasmSimulator(BackendV2):
         )
         if self._sdrp > 0.0:
             dummy.set_sdrp(self._sdrp)
-        self._coupling_map = dummy.get_logical_coupling_map()
-        self._noise_model = dummy.create_noise_model(
-            x=self._noise_model_infidelty,
-            y=self._noise_model_damping,
-        )
+        if self._coupling_map is None:
+            self._coupling_map = dummy.get_logical_coupling_map()
+        if self._noise_model is None:
+            self._noise_model = dummy.create_noise_model(
+                x=self._noise_model_infidelty,
+                y=self._noise_model_damping,
+            )
         self._boundary_qb = {}
         self._bulk_sim_id = {}
         for q in range(self._number_of_qubits):
