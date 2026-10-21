@@ -79,7 +79,7 @@ class AceQasmSimulator(BackendV2):
         'is_host_pointer': False,
         'is_1d_chain': False,
         'is_error_detection': True,
-        'is_boundary_repetition_code': False,
+        'is_boundary_repetition_code': True,
         'noise': 0,
         'sdrp': 0.0,
         'long_range_columns': 2, # 3 columns per patch, with boundary
