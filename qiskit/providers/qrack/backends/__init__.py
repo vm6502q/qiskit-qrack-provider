@@ -13,3 +13,11 @@
 from .qasm_simulator import QasmSimulator
 from .ace_qasm_simulator import AceQasmSimulator
 from .qstabilizer_qasm_simulator import QStabilizerQasmSimulator
+from .qrack_bridge_simulator import QrackBridgeSimulator
+from .qrack_bridge_gates import FSimGate, ISwapDgGate
+from .qrack_bridge_transpiler import (
+    QrackBridgeUnroll,
+    QrackBridgePatchLayout,
+    QrackBridgeSplitCrossPatchControls,
+    generate_qrack_bridge_pass_manager,
+)
